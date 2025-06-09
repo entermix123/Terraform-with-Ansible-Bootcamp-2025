@@ -1,0 +1,50 @@
+Content
+=======
+
+Section 4: Start with Terraform Basics
+14. Terraform Provider & Initialization
+15. AWS SetUp for Terraform
+16. Create Machine Using Terraform
+17. Provide Creds in Separate Centralised File
+18. Provide Creds in Environment Variables
+19. Create Multiple Instances
+20. Terraform State : The Concept
+
+
+
+
+14. Terraform Provider & Initialization
+=======================================
+
+
+
+15. AWS SetUp for Terraform
+===========================
+
+
+
+16. Create Machine Using Terraform
+==================================
+
+
+
+17. Provide Creds in Separate Centralised File
+==============================================
+
+
+
+18. Provide Creds in Environment Variables
+==========================================
+
+
+
+19. Create Multiple Instances
+=============================
+
+
+
+20. Terraform State : The Concept
+=================================
+
+
+

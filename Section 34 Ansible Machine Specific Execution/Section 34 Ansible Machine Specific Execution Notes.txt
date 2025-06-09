@@ -1,0 +1,15 @@
+Content
+=======
+
+Section 34: Ansible Machine Specific Execution
+181. Ansible local_action Module
+182. Ansible Delegate_to Module
+
+
+181. Ansible local_action Module
+================================
+
+
+
+182. Ansible Delegate_to Module
+===============================

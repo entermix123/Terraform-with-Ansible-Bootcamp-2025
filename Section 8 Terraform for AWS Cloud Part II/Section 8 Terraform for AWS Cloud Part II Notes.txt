@@ -1,0 +1,67 @@
+Content
+=======
+
+Section 8: Terraform for AWS Cloud Part II
+47. AWS RDS Basics
+48. Lab : Create RDS
+49. AWS Access and Identity Management
+50. Lab : IAM Users and Groups
+51. Lab : AWS IAM Roles
+52. EC2 Instance Autoscaling
+53. Lab : EC2 Instance Autoscaling
+54. Your Reviews are Important!
+55. Load Balancing in AWS
+56. Lab : AWS Load Balancing
+
+
+47. AWS RDS Basics
+==================
+
+
+
+48. Lab : Create RDS
+====================
+
+
+
+49. AWS Access and Identity Management
+======================================
+
+
+
+50. Lab : IAM Users and Groups
+==============================
+
+
+
+51. Lab : AWS IAM Roles
+=======================
+
+
+
+52. EC2 Instance Autoscaling
+============================
+
+
+
+53. Lab : EC2 Instance Autoscaling
+==================================
+
+
+
+54. Your Reviews are Important!
+===============================
+
+
+
+55. Load Balancing in AWS
+=========================
+
+
+
+56. Lab : AWS Load Balancing
+============================
+
+
+
+

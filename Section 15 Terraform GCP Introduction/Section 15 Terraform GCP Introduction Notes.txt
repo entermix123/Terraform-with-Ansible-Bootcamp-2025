@@ -1,0 +1,30 @@
+Content
+=======
+
+Section 15: Terraform GCP: Introduction
+91. Terraform vs Google Deployment Manager
+92. Setup GCP Project For Terraform
+93. Enable Basic APIs on Cloud Project
+94. Setup Remote State File in Cloud
+
+
+
+91. Terraform vs Google Deployment Manager
+==========================================
+
+
+
+92. Setup GCP Project For Terraform
+===================================
+
+
+
+93. Enable Basic APIs on Cloud Project
+======================================
+
+
+
+94. Setup Remote State File in Cloud
+====================================
+
+

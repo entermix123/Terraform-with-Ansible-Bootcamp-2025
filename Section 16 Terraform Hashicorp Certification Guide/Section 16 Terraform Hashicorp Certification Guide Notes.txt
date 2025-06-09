@@ -1,0 +1,73 @@
+Content
+=======
+
+Section 16: Terraform Hashicorp Certification Guide
+95. Introduction HashiCorp Certification
+96. Understand Infrastructure as Code (IaC) Concepts
+97. Understand Terraform's Purpose
+98. Understand Terraform Basics I
+99. Understand Terraform Basics II
+100. Use the Terraform CLI
+101. Interact with Terraform modules
+102. Navigate Terraform workflow
+103. Implement and Maintain State
+104. Read, Generate, and Modify Configuration
+105. Understand Terraform Cloud and Enterprise Capabilities
+
+
+
+95. Introduction HashiCorp Certification
+========================================
+
+
+
+96. Understand Infrastructure as Code (IaC) Concepts
+====================================================
+
+
+
+97. Understand Terraform's Purpose
+==================================
+
+
+
+98. Understand Terraform Basics I
+=================================
+
+
+
+99. Understand Terraform Basics II
+==================================
+
+
+
+100. Use the Terraform CLI
+==========================
+
+
+
+101. Interact with Terraform modules
+====================================
+
+
+
+102. Navigate Terraform workflow
+================================
+
+
+
+103. Implement and Maintain State
+=================================
+
+
+
+104. Read, Generate, and Modify Configuration
+=============================================
+
+
+
+105. Understand Terraform Cloud and Enterprise Capabilities
+===========================================================
+
+
+

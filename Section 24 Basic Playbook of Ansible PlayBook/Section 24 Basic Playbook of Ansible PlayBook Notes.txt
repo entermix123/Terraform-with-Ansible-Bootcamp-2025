@@ -1,0 +1,50 @@
+Content
+=======
+
+Section 24: Basic Playbook of Ansible PlayBook
+139. Logging Debug Statement using Ansible Playbooks
+140. Variables in Ansible Play-books
+141. Data Collection in Ansible
+142. Uses of Set_Fact and Register
+143. Arithmetic Operations on Variables in Playbook
+144. Practice on Arithmetic Operators
+145. Filter and Methods of Ansible Playbook
+
+
+
+139. Logging Debug Statement using Ansible Playbooks
+====================================================
+
+
+
+140. Variables in Ansible Play-books
+====================================
+
+
+
+141. Data Collection in Ansible
+===============================
+
+
+
+142. Uses of Set_Fact and Register
+==================================
+
+
+
+143. Arithmetic Operations on Variables in Playbook
+===================================================
+
+
+
+144. Practice on Arithmetic Operators
+=====================================
+
+
+
+145. Filter and Methods of Ansible Playbook
+===========================================
+
+
+
+

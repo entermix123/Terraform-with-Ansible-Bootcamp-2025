@@ -1,0 +1,28 @@
+Content
+=======
+
+Section 21: Ansible Facts, Modules & Variables
+129. Ansible Modules
+130. Ansible Facts
+131. Create Custom Facts
+
+
+
+
+129. Ansible Modules
+====================
+
+
+
+130. Ansible Facts
+==================
+
+
+
+131. Create Custom Facts
+========================
+
+
+
+
+

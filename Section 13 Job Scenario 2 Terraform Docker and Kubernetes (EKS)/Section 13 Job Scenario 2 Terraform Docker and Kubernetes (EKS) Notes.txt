@@ -1,0 +1,51 @@
+Content
+=======
+
+Section 13: Job Scenario 2: Terraform Docker and Kubernetes (EKS)
+80. AWS EKS Introduction
+81. Lab : SetUp EKS Cluster Using AWS
+82. Lab : SetUp EKS Using AWS CLI
+83. Lab : Access EKS Cluster and Deploy Application
+84. Text Direction : SetUp EKS using AWS CLI
+85. EKS Cluster TerraForm Configuration files
+86. Lab : Deploy EKS Cluster using Terraform
+
+
+
+
+80. AWS EKS Introduction
+========================
+
+
+
+81. Lab : SetUp EKS Cluster Using AWS
+=====================================
+
+
+
+82. Lab : SetUp EKS Using AWS CLI
+=================================
+
+
+
+83. Lab : Access EKS Cluster and Deploy Application
+===================================================
+
+
+
+84. Text Direction : SetUp EKS using AWS CLI
+============================================
+
+
+
+85. EKS Cluster TerraForm Configuration files
+=============================================
+
+
+
+86. Lab : Deploy EKS Cluster using Terraform
+============================================
+
+
+
+

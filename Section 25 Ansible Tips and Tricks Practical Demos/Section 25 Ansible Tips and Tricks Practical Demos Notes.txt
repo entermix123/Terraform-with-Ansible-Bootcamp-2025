@@ -1,0 +1,53 @@
+Content
+=======
+
+Section 25: Ansible Tips and Tricks: Practical Demos
+146. Ansible Pause Module - Pause Execution
+147. Passing Variable to Ansible Playbook via Command Line
+148. Ansible Terminology : ansible_hostname and inventory_hostname
+149. Set Environment Per Task or Play
+150. Execute Tasks on Ansible Hosts
+151. Ansible Command vs Shell Module
+152. Using Date, Time and Timestamp in Ansible
+153. Ansible Playbook Dry Run - Check & Diff Mode
+
+
+146. Ansible Pause Module - Pause Execution
+===========================================
+
+
+
+147. Passing Variable to Ansible Playbook via Command Line
+==========================================================
+
+
+
+148. Ansible Terminology : ansible_hostname and inventory_hostname
+==================================================================
+
+
+
+149. Set Environment Per Task or Play
+=====================================
+
+
+
+150. Execute Tasks on Ansible Hosts
+===================================
+
+
+
+151. Ansible Command vs Shell Module
+====================================
+
+
+
+152. Using Date, Time and Timestamp in Ansible
+==============================================
+
+
+
+153. Ansible Playbook Dry Run - Check & Diff Mode
+=================================================
+
+

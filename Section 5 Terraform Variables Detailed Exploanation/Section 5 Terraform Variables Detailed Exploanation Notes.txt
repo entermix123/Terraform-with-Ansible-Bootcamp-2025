@@ -1,0 +1,31 @@
+Content
+=======
+
+Section 5: Terraform Variables Detailed Exploanation
+21. Variables in Terraform
+22. Use of Variable in Conf File
+23. Lab : Use of Variable in Conf File
+24. Lab : List and Map Variables
+
+
+
+
+21. Variables in Terraform
+==========================
+
+
+
+22. Use of Variable in Conf File
+================================
+
+
+
+23. Lab : Use of Variable in Conf File
+======================================
+
+
+
+24. Lab : List and Map Variables
+================================
+
+

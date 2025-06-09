@@ -1,0 +1,30 @@
+Content
+=======
+
+Section 28: Secure Your Infra: Ansible Vault
+159. Ansible terminology - What is an Ansible Vault?
+160. Demo: Ansible Vault Encryption Decryption
+161. Demo : Use Ansible Vault in Ansible Playbooks I
+162. Demo : Use Ansible Vault in Ansible Playbooks II
+
+
+
+159. Ansible terminology - What is an Ansible Vault?
+====================================================
+
+
+
+160. Demo: Ansible Vault Encryption Decryption
+==============================================
+
+
+
+161. Demo : Use Ansible Vault in Ansible Playbooks I
+====================================================
+
+
+
+162. Demo : Use Ansible Vault in Ansible Playbooks II
+=====================================================
+
+

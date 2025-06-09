@@ -1,0 +1,31 @@
+Content
+=======
+
+Section 39: Ansible with Docker Containers
+197. Install Docker Using Ansible
+198. Managing Docker Containers with Ansible
+199. Building Docker Images with Ansible
+200. Networking and Storage for Docker Containers
+
+
+
+197. Install Docker Using Ansible
+=================================
+
+
+
+198. Managing Docker Containers with Ansible
+============================================
+
+
+
+199. Building Docker Images with Ansible
+========================================
+
+
+
+200. Networking and Storage for Docker Containers
+=================================================
+
+
+

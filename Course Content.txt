@@ -1,0 +1,372 @@
+Course Content
+==============
+
+
+Section 2: Understanding Infrastructure as a Code
+2. IAC and IAC Benefits
+3. Cloud Agnostic IAC with Terraform
+Quiz 1: Agnostic with Terraform
+4. Course Chat with Students and Tech Community
+5. Procedure Document and Resource Location
+
+
+Section 3: IAC with Terraform
+6. Terraform Workflow
+7. Terraform Initialization
+8. Terraform Key Concept: Plan, Apply & Destroy
+9. Set-Up Free-Tier AWS Account (Optional)
+10. Create Cloud Machine for Terraform Execution
+11. $200 Discount Gift on Digital Ocean
+12. Terraform Installation and Verification
+13. Install Terraform on MacOS/Windows
+Quiz 2: IAC with Terraform
+
+
+Section 4: Start with Terraform Basics
+14. Terraform Provider & Initialization
+15. AWS SetUp for Terraform
+16. Create Machine Using Terraform
+17. Provide Creds in Separate Centralised File
+18. Provide Creds in Environment Variables
+19. Create Multiple Instances
+20. Terraform State : The Concept
+
+
+Section 5: Terraform Variables Detailed Exploanation
+21. Variables in Terraform
+22. Use of Variable in Conf File
+23. Lab : Use of Variable in Conf File
+24. Lab : List and Map Variables
+
+
+Section 6: Terraform Concepts - Building Blocks
+25. Provision Software with Terraform
+26. Lab : Provision Software with Terraform
+27. DataSource in Terraform
+28. Lab : DataSource in Terraform
+29. Lab 2 : DataSource in Terraform
+30. Output Attribute in TF
+31. Lab : Output Attribute in TF
+32. Remote State in Terraform
+33. Lab : Remote State in Terraform
+
+
+Section 7: Terraform for AWS Cloud
+34. AWS VPC Introduction
+35. AWS VPC Introduction II
+36. Demo : AWS VPC & Security Group
+37. Lab : Create AWS VPC & NAT Gateway
+38. Launch EC2 Instance using Custom VPC
+39. Lab : Launch EC2 Instance using Custom VPC
+40. We Need You!!!
+41. Elastic Block Store (EBS) in AWS
+42. Demo : Elastic Block Store (EBS) in AWS
+43. Lab : Elastic Block Store (EBS) in AWS
+44. User Data in AWS
+45. Lab: User Data using Script
+46. Lab : User Data using Cloud Init
+
+
+Section 8: Terraform for AWS Cloud Part II
+47. AWS RDS Basics
+48. Lab : Create RDS
+49. AWS Access and Identity Management
+50. Lab : IAM Users and Groups
+51. Lab : AWS IAM Roles
+52. EC2 Instance Autoscaling
+53. Lab : EC2 Instance Autoscaling
+54. Your Reviews are Important!
+55. Load Balancing in AWS
+56. Lab : AWS Load Balancing
+
+
+Section 9: Terraform Modules | Cloud Reusable
+57. Terraform Module and Application
+58. Lab : Terraform Source From GITHUB
+59. Lab : Local Path Module
+60. Lab : AWS VPC Module Part I
+61. Lab : AWS VPC Module Part II
+62. Lab : AWS VPC Module Part III
+
+
+Section 10: Conditions, Loops in Terraform
+63. Condition Statements in Terraform
+64. Lab : Condition Statements in Terraform
+65. Terraform Built-In Functions
+66. Lab : Terraform Built-In Functions
+67. Loops in TerraFrom HCL
+68. Terraform Project Structure
+69. Lab : Terraform Project Structure
+
+
+Section 11: Packer and Terraform
+70. Packer Introduction and It's Use
+71. Install Packer
+72. Lab : Create Custom AMI Scenario I
+73. Lab : Create Custom AMI Scenario II
+74. Lab : Terraform + Packer
+
+
+Section 12: Job Scenario 1: End to End Web Application Development
+75. Application Overview
+76. Create VPC Network
+77. Create RDS Service
+78. Create WebServer in AWS
+79. Deploy Complete Application
+
+
+
+Section 13: Job Scenario 2: Terraform Docker and Kubernetes (EKS)
+80. AWS EKS Introduction
+81. Lab : SetUp EKS Cluster Using AWS
+82. Lab : SetUp EKS Using AWS CLI
+83. Lab : Access EKS Cluster and Deploy Application
+84. Text Direction : SetUp EKS using AWS CLI
+85. EKS Cluster TerraForm Configuration files
+86. Lab : Deploy EKS Cluster using Terraform
+
+
+Section 14: Job Scenario 3: Terraform & AWS ELK
+87. ELK Basics and Application
+88. Lab : Deploy ELK and Execute ELK
+89. Text Direction : Lab - Deploy ELK and Execute ELK
+90. Lab : Install ELK using Terraform
+
+
+Section 15: Terraform GCP: Introduction
+91. Terraform vs Google Deployment Manager
+92. Setup GCP Project For Terraform
+93. Enable Basic APIs on Cloud Project
+94. Setup Remote State File in Cloud
+
+
+Section 16: Terraform Hashicorp Certification Guide
+95. Introduction HashiCorp Certification
+96. Understand Infrastructure as Code (IaC) Concepts
+97. Understand Terraform's Purpose
+98. Understand Terraform Basics I
+99. Understand Terraform Basics II
+100. Use the Terraform CLI
+101. Interact with Terraform modules
+102. Navigate Terraform workflow
+103. Implement and Maintain State
+104. Read, Generate, and Modify Configuration
+105. Understand Terraform Cloud and Enterprise Capabilities
+
+
+Section 17: Ansible Introduction
+106. Ansible Introduction : As a Tool
+107. Ansible : Used Code Files Location
+108. Ansible Architecture Overview
+109. Why Ansible
+
+
+Section 18: Ansible Environment Preparation and Installation
+110. Ansible Installation Overview
+111. Install Ansible Using PIP
+112. Create Cloud Machine for Ansible Engine
+113. Install Ansible Using Python VirtualEnv
+114. Run Instructions : Install Ansible Using Python VirtualEnv
+115. Configure Ansible
+
+
+Section 19: Configure Ansible Engine and Ansible Clients
+116. SetUp AWS Nodes
+117. Connect AWS Nodes with Ansible Engine
+118. SetUp Google Cloud Nodes
+119. Connect Google Cloud Nodes with Ansible Engine
+120. Ansible Directory Config
+121. Inventory file with Groups
+122. SetUp Nodes on Digital Ocean
+123. How to disable host key Checking ?
+
+
+Section 20: Ansible Ad-Hoc Commands
+124. Syntax of Ansible Ad-Hoc Commands
+125. How Ansible Execute Stuff on Clients
+126. Transfer file from Engine to Clients
+127. Manage File/Directory on Ansible Clients
+128. Install Packages on Ansible Clients
+
+
+Section 21: Ansible Facts, Modules & Variables
+129. Ansible Modules
+130. Ansible Facts
+131. Create Custom Facts
+
+
+Section 22: Ansible Inventories
+132. Work with Dynamic Inventory Script AWS I
+133. Work with Dynamic Inventory Script AWS II
+134. Work with Dynamic Inventory Script Google Cloud
+135. Work with Dynamic Inventory | Digital Ocean
+
+
+Section 23: Basics of Ansible Playbook
+136. Playbook Introduction
+137. Demo: Playbook Introduction
+138. Start Writing-Executing PlayBooks
+
+
+Section 24: Basic Playbook of Ansible PlayBook
+139. Logging Debug Statement using Ansible Playbooks
+140. Variables in Ansible Play-books
+141. Data Collection in Ansible
+142. Uses of Set_Fact and Register
+143. Arithmetic Operations on Variables in Playbook
+144. Practice on Arithmetic Operators
+145. Filter and Methods of Ansible Playbook
+
+
+Section 25: Ansible Tips and Tricks: Practical Demos
+146. Ansible Pause Module - Pause Execution
+147. Passing Variable to Ansible Playbook via Command Line
+148. Ansible Terminology : ansible_hostname and inventory_hostname
+149. Set Environment Per Task or Play
+150. Execute Tasks on Ansible Hosts
+151. Ansible Command vs Shell Module
+152. Using Date, Time and Timestamp in Ansible
+153. Ansible Playbook Dry Run - Check & Diff Mode
+
+
+Section 26: Operators and Conditional Statements in Ansible PlayBook
+154. Comparison Operators
+155. Membership Operators in Ansible
+156. Logical Operator
+157. Conditional Statements
+
+
+Section 27: Handlers in Ansible
+158. Handler in Ansible Playbook
+
+
+Section 28: Secure Your Infra: Ansible Vault
+159. Ansible terminology - What is an Ansible Vault?
+160. Demo: Ansible Vault Encryption Decryption
+161. Demo : Use Ansible Vault in Ansible Playbooks I
+162. Demo : Use Ansible Vault in Ansible Playbooks II
+
+
+Section 29: Loops in Ansible PlayBook
+163. Loops in Ansible Playbook I
+164. Loops in Ansible Playbook II
+165. Loops in Ansible Playbook III
+
+
+Section 30: Tags in Ansible
+166. Tags in Ansible
+
+
+Section 31: Ansible PlayBooks For Linux: Practical Labs
+167. Work with FIles : Ansible lineinfile Module
+168. Work with FIles : Ansible Blockinfile Module
+169. Reboot Remote Hosts Using Ansible
+170. Checkout GIT Repo via Ansible
+171. Copy Files from Local Machine to Remote Machines
+172. Copy Files from Remote Machines to Local Machine
+173. Start and Enable Services on Boot On Remote Hosts
+174. Schedule a CRON Task on Remote Hosts
+175. Loop in file Template - Ansible Template Module
+176. Read file from Remote Host - Ansible Slurp
+
+
+Section 32: Error Handling in Ansible
+177. Error Handling in Ansible I
+178. Block and Rescue in Ansible Playbook
+179. Demo: Block and Rescue in Ansible
+
+
+Section 33: Working with Include and import module in Ansible
+180. Working with include and import module in Ansible
+
+
+Section 34: Ansible Machine Specific Execution
+181. Ansible local_action Module
+182. Ansible Delegate_to Module
+
+
+Section 35: Ansible Code Reuse - Ansible Roles and Collections
+183. Understanding of Ansible Galaxy, Roles, Collections
+184. Download and Use Ansible Galaxy Roles
+
+
+Section 36: Manage Remote Machine File System via Ansible
+185. Work with Files and Directories using Ansible
+186. Work with Files and Directories using Ansible II
+187. Create a Symlink on Linux Remote Hosts
+188. Create a Hard Link on Linux Remote Hosts
+189. Download Files on Remote Hosts
+190. Extract an Archive on Remote Machines
+
+
+Section 37: Concept of Template in Ansible
+191. Install Realtime Application I
+192. Install Realtime Application II
+193. Install Realtime Application III
+194. Template Module with Variables
+
+
+Section 38: Interact with API Web Service APIs using Ansible
+195. Submit a GET request to a REST API Endpoint
+196. Token Based Authentication in REST API
+
+
+Section 39: Ansible with Docker Containers
+197. Install Docker Using Ansible
+198. Managing Docker Containers with Ansible
+199. Building Docker Images with Ansible
+200. Networking and Storage for Docker Containers
+
+
+Section 40: Course Completion
+201. Congratulations
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

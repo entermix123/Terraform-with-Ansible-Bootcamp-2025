@@ -1,0 +1,19 @@
+Content
+=======
+
+Section 35: Ansible Code Reuse - Ansible Roles and Collections
+183. Understanding of Ansible Galaxy, Roles, Collections
+184. Download and Use Ansible Galaxy Roles
+
+
+
+183. Understanding of Ansible Galaxy, Roles, Collections
+========================================================
+
+
+
+184. Download and Use Ansible Galaxy Roles
+==========================================
+
+
+

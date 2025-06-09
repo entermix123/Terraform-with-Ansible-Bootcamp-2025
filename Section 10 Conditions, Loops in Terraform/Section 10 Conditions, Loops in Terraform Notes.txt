@@ -1,0 +1,52 @@
+Content
+=======
+
+Section 10: Conditions, Loops in Terraform
+63. Condition Statements in Terraform
+64. Lab : Condition Statements in Terraform
+65. Terraform Built-In Functions
+66. Lab : Terraform Built-In Functions
+67. Loops in TerraFrom HCL
+68. Terraform Project Structure
+69. Lab : Terraform Project Structure
+
+
+
+63. Condition Statements in Terraform
+=====================================
+
+
+
+64. Lab : Condition Statements in Terraform
+===========================================
+
+
+
+65. Terraform Built-In Functions
+================================
+
+
+
+66. Lab : Terraform Built-In Functions
+======================================
+
+
+
+67. Loops in TerraFrom HCL
+==========================
+
+
+
+68. Terraform Project Structure
+===============================
+
+
+
+69. Lab : Terraform Project Structure
+=====================================
+
+
+
+
+
+

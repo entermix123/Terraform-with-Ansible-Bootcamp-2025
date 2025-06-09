@@ -1,0 +1,28 @@
+Content
+=======
+
+Section 26: Operators and Conditional Statements in Ansible PlayBook
+154. Comparison Operators
+155. Membership Operators in Ansible
+156. Logical Operator
+157. Conditional Statements
+
+
+154. Comparison Operators
+=========================
+
+
+
+155. Membership Operators in Ansible
+====================================
+
+
+
+156. Logical Operator
+=====================
+
+
+
+157. Conditional Statements
+===========================
+

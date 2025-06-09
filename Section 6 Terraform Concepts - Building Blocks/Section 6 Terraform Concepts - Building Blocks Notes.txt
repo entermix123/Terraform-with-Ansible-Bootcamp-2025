@@ -1,0 +1,62 @@
+Content
+=======
+
+
+Section 6: Terraform Concepts - Building Blocks
+25. Provision Software with Terraform
+26. Lab : Provision Software with Terraform
+27. DataSource in Terraform
+28. Lab : DataSource in Terraform
+29. Lab 2 : DataSource in Terraform
+30. Output Attribute in TF
+31. Lab : Output Attribute in TF
+32. Remote State in Terraform
+33. Lab : Remote State in Terraform
+
+
+
+25. Provision Software with Terraform
+=====================================
+
+
+
+26. Lab : Provision Software with Terraform
+===========================================
+
+
+
+27. DataSource in Terraform
+===========================
+
+
+
+28. Lab : DataSource in Terraform
+=================================
+
+
+
+29. Lab 2 : DataSource in Terraform
+===================================
+
+
+
+30. Output Attribute in TF
+==========================
+
+
+
+31. Lab : Output Attribute in TF
+================================
+
+
+
+32. Remote State in Terraform
+=============================
+
+
+
+33. Lab : Remote State in Terraform
+===================================
+
+
+

@@ -1,0 +1,40 @@
+Content
+=======
+
+Section 9: Terraform Modules | Cloud Reusable
+57. Terraform Module and Application
+58. Lab : Terraform Source From GITHUB
+59. Lab : Local Path Module
+60. Lab : AWS VPC Module Part I
+61. Lab : AWS VPC Module Part II
+62. Lab : AWS VPC Module Part III
+
+
+
+57. Terraform Module and Application
+====================================
+
+
+
+58. Lab : Terraform Source From GITHUB
+======================================
+
+
+
+59. Lab : Local Path Module
+===========================
+
+
+
+60. Lab : AWS VPC Module Part I
+===============================
+
+
+
+61. Lab : AWS VPC Module Part II
+================================
+
+
+
+62. Lab : AWS VPC Module Part III
+=================================

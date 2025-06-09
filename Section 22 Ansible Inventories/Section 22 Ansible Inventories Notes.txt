@@ -1,0 +1,30 @@
+Content
+=======
+
+Section 22: Ansible Inventories
+132. Work with Dynamic Inventory Script AWS I
+133. Work with Dynamic Inventory Script AWS II
+134. Work with Dynamic Inventory Script Google Cloud
+135. Work with Dynamic Inventory | Digital Ocean
+
+
+
+132. Work with Dynamic Inventory Script AWS I
+=============================================
+
+
+
+133. Work with Dynamic Inventory Script AWS II
+==============================================
+
+
+
+134. Work with Dynamic Inventory Script Google Cloud
+====================================================
+
+
+
+135. Work with Dynamic Inventory | Digital Ocean
+================================================
+
+

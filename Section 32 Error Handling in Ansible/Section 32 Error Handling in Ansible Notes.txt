@@ -1,0 +1,23 @@
+Content
+=======
+
+Section 32: Error Handling in Ansible
+177. Error Handling in Ansible I
+178. Block and Rescue in Ansible Playbook
+179. Demo: Block and Rescue in Ansible
+
+
+
+
+177. Error Handling in Ansible I
+================================
+
+
+
+178. Block and Rescue in Ansible Playbook
+=========================================
+
+
+
+179. Demo: Block and Rescue in Ansible
+======================================

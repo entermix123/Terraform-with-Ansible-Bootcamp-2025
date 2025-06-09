@@ -1,0 +1,57 @@
+Content
+=======
+
+
+Section 19: Configure Ansible Engine and Ansible Clients
+116. SetUp AWS Nodes
+117. Connect AWS Nodes with Ansible Engine
+118. SetUp Google Cloud Nodes
+119. Connect Google Cloud Nodes with Ansible Engine
+120. Ansible Directory Config
+121. Inventory file with Groups
+122. SetUp Nodes on Digital Ocean
+123. How to disable host key Checking ?
+
+
+
+116. SetUp AWS Nodes
+====================
+
+
+
+117. Connect AWS Nodes with Ansible Engine
+==========================================
+
+
+
+118. SetUp Google Cloud Nodes
+=============================
+
+
+
+119. Connect Google Cloud Nodes with Ansible Engine
+===================================================
+
+
+
+120. Ansible Directory Config
+=============================
+
+
+
+121. Inventory file with Groups
+===============================
+
+
+
+122. SetUp Nodes on Digital Ocean
+=================================
+
+
+
+123. How to disable host key Checking?
+======================================
+
+
+
+

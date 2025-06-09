@@ -1,0 +1,32 @@
+Content
+=======
+
+Section 37: Concept of Template in Ansible
+191. Install Realtime Application I
+192. Install Realtime Application II
+193. Install Realtime Application III
+194. Template Module with Variables
+
+
+
+
+191. Install Realtime Application I
+===================================
+
+
+
+192. Install Realtime Application II
+====================================
+
+
+
+193. Install Realtime Application III
+=====================================
+
+
+
+194. Template Module with Variables
+===================================
+
+
+

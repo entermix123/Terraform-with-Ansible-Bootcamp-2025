@@ -1,0 +1,37 @@
+Content
+=======
+
+Section 20: Ansible Ad-Hoc Commands
+124. Syntax of Ansible Ad-Hoc Commands
+125. How Ansible Execute Stuff on Clients
+126. Transfer file from Engine to Clients
+127. Manage File/Directory on Ansible Clients
+128. Install Packages on Ansible Clients
+
+
+
+124. Syntax of Ansible Ad-Hoc Commands
+======================================
+
+
+
+125. How Ansible Execute Stuff on Clients
+=========================================
+
+
+
+126. Transfer file from Engine to Clients
+=========================================
+
+
+
+127. Manage File/Directory on Ansible Clients
+=============================================
+
+
+
+128. Install Packages on Ansible Clients
+========================================
+
+
+

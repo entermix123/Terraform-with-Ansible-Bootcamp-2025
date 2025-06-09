@@ -1,0 +1,18 @@
+Content
+=======
+
+Section 38: Interact with API Web Service APIs using Ansible
+195. Submit a GET request to a REST API Endpoint
+196. Token Based Authentication in REST API
+
+
+
+195. Submit a GET request to a REST API Endpoint
+================================================
+
+
+
+
+196. Token Based Authentication in REST API
+===========================================
+

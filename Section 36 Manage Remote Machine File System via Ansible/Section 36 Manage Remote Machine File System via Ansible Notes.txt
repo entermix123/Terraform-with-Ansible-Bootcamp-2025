@@ -1,0 +1,43 @@
+Content
+=======
+
+Section 36: Manage Remote Machine File System via Ansible
+185. Work with Files and Directories using Ansible
+186. Work with Files and Directories using Ansible II
+187. Create a Symlink on Linux Remote Hosts
+188. Create a Hard Link on Linux Remote Hosts
+189. Download Files on Remote Hosts
+190. Extract an Archive on Remote Machines
+
+
+
+185. Work with Files and Directories using Ansible
+==================================================
+
+
+
+186. Work with Files and Directories using Ansible II
+=====================================================
+
+
+
+187. Create a Symlink on Linux Remote Hosts
+===========================================
+
+
+
+188. Create a Hard Link on Linux Remote Hosts
+=============================================
+
+
+
+189. Download Files on Remote Hosts
+===================================
+
+
+
+190. Extract an Archive on Remote Machines
+==========================================
+
+
+

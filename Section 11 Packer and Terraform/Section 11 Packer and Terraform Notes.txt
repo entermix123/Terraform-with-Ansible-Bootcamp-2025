@@ -1,0 +1,37 @@
+Content
+=======
+
+Section 11: Packer and Terraform
+70. Packer Introduction and It's Use
+71. Install Packer
+72. Lab : Create Custom AMI Scenario I
+73. Lab : Create Custom AMI Scenario II
+74. Lab : Terraform + Packer
+
+
+
+70. Packer Introduction and It's Use
+====================================
+
+
+
+71. Install Packer
+==================
+
+
+
+72. Lab : Create Custom AMI Scenario I
+======================================
+
+
+
+73. Lab : Create Custom AMI Scenario II
+=======================================
+
+
+
+74. Lab : Terraform + Packer
+============================
+
+
+

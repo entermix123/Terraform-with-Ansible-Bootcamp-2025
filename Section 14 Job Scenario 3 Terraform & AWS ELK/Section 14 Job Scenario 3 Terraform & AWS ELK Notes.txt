@@ -1,0 +1,32 @@
+Content
+=======
+
+Section 14: Job Scenario 3: Terraform & AWS ELK
+87. ELK Basics and Application
+88. Lab : Deploy ELK and Execute ELK
+89. Text Direction : Lab - Deploy ELK and Execute ELK
+90. Lab : Install ELK using Terraform
+
+
+
+87. ELK Basics and Application
+==============================
+
+
+
+88. Lab : Deploy ELK and Execute ELK
+====================================
+
+
+
+89. Text Direction : Lab - Deploy ELK and Execute ELK
+=====================================================
+
+
+
+90. Lab : Install ELK using Terraform
+=====================================
+
+
+
+

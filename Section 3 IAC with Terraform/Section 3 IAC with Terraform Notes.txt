@@ -1,0 +1,63 @@
+Content
+=======
+
+
+Section 3: IAC with Terraform
+6. Terraform Workflow
+7. Terraform Initialization
+8. Terraform Key Concept: Plan, Apply & Destroy
+9. Set-Up Free-Tier AWS Account (Optional)
+10. Create Cloud Machine for Terraform Execution
+11. $200 Discount Gift on Digital Ocean
+12. Terraform Installation and Verification
+13. Install Terraform on MacOS/Windows
+Quiz 2: IAC with Terraform
+
+
+
+
+6. Terraform Workflow
+=====================
+
+
+
+7. Terraform Initialization
+===========================
+
+
+
+8. Terraform Key Concept: Plan, Apply & Destroy
+===============================================
+
+
+
+9. Set-Up Free-Tier AWS Account (Optional)
+==========================================
+
+
+
+10. Create Cloud Machine for Terraform Execution
+================================================
+
+
+
+
+11. $200 Discount Gift on Digital Ocean
+=======================================
+
+
+
+12. Terraform Installation and Verification
+===========================================
+
+
+
+13. Install Terraform on MacOS/Windows
+======================================
+
+
+
+Quiz 2: IAC with Terraform
+==========================
+
+

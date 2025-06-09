@@ -1,0 +1,86 @@
+Content
+=======
+
+Section 7: Terraform for AWS Cloud
+34. AWS VPC Introduction
+35. AWS VPC Introduction II
+36. Demo : AWS VPC & Security Group
+37. Lab : Create AWS VPC & NAT Gateway
+38. Launch EC2 Instance using Custom VPC
+39. Lab : Launch EC2 Instance using Custom VPC
+40. We Need You!!!
+41. Elastic Block Store (EBS) in AWS
+42. Demo : Elastic Block Store (EBS) in AWS
+43. Lab : Elastic Block Store (EBS) in AWS
+44. User Data in AWS
+45. Lab: User Data using Script
+46. Lab : User Data using Cloud Init
+
+
+
+34. AWS VPC Introduction
+========================
+
+
+
+35. AWS VPC Introduction II
+===========================
+
+
+
+36. Demo : AWS VPC & Security Group
+===================================
+
+
+
+37. Lab : Create AWS VPC & NAT Gateway
+======================================
+
+
+
+38. Launch EC2 Instance using Custom VPC
+========================================
+
+
+
+39. Lab : Launch EC2 Instance using Custom VPC
+==============================================
+
+
+
+40. We Need You!!!
+==================
+
+
+
+41. Elastic Block Store (EBS) in AWS
+====================================
+
+
+
+42. Demo : Elastic Block Store (EBS) in AWS
+===========================================
+
+
+
+43. Lab : Elastic Block Store (EBS) in AWS
+==========================================
+
+
+
+44. User Data in AWS
+====================
+
+
+
+45. Lab: User Data using Script
+===============================
+
+
+
+46. Lab : User Data using Cloud Init
+====================================
+
+
+
+

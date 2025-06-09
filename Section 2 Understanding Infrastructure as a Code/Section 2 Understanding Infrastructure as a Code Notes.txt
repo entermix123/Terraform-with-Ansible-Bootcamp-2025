@@ -1,0 +1,41 @@
+Content
+=======
+
+Section 2: Understanding Infrastructure as a Code
+2. IAC and IAC Benefits
+3. Cloud Agnostic IAC with Terraform
+Quiz 1: Agnostic with Terraform
+4. Course Chat with Students and Tech Community
+5. Procedure Document and Resource Location
+
+
+
+
+
+
+
+
+
+
+2. IAC and IAC Benefits
+=======================
+
+
+
+3. Cloud Agnostic IAC with Terraform
+====================================
+
+
+
+Quiz 1: Agnostic with Terraform
+===============================
+
+
+
+4. Course Chat with Students and Tech Community
+===============================================
+
+
+
+5. Procedure Document and Resource Location
+===========================================

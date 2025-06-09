@@ -1,0 +1,68 @@
+Content
+=======
+
+Section 31: Ansible PlayBooks For Linux: Practical Labs
+167. Work with FIles : Ansible lineinfile Module
+168. Work with FIles : Ansible Blockinfile Module
+169. Reboot Remote Hosts Using Ansible
+170. Checkout GIT Repo via Ansible
+171. Copy Files from Local Machine to Remote Machines
+172. Copy Files from Remote Machines to Local Machine
+173. Start and Enable Services on Boot On Remote Hosts
+174. Schedule a CRON Task on Remote Hosts
+175. Loop in file Template - Ansible Template Module
+176. Read file from Remote Host - Ansible Slurp
+
+
+
+
+167. Work with FIles : Ansible lineinfile Module
+================================================
+
+
+
+168. Work with FIles : Ansible Blockinfile Module
+=================================================
+
+
+
+169. Reboot Remote Hosts Using Ansible
+======================================
+
+
+
+170. Checkout GIT Repo via Ansible
+==================================
+
+
+
+171. Copy Files from Local Machine to Remote Machines
+=====================================================
+
+
+
+172. Copy Files from Remote Machines to Local Machine
+=====================================================
+
+
+
+173. Start and Enable Services on Boot On Remote Hosts
+======================================================
+
+
+
+174. Schedule a CRON Task on Remote Hosts
+=========================================
+
+
+
+175. Loop in file Template - Ansible Template Module
+====================================================
+
+
+
+176. Read file from Remote Host - Ansible Slurp
+===============================================
+
+
+
