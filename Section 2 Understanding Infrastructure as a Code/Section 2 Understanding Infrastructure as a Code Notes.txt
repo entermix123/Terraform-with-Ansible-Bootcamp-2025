@@ -10,32 +10,106 @@ Quiz 1: Agnostic with Terraform
 
 
 
-
-
-
-
-
-
-
 2. IAC and IAC Benefits
 =======================
 
+IAC : Infrastructure as Code
+
+No Manual Deployment : Write what you want to Deploy (VMs, Disks, Apps, etc) as Human readable code.
+
+DevOps Enablement : Deployment codification means, it can be versioned via VCS.
+
+Declare your infrastructure.
+
+Speed, Cost & Risk : Less human intervention during Deployment means fewer chances of error, miss configuration, redeployment and
+more time is saved.
 
 
 3. Cloud Agnostic IAC with Terraform
 ====================================
 
+Automate Software defining Deployment Network.
+
+Terraform Supports Vast Range of Public/Private Cloud Providers.
+	- https://registry.terraform.io/browse/providers
+
+Use Terraform to Deploy Environment across the multiple clouds.
+
+Track state of each resource Deployed.
 
 
 Quiz 1: Agnostic with Terraform
 ===============================
 
 
-
 4. Course Chat with Students and Tech Community
 ===============================================
+
+🎉Get more out of this course by getting live help from other students and chatting with my DevOps community.
+
+With this course, you have access to Discord. Read on, and join the communities:
+
+
+Discord
+
+Discord used to be a gamer-focused chat app, with lots of fun features and integrations, but they have now broadened to support all open communities, and it's a modern IRC-like way to interact. It's my favorite chat system for open-source communities.
+
+Join my "LevelUp360" Discord server and gain access to a particular channel for this course: https://discord.gg/FN6BQbzQDd  
 
 
 
 5. Procedure Document and Resource Location
 ===========================================
+
+GitHub repository
+Terraform Resources and Code Git Location:
+
+https://github.com/anshulc55/terraform
+
+
+You can clone this repo in your local machine using the command -
+
+git clone -b master https://github.com/anshulc55/terraform.git
+
+
+AWS Setup
+
+    There is a lecture on how to setup AWS, here are some notes to clarify the setup
+
+    Make sure you have installed the AWS CLI
+
+        You can download it manually from https://aws.amazon.com/cli/
+
+        If you're on Linux you can also use "Sudo pip install --upgrade awscli"
+
+            If you don't have pip, try Sudo apt-get install python-pip
+
+
+    There is a lecture on how to add an admin user, this need to be done to create an access key and secret key
+
+    Use "aws configure" to enter the keys
+
+        you can optionally specify a default region - but no worries, in terraform you can set any region you want
+
+        Use http://www.cloudping.info/ to determine your region
+
+    You can test whether it works by entering: aws iam get-user
+
+        This will also show your AWS userid which you need afterward
+
+
+Questions & Support
+
+    Every lecture has a Q&A section, please ask any doubt in related lectures.
+
+    All other students' doubt and Answers are also publicly accessible so you can go thru these too.
+
+
+    For Support and discount update on other courses, you can join us here-
+
+    FB - https://www.facebook.com/LevelUp360Degree
+
+    Telegram - https://t.me/Master_In_Devops
+
+    YouTube - https://www.youtube.com/channel/UC5k0zHLWwo9DACApdUzTOKA
+
