@@ -16,35 +16,369 @@ Section 4: Start with Terraform Basics
 14. Terraform Provider & Initialization
 =======================================
 
+Providers are Public cloud Vendors, to which terraform Interact to create resources.
+
+Terraform relies on plugins called "providers" to interact with cloud providers.
+
+Terraform configurations must declare which providers they require so that Terraform can install and use them.
+
+Terraform Providers release is separate from Terraform release.
+
+You can write your own Providers.
+
+Terraform finds and Install Providers as you Initialize Terraform (using terraform init command).
+
+As a Best Practice Providers should be versioned in your Terraform config files. !!!
+	- if not versioned, every time terraform will download the latest versions and if there are some critical changes, the configuration will be impacted and may not work properly.
+
+
+How we can select and set the correct provider configuration and versioning 
+---------------------------------------------------------------------------
+
+AWS - https://registry.terraform.io/providers/hashicorp/aws/latest
+Azure - https://registry.terraform.io/providers/hashicorp/azurerm/latest
+GCP - https://registry.terraform.io/providers/hashicorp/google/latest
+
+On the top meun we can see the version of every provider. We can see that new versions are released every several days for each of the providers. We need to update our terraform version atleast two times a year. We want to plan, review and test our terraform version before migrating to it.
+
+We can open main.tf file from the resources with VisualStudioCode editor and install the terrafomr extention
+	- HashiCorp Terraform
+
+I the next example we will use 2 providers in the machine on DigitalOcean.
+
+Connect the machine
+	terminal --> ssh root@IP
+	terminal --> yes/passwor
+
+Create providers foler
+	terminal --> mkdir providers
+	
+Enter the providers dir
+	terminal --> cd providers
+
+Create main.tf file
+	terminal --> vi main.tf
+
+Paste the content of the main.tf file
+main.tf
+---------------------------------
+## Provider's Example
+
+# Configure the AWS Provider
+provider "aws" {
+    region = "us-west-1"
+    version = "5.99.1"
+}
+
+# Configure the Microsoft Azure Provider
+provider "azurerm" {
+    version = "4.32.0"
+    features {}
+}
+---------------------------------
+save changes - terminal --> escape, :wq!, enter
+
+Check if the changes are saved
+	terminal --> cat main.tf
+
+SET LOGS
+--------
+Set the trace levels for terraform
+	terminal --> export TF_LOG=TRACE	# this will print all the logs on the consol when we initialize terraform
+
+INITIALIZE TERRAFOMR
+Execute the initialization command
+	terminal --> terrafomr init
+
+	result: on the consol we must see "Terraform has been successfully initialized!" message
+
+
+We can list all directories in the providers folder
+	terminal --> ls -a
+
+	result: .  ..  .main.tf.swo  .main.tf.swp  .terraform  .terraform.lock.hcl  main.tf
+
+The terraform initialization creates a hidden folder - '.terraform' in which are downloaded all providers configurations.
+We can list the providers
+	terminal --> ls .terraform/providers/registry.terraform.io/hashicorp
+
+	result: aws  azurerm
+
+We can print the providers details
+	terminal --> cat .terraform.lock.hcl
+
 
 
 15. AWS SetUp for Terraform
 ===========================
+Terraform : Deployment Automation
+- Spinning Instances on AWS.
+- Need AWS Account.
+- Create IAM Admin User.
+- Manage Security in Terraform.
 
+
+Configure AWS
+-------------
+
+Login to AWS and set the selected region in the provides configuration
+	- https://us-west-1.console.aws.amazon.com/console/home?region=us-west-1#?region=eu-north-1
+
+Configure IAM Admin User
+------------------------
 
 
 16. Create Machine Using Terraform
 ==================================
+Search for IAM and open IAM Dashboard
+	- https://us-east-1.console.aws.amazon.com/iam/home?region=us-west-1#/home	
+	- create
+		- set username: terraadmin
+		- check "Provide user access to the AWS Management Console - optional"
+			- select "I want to create an IAM user"
+			- Custom Password
+				- set password and save it somewhere safe
+			- uncheck "Users must create a new password at next sign-in - Recommended"
+	- next
+	- create group
+		- set group name: terraform-admin
+		- check AdministratorAccess
+		- select the group after creation
+	- next
+	- add tag
+		- Key: purpose
+		- Value: terrafomr-admin
+
+Open the created user and craete access key
+Go to the IAM/Users/terraadmin/create access key
+	- choose Third-party service
+	- set purpose: terraform-admin
+	- generate access key
+	- save Access key and secret access key somewhere safe
+
+
+Go to EC2 Dahsboard/Security Group
+- select the existing security group ID
+	- Edit inbound rules
+		- Type: All traffic
+		- Source: Custom
+		- in the search field set the IP of the DigitalOcean machine with '/32' sufix
+		- Save rules
 
 
 
 17. Provide Creds in Separate Centralised File
 ==============================================
 
+In the resources we have createinstance.tf file
 
+Find AWS AMI EC2 Finder in googel - https://cloud-images.ubuntu.com/locator/ec2/
+	- search for us-west-1 (the zone we are located in AWS)
+	- Find Arch: 64bit - first row
+	- copy the AMI-ID - ami-0454207e5367abf01
+	
+
+Configure the terrafomr instance configuration file:
+
+createinstance.tf
+----------------------------------------------------
+provider "aws" {
+  access_key = "ACCESS_KEY_HERE"			// set access key for IAM terraadmin user on AWS
+  secret_key = "SECRET_KEY_HERE"			// set secret access key or IAM terraadmin user on AWS
+  location   = "us-west-1"				// set the location we want to create the instance on
+}
+
+resource "aws_instance" "MyFirstInstnace" {
+  ami           = "ami-0454207e5367abf01"		// set AIM-ID
+  instance_type = "t2.micro"				// available for free tier on AWS (new accounts)
+}
+----------------------------------------------------
+
+
+Execute the terraform file on DigitalOcean Ubuntu machine
+
+Login to the DigitalOcean machine
+	- ssh root@IP
+	- Password: set password
+
+Create createinstance.tf
+	terminal --> vi createinstance.tf
+
+Paste the above code with access key and secret access key and save the changes
+	terminal --> escape, :wq!, enter 
+
+
+INIT
+----
+Initialize terraform every time new folders or files are added/created
+	terminal --> terraform init
+
+	All necessary plugins are downloaded
+
+APPLY
+-----
+Craete the instance on AWS
+	terminal --> terraform apply
+
+	Plan with the resources that will be created is presented
+
+Confirm the creation of the presented resources if no errors when terraform asks
+	terminal --> yes
+
+	The instance is created
+
+Check the instance creation on AWS/EC2/Running instances
+
+
+DESTROY
+-------
+Destroy the AWS Instance machine from our Ubuntu machine on DigitalOcean
+	terminal --> terraform destroy
+
+	Terraform will present a list with the resources that will be destroyd
+
+Confirm the destroy of the resources
+	terminal --> yes
+
+Check if the AWS instance is destroyed on AWS/EC2/Running instances
+
+
+PLAN
+----
+We can create a terraform plan and see what resources are about to be created if we apply
+	terminal --> terraform plan
+
+	Terraform will list all resources and we can review them before applying
+
+We can save the plan in file
+	terminal --> terraform plan --out myfirstplan.out
+
+We can apply the specific plan 
+	terminal --> terraform apply "myfirstplan.out"
+
+	
 
 18. Provide Creds in Environment Variables
 ==========================================
+
+Create provider.tf file to store access key and secret access key for the IAM User on AWS. Remove this section from main.tf file.
+
+provider.tf
+----------------------------------------------------
+provider "aws" {
+  access_key = "ACCESS_KEY_HERE"			// set access key for IAM terraadmin user on AWS
+  secret_key = "SECRET_KEY_HERE"			// set secret access key or IAM terraadmin user on AWS
+  location   = "us-west-1"				// set the location we want to create the instance on
+}
+----------------------------------------------------
+
+If we plan and apply the plan, terraform will automatically take the authentication details from provider.tf file.
+
+
+On DigitalOcean machine we will create local environment variables for the AWS IAM User access key adn secre access key and region
+	terminal --> export AWS_ACCESS_KEY_ID="ACCESSKEY"
+	terminal --> export AWS_SECRET_ACCESS_KEY="SECRETACCESSKEY"
+	terminal --> export AWS_DEFAULT_REGION="us-west-1"
+
+Check if the environment variables are created properly
+	terminal --> env | grep -i aws
+	result: all variables with 'aws' in them will be printed
+     or
+	terminal --> printenv
+	result: all environment varibles will be printed	
+
+Now we can delete provider.tf file
+	terminal --> rm provider.tf
+
+Check if the file is deleted
+	terminal --> ls
+
+Now if we try to plan with terraform, the plan will be successful
+	terminal --> terraform plan
+
+	result: no error appears and terraform is taking the access key, secret access key and region from the environment variables
 
 
 
 19. Create Multiple Instances
 =============================
 
+We can se tthe count of the instances we want to create in AWS
+
+createinstance.tf
+----------------------------------------------------
+resource "aws_instance" "MyFirstInstnace" {
+  count         = 3
+  ami           = "ami-05692172625678b4e"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "demoinstnce-${count.index}"
+  }
+}
+----------------------------------------------------
+
+Plan the resources
+	terminal --> terrafomr plan
+
+Apply the resources
+	terminal --> terraform apply
+
+Check if the instances are created on AWS with different names
 
 
 20. Terraform State : The Concept
 =================================
 
+➢ Terraform State file are important for Resource Tracking.
 
+➢ Terraform State a way, that terraform read to identify what has been deployed.
+
+➢ Very Critical to Terraform Functionality.
+
+
+State scheme									
+------------
+											-----------------
+											|    AWS EC2	|	
+										  ----->|   Instance	|
+										  |	|		|
+-----------------			--------------------			  |	-----------------
+|		|			|		   |-----------------------
+| appServer<.>	|---------------------->| Terraform	   |				-----------------
+|		|			| Stete	File	   |				|   		|
+| appNetwork<.> |---------------------->| 		   |--------------------------->|   AWS VPC	|
+|		|			| terraform.tfstate|				|		|
+|appDataBase<.>	|---------------------->|		   |				-----------------			
+|		|			|		   |----------------------
+-----------------			--------------------			 |	-----------------
+Terraform  									 |	|		|	
+Configuration									 ------>|   Azure DB	|
+											|		|
+											-----------------
+
+➢ Stored in Flat File. By Default named “terraform.tfstate”.
+
+➢ Stored in same Working Directory. But Can be Stored Remotely.
+	- created when we execute apply command
+	- we can store state filein repo or external registry to manage it
+
+➢ Helps Terraform calculate Deployment Deltas. Terraform Plan can be used to create the New Deployment Plan.
+
+➢ Never lose your Terraform State File.
+
+When we aplly terraform resources we can print the terraform.tfstate file to see the resources details
+	terminal --> cat terraform.tfstate
+
+This is the template of an empty terraform.tfstate file
+-----------------------------------------------------------
+{
+  "version": 4,
+  "terrafomr_version": "1.0.5",
+  "serial": 9,
+  "lineage": "2ebd8925-70f7-97cc-500b612b76f2",
+  "outputs": {},
+  "resources": []
+}
+-----------------------------------------------------------
 
