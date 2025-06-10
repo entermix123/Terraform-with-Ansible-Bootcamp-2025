@@ -19,45 +19,242 @@ Quiz 2: IAC with Terraform
 6. Terraform Workflow
 =====================
 
+1. Write Terraform Config
+Write Your Terraform Code : Start with creating HCL config file for Infra. 
+
+2. Plan Infrastructure
+Review Infra : User will continuously add and Review Changes to Code Files
+
+3. Deploy Infrastructure
+Apply : After one last Review, user will deploy the Infrastructure.
+
 
 
 7. Terraform Initialization
 ===========================
+
+Command to Initialize the working directory that contains your code:
+	termina --> terraform init 
+
+Result:
+Download Supporting Component - Download Modules and Plugins
++
+SetUp Backend - SetUp BackUp to store terraform State files.
+
+First phase - Download Modules and Plugins
+-----------
+For example we will discuss AWS module. Go to https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest
+
+VPC - Virtual Private Cloud Network
+--------------------------------------------------------------
+module "vpc" {					// AWS module name
+  source = "terraform-aws-modules/vpc/aws"	// resource address
+
+  name = "my-vpc"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+
+  enable_nat_gateway = true
+  enable_vpn_gateway = true
+
+  tags = {
+    Terraform = "true"
+    Environment = "dev"
+  }
+}
+--------------------------------------------------------------
+After the command terminal --> terraform init, all necessary plugins for this module will be downloaded
+
+
+This is the second phase - SetUp BackUp to store terraform State files.
+------------------------
+After the command terminal --> terraform init, all downloaded files and configurations (state files) will be stored in the current working directory
+
 
 
 
 8. Terraform Key Concept: Plan, Apply & Destroy
 ===============================================
 
+Terraform Concepts
+
+
+Plan
+----
+ After Initialization, Read the code and then creates and shows a “plan” of execution/deployment:
+	terminal --> terraform plan
+
+Tterraform plan doesn’t deploy anything, it just shows what is going to deploy.
+
+It allows user to review the Action Plan before executing anything.
+
+At thing stage, authentication credentials are used to connect to your infrastructure.
+
+
+Apply
+-----
+Deploy the Infrastructure and statements in the code:
+	terminal --> terraform apply
+
+Update the Deployment state Tracking i.e state files.
+
+If some resource are already deployed. This command will deploy updated code and tracking.
+
+
+Destroy
+-------
+
+Looks at the recorded and store state files created during deployment and destroy all resources found in state file:
+	terminal --> terraform destroy
+
+Should be used carefully, as this is non-reversible command. Take backup and make sure what you want to destroy.
+
+
+Terraform Complete Workflow
+---------------------------
+Write IAC --> Terraform init --> Terraform plan --> Terraform apply --> Terraform destroy
 
 
 9. Set-Up Free-Tier AWS Account (Optional)
 ==========================================
 
+Create an account on AWS - https://aws.amazon.com/
+	- Create an AWS Account
 
 
 10. Create Cloud Machine for Terraform Execution
 ================================================
 
+Go to Digital Ocean and register - https://www.digitalocean.com/
+	- Create account with the link provided in the next section
+	- authorize with Google or GitHub
+	- Add payment Method to start the 200$ free tier 
 
+Create Droplet
+	- Create/Droplets
+		- Choose location - Frankfurt (closer to your location)
+		- Choose OS Ubuntu with the latest version
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $6/Month - 1G/1CPU/25GB SSD Disk/ 500 GB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ubuntu-terraform	- set machine name readable
+		- Create Droplet
+
+Whai until the machine is created
+	- copy the IP
+
+Open terminal --> ssh root@IP
+When ask for fingerprint
+	terminal --> yes
+	terminal --> password
+
+We are now connecte to the droplet
+
+Second way to connect is with PUTTY
+Download Free SSH Client for windows
+	- https://www.putty.org/
+	- download 64 bit version for windows
+	- install Putty and connect to the Droplet with IP/Open
+	- When ask for login as - root
+	- When ask for Password - set the created password
+
+We are now connecte to the droplet
+
+Another tool that we can use is MobaXterm - https://mobaxterm.mobatek.net/
 
 
 11. $200 Discount Gift on Digital Ocean
 =======================================
 
+Steps to Register on DigitalOcean and get Promo Code
+
+    First, open this Digital Ocean SignUp Reference Link and Sign Up to get your $200 credit.
+    Users will get the below-shared screen with highlighted messages.
+
+    While filling in your billing info, click on "Have a Promo Code?" at the bottom of the page.
+
+    Enter any one of the below codes to get extra credit:
+
+    ...
+
+From 1st step, you will get your first $200 credit and by using additional promo codes you can get up to $235 of total credits.
+
+Note: Some codes only give more credit to higher plans.
 
 
 12. Terraform Installation and Verification
 ===========================================
 
+When we login to the craeted droplet on DigitalOcean we need to update the package manager
+	terminal --> sudo apt-get update
+
+Download the official terraform for Ubuntu 64 bit (droplet machine) - https://developer.hashicorp.com/terraform/install#linux
+
+Execute the command on the droplet terminal:
+	terminal --> wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+
+When the error appear execute the command
+	terminal --> snap install terraform --classic
+
+
+Check for proper installation
+	terminal --> terraform --version
+
+	result: Terraform v1.12.1
+		on linux_amd64
+
+	terminal --> terraform 
+
+	result: terraform commands list
 
 
 13. Install Terraform on MacOS/Windows
 ======================================
 
+Install Terraform on Mac Machine - https://developer.hashicorp.com/terraform/install#darwin
+
+
+To Install the Terraform on MAC Machine, just copy-paste the below script in your local Machine and execute this script. Or you can execute the given commands in Script one by one but complete script execution is preferred over single line Command Execution.
+
+mac-terraform-install.sh
+
+    brew install jq
+    brew install wget
+    cd ~
+    version=$(curl https://api.github.com/repos/hashicorp/terraform/releases/latest --silent | jq ".tag_name" -r)
+    version=$(echo $version | sed 's/v//g') # get rid of 'v' from version number
+    echo "Installing Terraform $version."
+    url="https://releases.hashicorp.com/terraform/$version/terraform_$(echo $version)_darwin_amd64.zip"
+    wget $url
+    unzip "terraform_$(echo $version)_darwin_amd64.zip"
+    chmod +x terraform
+    sudo mv terraform /usr/local/bin/
+    echo "Terraform $version installed."
+    rm "terraform_$(echo $version)_darwin_amd64.zip"
+    echo "Install files cleaned up."
+
+
+Install Terraform on Windows - https://developer.hashicorp.com/terraform/install#windows
+
+    Download the appropriate version of Terraform from HashiCorp’s download page. In my case, it’s the Windows 64-bit version.
+
+    Make a folder on your C:\ drive where you can put the Terraform executable. I prefer to place installers in a subfolder (e.g. C:\tools) where you can put binaries.
+
+    After the download finishes, go find it in File Explorer. Extract the zip file to the folder you created in step 2.
+
+    Open your Start Menu and type in “environment” and the first thing that comes up should be Edit the System Environment Variables option. Click on that and you should see this window.
+
 
 
 Quiz 2: IAC with Terraform
 ==========================
+
+
 
 
