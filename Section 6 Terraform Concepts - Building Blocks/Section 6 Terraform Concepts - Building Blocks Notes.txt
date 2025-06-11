@@ -709,8 +709,8 @@ resource "aws_instance" "MyFirstInstnace" {
   instance_type = "t2.micro"
   availability_zone = data.aws_availability_zones.avilable.names[1]
 
-  provisioner "local-exec" {								# define local-exec provisioner
-    command = "echo ${aws_instance.MyFirstInstnace.private_ip} >> my_private_ips.txt"	# save instance private ip in file
+  provisioner "local-exec" {								
+    command = "echo ${aws_instance.MyFirstInstnace.private_ip} >> my_private_ips.txt"	
   }
 
   tags = {
@@ -718,10 +718,70 @@ resource "aws_instance" "MyFirstInstnace" {
   }
 }
 
-output "public_ip" {					# define output block
-  value = aws_instance.MyFirstInstnace.public_ip 	# print the instance private ip on apply command
+output "public_ip" {					
+  value = aws_instance.MyFirstInstnace.public_ip 	
+}
+
+
+
+data "aws_availability_zones" "available" {}  # Fixed typo in "available"
+
+data "aws_ami" "latest_ubuntu" {  # Changed to underscore (best practice)
+  most_recent = true
+  owners      = ["099720109477"]  # Canonical's official owner ID
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]  # Updated to current LTS
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+resource "aws_instance" "web" {
+  ami           = data.aws_ami.latest_ubuntu.id
+  instance_type = "t2.micro"
+  availability_zone = data.aws_availability_zones.available.names[1]
+
+  provisioner "local-exec" {					# define local-exec provisioner
+    command = "echo ${self.private_ip} >> my_private_ips.txt"  	# save instance private ip in file
+  }
+
+  tags = {
+    Name = "custom_instance"
+  }
+}
+
+output "public_ip" {			# define output block
+  value = aws_instance.web.public_ip	# print the instance private ip on apply command
 }
 ------------------------------------------------------
+
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Pull the repo
+	terminal --> git clone repo_url
+
+Navigate to the teraform working derectory
+	terminal --> cd terraform_work_folder
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan -var AWS_REGION="us-east-1"
+	# the plan should be successful and we can review the logs
+	terminal --> AWS Secret access key
 
 
 
