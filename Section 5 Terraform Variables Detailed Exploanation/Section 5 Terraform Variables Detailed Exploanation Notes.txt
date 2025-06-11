@@ -13,15 +13,256 @@ Section 5: Terraform Variables Detailed Exploanation
 21. Variables in Terraform
 ==========================
 
+➢ Variables are necessary to parameterizing our deployments using Terraform.
+
+➢ Input Variables enable user to pass in configuration values at the time of deployment.
+
+➢ Using Terraform Input Variables is one way of deploying development, staging, or production environments using the same Terraform resource declarations, with slightly different configuration.
+
+
+
+Define Input Variables
+----------------------
+➢ Terraform Input Variables are defined using a variable block that defines the variable name and other option parameters for the variable. These variable blocks can be place in any .tf file within your Terraform project, but a common location used is within a file named variables.tf.
+
+Input Variable Definition
+-------------------------
+➢ The variable block is defined with the variable keyword followed by the name of the Input Variable. Also, the required type property must be added to define the data type of the variable; such as string, number, object, or other supported data types.
+
+-------------------------------------------------------------
+variable "environment" {
+  type = string
+}
+variable "location" {
+  type = string
+  default = "eastus"
+  description = "The Azure Region to deploy resources."
+}
+-------------------------------------------------------------
+
+
+Input Variable Conditions
+-------------------------
+➢ When defining Input Variables for a Terraform project, the Input Variable can have a custom validation rules defined. The custom validation rules for an Input Variable are defined by adding a validation block within the variable block for the Input Variable.
+
+-------------------------------------------------------------
+variable "location" {
+  type = string
+  description = "The Azure Region to deploy resources."
+
+  validation {
+    condition = contains(["eastus", "westus"], lower(var.location))
+    error_message = "Unsupported Azure Region specified. Supported regions include: eastus, westus"
+  }
+}
+-------------------------------------------------------------
+
+
+Input Variable Types
+--------------------
+➢ Primitive Types - Terraform supports three primitive types for Input Variables. string, number, bool
+
+➢ Complex Types - Complex types allow you to group multiple values together into a single variable. Collection types, Structural types.
+
+➢ Collection Types - A collection of multiple values grouped together as a single value.
+
+	➢ list(...) – A sequence of values identified by an index starting with zero.
+
+	➢ map(...) – A collection of values; each with a string label identifier.
+
+	➢ set(...) – A collection of unique values without any secondary identifiers or ordering.
+
+
+
+Input Variable Types
+--------------------
+➢ Structural Types - A collection of multiple values of several distinct types grouped together as a single value.
+
+	➢ object(...) – A collection of values each with their own type.
+
+	➢ tuple(...) – A sequence of values each with their own type.
+
+
+
 
 
 22. Use of Variable in Conf File
 ================================
 
+➢ Single Place Configuration is not a Good Idea.
+
+➢ Use Variable to Manage the Secrets.
+
+➢ No Need to push AWS creds in Git Repo
+
+➢ User Variable for Dynamic Elements like AMI
+
+➢ Variable Makes files flexible and env independent.
+
+
+Initial instance terraform file:
+
+createInstance.tf
+-------------------------------------------------------------
+provider "aws" {
+  access_key = "AKIASMSIZOF4QD2NTPB6"
+  secret_key = "SECRET_KEY_HERE"
+  region = "us-east-2"
+}
+resource "aws_instance" "MyFirstInstnace" {
+  count = 3
+  ami = "ami-05692172625678b4e"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "demoinstnce-${count.index}"
+  }
+}
+-------------------------------------------------------------
+
+
+We took the access key and secrets access key and region to another file - provider.tf
+
+provider.tf
+-------------------------------------------------------------
+provider "aws" {
+  access_key = "AKIASMSIZOF4QD2NTPB6"
+  secret_key = "SECRET_KEY_HERE"
+  region = "us-east-2"
+}
+-------------------------------------------------------------
+
+
+And here we managed to set access key and secret access key and region as environmental variables
+
+provider.tf
+-------------------------------------------------------------
+provider "aws" {
+  access_key = “${var.AWS_ACCESS_KEY}”
+  secret_key = “${var.AWS_SECRET_KEY}”
+  region = “${var.AWS_REGION}”
+}
+-------------------------------------------------------------
+
+
+We can declare varibles types in vars.tf file
+
+vars.tf
+-------------------------------------------------------------
+variable “AWS_ACCESS_KEY” {}
+  variable “AWS_SECRET_KEY” {}
+  variable “AWS_REGION” {
+  default = “us-east-2”
+}
+-------------------------------------------------------------
+
+
+In terrafomr.tfvars we can hardcode the keys and the region. We must include the terraform.tfvars into .gitignore file to prevent uploading the secrets to GitHub or other VCS
+
+terraform.tfvars
+-------------------------------------------------------------
+AWS_ACCESS_KEY = “”
+AWS_SECRET_KEY = “”
+AWS_REGION = “”
+-------------------------------------------------------------
+
+
+This is the final createInstance .tf file that we will plan and apply. The AMI is mapped with the region.
+
+createInstance.tf
+-------------------------------------------------------------
+resource "aws_instance" "MyFirstInstnace" {
+  ami = "ami-05692172625678b4e"
+  instance_type = "t2.micro"
+}
+-------------------------------------------------------------
+
 
 
 23. Lab : Use of Variable in Conf File
 ======================================
+
+We have 4 files that we will use
+➢ createInstance.tf
+➢ provider.tf
+➢ variables.tf
+➢ terrafomr.tfvars
+
+
+
+Set instance configuration in createInstance.tf
+createInstance.tf
+-------------------------------------------------------------
+resource "aws_instance" "MyFirstInstnace" {
+  ami           = "ami-05692172625678b4e"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "demoinstnce"
+  }
+}
+-------------------------------------------------------------
+
+
+
+Set provider configuration in provider.tf
+provider.tf
+-------------------------------------------------------------
+provider "aws" {
+  access_key = "${var.AWS_ACCESS_KEY}"
+  secret_key = "${var.AWS_SECRET_KEY}"
+  region     = "${var.AWS_REGION}"
+}
+-------------------------------------------------------------
+
+
+
+Define variables types in variables.tf:
+variables.tf
+-------------------------------------------------------------
+variable "AWS_ACCESS_KEY" {}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+-------------------------------------------------------------
+
+
+We must initialize the terraform when we create a new working directory for terraform. 
+	terminal --> terraform init
+
+We have 3 ways to pass the secrets dynamically
+----------------------------------------------
+
+If we try plan the terraform resources
+	terminal --> terraform plan
+
+➢ 1st way - enter the secrets manually
+	We will be asked to enter the access key and secret access key. The default region is set on the variables.tf file.
+	If we deliver the correct keys the plan will be successful.
+
+➢ 2nd way - include the secrets as command parametters
+	We can plan terraform resources with variables set in the command
+	terminal --> terraform plan -var AWS_ACCESS_KEY="xxxxxxxxxxxxxxxxxxxxx" AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxx"
+	If we deliver the correct keys the plan will be successful.
+
+➢ 3th way to use terraform.tfvars file
+	We will create terraform.tfvars file and hardcode the secrets in terraform.tfvars file.
+	terminal --> vi terrafomr.tfvars
+
+terrafomr.tfvars
+-------------------------------------------------------------
+AWS_ACCESS_KEY="xxxxxxxxxxxxxxxxxxxxx"
+AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxx"
+-------------------------------------------------------------
+save chanes - escape, :wq!, enter
+
+If we plan terraform resources the secrets will be taken from the terraform.tfvars file
+
+Include the terraform.tfvars into .gitignore file on the host.
+
 
 
 
@@ -29,3 +270,57 @@ Section 5: Terraform Variables Detailed Exploanation
 ================================
 
 
+We will use variables in variables.tf file. We can configure map AMIs for different regions and to hardcode the AMI ID but set the region only. We can check the regions AMIs ID here - https://cloud-images.ubuntu.com/locator/ec2/
+
+variable.tf
+-------------------------------------------------------------
+variable "AWS_ACCESS_KEY" {}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "Security_Group"{
+    type = list
+    default = ["sg-24076", "sg-90890", "sg-456789"]
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+-------------------------------------------------------------
+
+
+We will use createInstance.tf file and link the values from variables.tf file.
+
+createInstance.tf
+-------------------------------------------------------------
+resource "aws_instance" "MyFirstInstnace" {
+  ami           = lookup(var.AMIS, var.AWS_REGION)
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "demoinstnce"
+  }
+
+  security_groups = var.Security_Group
+}
+-------------------------------------------------------------
+
+Now we can plan terraform resources
+	terminal --> terraform plan
+	the plan should be successful
+
+We can plan with manually specify the region
+	terminal --> terraform plan -var AWS_REGION="us-west-2"
+	the plan should be successful, because we have the AMI ID set in the variable.tf file
+
+This way we can make terraform configuration files independant from the nevironment.
