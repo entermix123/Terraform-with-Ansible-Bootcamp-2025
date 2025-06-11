@@ -18,20 +18,468 @@ Section 6: Terraform Concepts - Building Blocks
 25. Provision Software with Terraform
 =====================================
 
+There are 2 ways to Provision Software on your Instance.
+
+1st way - Build Custom AMI (Amazon Machine Image): - PREFFERABLE
+--------------------------------------------------
+	➢ Bundle your softwares and Files in Base Image.
+
+	➢ Packer is Tool to Bundle the Custom AMIs.
+		- Packer and Chef can help us create custom AIMs (with additional tools that we need for our specific stack)
+
+
+2nd way - Boot Standard AMIs (Amazon Machine Image) and Install Software on Instance at Runtime.
+------------------------------------------------------------------------------------------------
+CONS:
+	- when the base OS image is updated we can have discrapencies with the installation of the tools on it
+	- installation on the runtime is not preffered
+
+	➢ Using File Upload.
+		- We can create scripts and upload them on the box
+	➢ Using Remote-exec
+		- We can then execute them with remote-exec
+	➢ Using tools like Chef, Puppet & Ansible.
+
+
+
+➢ Chef is Integrated with Terraform.
+
+➢ User Can Run Puppet using Remote-Exec
+
+➢ For Ansible, First Run Terraform, Get the Host IP address and then execute Ansible Playbook on Host.
+
+
+
+File Upload on Instance
+-----------------------
+
+We have to provide, specify the file and its destination
+------------------------------------------------------
+resource "aws_instance" "MyFirstInstnace" {
+  ami = lookup(var.AMIS, var.AWS_REGION)
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "demoinstnce"
+  }
+
+  provisioner "file" {
+    source = "installNginx.sh"
+    destination = "/etc/installNginx.sh"
+  }
+}
+------------------------------------------------------
+
+
+➢ Remote-exec needs to be execute to execute the Script
+	- we can use python script or shell script
+
+➢ Terraform Provisioner needs to use SSH(Unix/Linux) or WinRM(Windows Machine)
+
+
+User can use Connection to Make SSH Connection on Host.
+-------------------------------------------------------
+
+We must specify the user and password for the remote connection in order to execute the scripts
+------------------------------------------------------
+provisioner "file" {
+  source = "installNginx.sh"
+  destination = "/etc/installNginx.sh"
+
+  connection {
+    user = var.instance_user
+    password = var.instance_pass
+  }
+}
+------------------------------------------------------
+
+
+
+
+On AWS User needs to use SSH KeyPairs instead of Password.
+----------------------------------------------------------
+
+If we use AZURE or GCP we can use SSH connection, but if we use AWS private/public key is the preffered way.
+
+------------------------------------------------------
+resource "aws_key_pair" "levelup-key" {			// define the connection resource type and name
+  key_name = "levelup_key"				// define the private key
+  public_key = "ssh rsa my-public-key"			// define the public key
+}
+
+resource "aws_instance" "MyFirstInstnace" {		// define the instance provider and name
+  ami = lookup(var.AMIS, var.AWS_REGION)		// define the AMI
+  instance_type = "t2.micro"				// tier of the machine
+  key_name = aws_key_pair.levelup_key.key_name		// link the connection credentials
+
+  tags = {
+    Name = "custom_instance"				// tag thee instance machine
+  }
+
+  provisioner "file" {					// define the script resource file 
+    source = "installNginx.sh"				// specify the name of the script file
+    destination = "/etc/installNginx.sh"		// specify the location of the script file
+
+    connection {					// define the connection
+      user = var.instance_user				// link user 
+      private_key = file(var.path_to_private_key)	// link the private key for the user
+    }
+  }
+}
+------------------------------------------------------
+
+This is general template (may have some small variaties) to use private/public key combination to craete the connection to AWS machine
+
+
+
+Remote-exec need to execute the Script.
+---------------------------------------
+
+This are the provisioner commands that will be executed
+------------------------------------------------------
+provisioner "remote-exec" {
+  inline = [					// define list of commands taht will be executed
+    "chmod +x /etc/installNginx.sh",		// set rights of the script file
+    "/etc/installNginx.sh"			// execute the script file
+  ]
+}
+------------------------------------------------------
+
+2nd way summary
+- Creating the isntance
+- Installing the software 
+	- prepare a script
+	- create the connection on the box
+	- upload and execute the script
+
+
 
 
 26. Lab : Provision Software with Terraform
 ===========================================
+
+We have exampel files for the lab
+	➢ createInstace.tf
+	➢ provider.tf
+	➢ variables.tf
+	➢ installNginx.sh
+
+
+createInstace.tf
+------------------------------------------------------
+resource "aws_key_pair" "levelup_key" {		# declare resource aws key pair with name to connect the aws instance
+    key_name = "levelup_key"				# define the name of the public key - we can use any name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)		# define the path to the public key variable
+}
+
+resource "aws_instance" "MyFirstInstnace" {		# define the instance type and name
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# link the AMI options
+  instance_type = "t2.micro"				# set machine tier
+  key_name      = aws_key_pair.levelup_key.key_name	# link the key from aws_key_pair resource
+
+  tags = {						# instance tag
+    Name = "custom_instance"
+  }
+
+  provisioner "file" {					# define provisioner - file
+      source = "installNginx.sh"			# define the file name
+      destination = "/tmp/installNginx.sh"		# define the file location path
+  }
+
+  provisioner "remote-exec" {				# define another prvisioner for the commands
+    inline = [						# commands list
+      "chmod +x /tmp/installNginx.sh",			# provide executable permissions the file
+      "sudo sed -i -e 's/\r$//' /tmp/installNginx.sh",  # Remove the spurious CR characters if the file is created on nodepad++
+      "sudo /tmp/installNginx.sh",			# execute the script file
+    ]
+  }
+
+  connection {							# define connection
+    host        = coalesce(self.public_ip, self.private_ip)	# receive private and public key
+    type        = "ssh"						# specify the type of the connection
+    user        = var.INSTANCE_USERNAME				# link the user
+    private_key = file(var.PATH_TO_PRIVATE_KEY)			# link the private key
+  }
+}
+------------------------------------------------------
+
+
+
+provider.tf
+------------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+------------------------------------------------------
+
+
+
+variables.tf
+------------------------------------------------------
+variable "AWS_ACCESS_KEY" {				// define access key variable
+    type = string
+    default = "xxxxxxxxxxxxxxxx"
+}
+
+variable "AWS_SECRET_KEY" {}				// define empty secret access key
+
+variable "AWS_REGION" {					// define regions variable with default value
+default = "us-east-2"
+}
+
+variable "Security_Group"{				// define security group variable with default values
+    type = list
+    default = ["sg-24076", "sg-90890", "sg-456789"]
+}
+
+variable "AMIS" {					// set AIM IDs by region as default options
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {	// define variable for the AWS connection private key with default name value
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {		// define variable for the AWS connection public key with default linked value
+  default = "levelup_key.pub"		// if we have the keys in different directory, here we have to specify the full path
+}
+
+variable "INSTANCE_USERNAME" {		// define instance username with default value
+  default = "ubuntu"
+}
+------------------------------------------------------
+
+
+This is the file wew ill use to install nginx on the AWS instance
+
+installNginx.sh
+------------------------------------------------------
+#!/bin/bash
+
+# sleep until instance is ready
+until [[ -f /var/lib/cloud/instance/boot-finished ]]; do
+    sleep 1
+done
+
+# install nginx
+apt-get update				// update package manager
+apt-get -y install nginx		// install nginx
+
+# make sure nginx is started
+service nginx start
+
+------------------------------------------------------
+
+
+
+We must log into the work machine on DigitalOcean
+	terminal --> ssh root@IP
+	terminal --> yes/password
+
+
+Create new directory and create the files or pull hte repo with the uploaded files
+	terminal --> mkdir terrform_blocks
+
+Navigate to the directory
+	terminal --> cd terrform_blocks
+
+
+Create all files with the actions below
+---------------------------------------
+- optional and more easy is to create a repository with the .tf files and pull the repo in the specific directory
+
+Create the files
+	terminal --> vi filename.tf
+
+Insert the file content
+	terminal --> insert		# to enter in insert mode
+	terminal --> Shift + Insert	# to paste the file content with the correct indentation
+
+Only the srcipt file should be in the root directory or the directory specified in the createInstace.tf/provisioner "file"/description
+
+
+INIT
+----
+Initialize terraform
+	terminal --> terraform init
+
+We have to generate private and public keys
+	terminal --> ssh-keygen -f levelup_key		# specify the file with the keys in it
+
+	# We can se tsecurity phrase (optional)/enter for blank
+
+List the files in the current direcotry
+	termianl --> ls
+
+	result: we must have levelup-key and levelup-key.pub files - the generated private and public keys
+
+PLAN
+----
+Try to plan terraform resources
+	terminal --> terraform plan
+	terminal --> xxxxxxxxxxxxxxxxxxxxxxxxxxxxx 	# secret key
+
+	# the plan should be successful
+	# on the console we can see printed aws_key_pair public key
+	
+
+Before Applying the resources we need to modify the security group on AWS. We need to give access from our local PC.
+- Login on AWS
+- go to EC2/Secutiry Groups
+- open the security group/inbound rules/Edit inbound rules/Add rule
+	- Type: All traffic
+	- Source: My IP			# this will apply the current IP that we use (local PC)
+	- save rule
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+
+We can see the logs on the console.
+
+Check the resource creation on AWS/EC2. Because we added a rule for our local PC we can test the enginx on AWS. 
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+
 
 
 
 27. DataSource in Terraform
 ===========================
 
+➢ Terraform provides DataSource for Certain Cloud Providers like AWS.
+
+➢ DataSource Provides the dynamic Information about entities that are not managed by the current Terraform and configuration.
+
+➢ AWS provides a lot of structured data which can be accessed via AWS APIs.
+
+➢ Terraform expose this information using DataSources like AMIs, Availability Zones.
+
+➢ Referencing a resource defined in a data source won’t create the resource itself, and your plan will fail if you reference nonexistent data or infrastructure.
+
+
+
+➢ DataSource also provides the All IPs in use by AWS.
+
+➢ This will help in IP Base Traffic filter.
+
+➢ Traffic Filer on AWS can be done via Security Groups.
+
+➢ Incoming and Outgoing Traffic can be done via Inbound Rules and Outbound Rules.
+
+➢ Rules filter the traffic on the basis of Protocol, IP Range, and Ports.
+
+
+
 
 
 28. Lab : DataSource in Terraform
 =================================
+
+We have 3 files
+---------------
+➢ createInstance.tf
+➢ provider.tf
+➢ variables.tf
+
+
+createInstance.tf
+------------------------------------------------------
+
+data "aws_availability_zones" "avilable" {}
+
+data "aws_ami" "latest-ubuntu" {
+  most_recent = true
+  owners = ["099720109477"]
+
+  filter {
+    name = "name"
+    values = "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+
+resource "aws_instance" "MyFirstInstnace" {
+  ami           = data.aws_ami.latest-ubuntu.id
+  instance_type = "t2.micro"
+  availability_zone = data.aws_availability_zones.avilable.names[1]
+
+  tags = {
+    Name = "custom_instance"
+  }
+
+}
+------------------------------------------------------
+
+
+
+provider.tf
+------------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+------------------------------------------------------
+
+
+
+variables.tf
+------------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "xxxxxxxxxxxxxxxxxxxx"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "Security_Group"{
+    type = list
+    default = ["sg-24076", "sg-90890", "sg-456789"]
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+------------------------------------------------------
+
+
+
+
+
+
+
+
+
 
 
 
