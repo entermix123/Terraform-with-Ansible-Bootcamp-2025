@@ -398,41 +398,38 @@ We have 3 files
 ➢ provider.tf
 ➢ variables.tf
 
-We can find the correct AMI here - 
+We can find the correct AMI here - https://us-west-1.console.aws.amazon.com/ec2/home?region=us-west-1#AMICatalog:
 
 
 createInstance.tf
 ------------------------------------------------------
-data "aws_availability_zones" "avilable" {}			# fetch all AWS availabilit zones
+data "aws_availability_zones" "available" {}				# fetch all AWS availabilit zones
 
-data "aws_ami" "latest-ubuntu" {
-  most_recent = true				
-  owners = ["099720109477"]
+data "aws_ami" "latest_ubuntu" {					# find AMI image
+  most_recent = true
+  owners      = ["099720109477"]					# official image owner
 
-  filter {
-    name = "name"
-    values = "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"
+  filter {								# set filter to fetch images with names
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"] 
   }
 
-  filter {
+  filter {								# set filter to fetch images with virtualization types
     name   = "virtualization-type"
     values = ["hvm"]
   }
 }
 
-
-resource "aws_instance" "MyFirstInstnace" {
-  ami           = data.aws_ami.latest-ubuntu.id				# data AMI image
+resource "aws_instance" "web" {
+  ami           = data.aws_ami.latest_ubuntu.id				# data AMI image with the result of the filters
   instance_type = "t2.micro"						# instance tier
-  availability_zone = data.aws_availability_zones.avilable.names[1]	# use the availability zone us-east-2b - first line 
+  availability_zone = data.aws_availability_zones.available.names[1]	# use the availability zone us-east-2b - first line 
 
   tags = {
     Name = "custom_instance"
   }
-
 }
 ------------------------------------------------------
-
 
 
 provider.tf
@@ -443,7 +440,6 @@ provider "aws" {
   region     = var.AWS_REGION
 }
 ------------------------------------------------------
-
 
 
 variables.tf
@@ -474,18 +470,71 @@ variable "AMIS" {
 ------------------------------------------------------
 
 
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
 
+Pull the repo
+	terminal --> git clone repo_url
 
+Navigate to the teraform working derectory
+	terminal --> cd terraform
 
+Install terraform if not installed
+	terminal --> wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
 
+If error appear execute the command
+	terminal --> snap install terraform --classic
 
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
 
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	# the plan should be successful and we can review the logs
+
+With the plan we get the aim ID and availability zone
 
 
 
 
 29. Lab 2 : DataSource in Terraform
 ===================================
+
+We have one additional file - securitygroup.tf
+
+securitygroup.tf
+------------------------------------------------------
+data "aws_ip_ranges" "us_east_ip_range" {
+    regions = ["us-east-1","us-east-2"]
+    services = ["ec2"]
+}
+
+resource "aws_security_group" "sg-custom_us_east" {
+    name = "custom_us_east"
+
+    ingress {
+        from_port = "443"
+        to_port = "443"
+        protocol = "tcp"
+        cidr_blocks = slice(data.aws_ip_ranges.us_east_ip_range.cidr_blocks, 0, 50)
+    }
+
+    tags = {
+        CreateDate = data.aws_ip_ranges.us_east_ip_range.create_date
+        SyncToken = data.aws_ip_ranges.us_east_ip_range.sync_token
+    }
+}
+------------------------------------------------------
+
+
+
 
 
 
