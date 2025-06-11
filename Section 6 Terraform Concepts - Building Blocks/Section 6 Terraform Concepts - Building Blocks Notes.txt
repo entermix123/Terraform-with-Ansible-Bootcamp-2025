@@ -398,14 +398,15 @@ We have 3 files
 ➢ provider.tf
 ➢ variables.tf
 
+We can find the correct AMI here - 
+
 
 createInstance.tf
 ------------------------------------------------------
-
-data "aws_availability_zones" "avilable" {}
+data "aws_availability_zones" "avilable" {}			# fetch all AWS availabilit zones
 
 data "aws_ami" "latest-ubuntu" {
-  most_recent = true
+  most_recent = true				
   owners = ["099720109477"]
 
   filter {
@@ -421,9 +422,9 @@ data "aws_ami" "latest-ubuntu" {
 
 
 resource "aws_instance" "MyFirstInstnace" {
-  ami           = data.aws_ami.latest-ubuntu.id
-  instance_type = "t2.micro"
-  availability_zone = data.aws_availability_zones.avilable.names[1]
+  ami           = data.aws_ami.latest-ubuntu.id				# data AMI image
+  instance_type = "t2.micro"						# instance tier
+  availability_zone = data.aws_availability_zones.avilable.names[1]	# use the availability zone us-east-2b - first line 
 
   tags = {
     Name = "custom_instance"
