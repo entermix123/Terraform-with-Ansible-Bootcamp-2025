@@ -663,6 +663,26 @@ resource "aws_instance" "MyFirstInstnace" {			# instance
 31. Lab : Output Attribute in TF
 ================================
 
+We have 4 files
+---------------
+➢ createInstance.tf
+➢ provider.tf
+➢ variables.tf
+➢ securitygroup.tf
+
+We will change only createInstance.tf file to set ouput block and print the instance's private IP on apply command
+
+We can find all parameters of specific instance in providers documentation page - https://registry.terraform.io/browse/providers
+	AWS - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+	AZURE - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
+	GCP - https://registry.terraform.io/providers/hashicorp/google/latest/docs
+	... so on
+
+For this example we will use AWS EC2 instance
+	- go ro https://registry.terraform.io/providers/hashicorp/aws/latest/docs and search for 'ec2' in the search of the left
+	- we can see all parameters
+
+
 createInstance.tf
 ------------------------------------------------------
 
@@ -689,8 +709,8 @@ resource "aws_instance" "MyFirstInstnace" {
   instance_type = "t2.micro"
   availability_zone = data.aws_availability_zones.avilable.names[1]
 
-  provisioner "local-exec" {
-    command = "echo ${aws_instance.MyFirstInstnace.private_ip} >> my_private_ips.txt"
+  provisioner "local-exec" {								# define local-exec provisioner
+    command = "echo ${aws_instance.MyFirstInstnace.private_ip} >> my_private_ips.txt"	# save instance private ip in file
   }
 
   tags = {
@@ -698,10 +718,11 @@ resource "aws_instance" "MyFirstInstnace" {
   }
 }
 
-output "public_ip" {
-  value = aws_instance.MyFirstInstnace.public_ip 
+output "public_ip" {					# define output block
+  value = aws_instance.MyFirstInstnace.public_ip 	# print the instance private ip on apply command
 }
 ------------------------------------------------------
+
 
 
 
