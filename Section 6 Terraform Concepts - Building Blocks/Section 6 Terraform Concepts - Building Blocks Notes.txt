@@ -506,40 +506,157 @@ With the plan we get the aim ID and availability zone
 
 29. Lab 2 : DataSource in Terraform
 ===================================
+In this lab we will create dynamically security group on AWS with terraform. We will restrict the traffic to specific ports on the machine.
 
-We have one additional file - securitygroup.tf
+We have 4 files
+---------------
+➢ createInstance.tf
+➢ provider.tf
+➢ variables.tf
+➢ securitygroup.tf
+
+We have one additional file from the last lab - securitygroup.tf
 
 securitygroup.tf
 ------------------------------------------------------
 data "aws_ip_ranges" "us_east_ip_range" {
-    regions = ["us-east-1","us-east-2"]
-    services = ["ec2"]
+    regions = ["us-east-1","us-east-2"]			# set AWS regions
+    services = ["ec2"]					# set AWS service
 }
 
 resource "aws_security_group" "sg-custom_us_east" {
     name = "custom_us_east"
 
-    ingress {
-        from_port = "443"
-        to_port = "443"
-        protocol = "tcp"
+    ingress {						# set incoming traffic configuration
+        from_port = "443"				# specify start port
+        to_port = "443"					# specify end port 	1 port in total
+        protocol = "tcp"				# specify the protocol
         cidr_blocks = slice(data.aws_ip_ranges.us_east_ip_range.cidr_blocks, 0, 50)
     }
 
     tags = {
-        CreateDate = data.aws_ip_ranges.us_east_ip_range.create_date
-        SyncToken = data.aws_ip_ranges.us_east_ip_range.sync_token
+        CreateDate = data.aws_ip_ranges.us_east_ip_range.create_date	# set create date of the security group
+        SyncToken = data.aws_ip_ranges.us_east_ip_range.sync_token	# set the token for the security group
     }
 }
 ------------------------------------------------------
 
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
 
+Pull the repo
+	terminal --> git clone repo_url
+
+Navigate to the teraform working derectory
+	terminal --> cd terraform_work_folder
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan -var AWS_REGION="us-east-1"
+	# the plan should be successful and we can review the logs
+	terminal --> AWS Secret access key
+
+The plan should be successful - we can create 2 resources
+	# aws_instance.web will be created						# Instance
+     		 + ami                                  = "ami-0a7d80731ae1b2435"
+    		 + arn                                  = (known after apply)
+    		 + associate_public_ip_address          = (known after apply)
+      		 + availability_zone                    = "us-east-1b"
+	...
+	# aws_security_group.sg-custom_us_east will be created				# security group
+	+ resource "aws_security_group" "sg-custom_us_east" {
+      	+ arn                    = (known after apply)
+      	+ description            = "Managed by Terraform"
+      	+ egress                 = (known after apply)
+      	+ id                     = (known after apply)
+      	+ ingress                = [
+          + {
+              + cidr_blocks      = [
+                  + "100.24.0.0/13",
+                  + "107.20.0.0/14",
+                  + "110.238.2.0/23",
+                  + "13.128.0.0/16",
+	...
+		
+
+APPLY
+-----
+Apply the planned resources
+	terminal --> terraform apply
+Check on AWS/EC2 if the instance is created and AWS/EC2/Security group if the security group is created.
+In the security group details we can see the avalable IPs for this instance.
+	- on the tags page we can find the craetion date and SyncToken
+
+DESTROY
+-------
+Destroy terraform resources
+	terminal --> terrafomr destroy
+	terminal --> yes			# confirm destruction of the resources
 
 
 
 
 30. Output Attribute in TF
 ==========================
+
+DEPLOYMENT AUTOMATION
+---------------------
+
+➢ Terraform Keeps Output of all resources and it’s attribute.
+
+➢ Output in terraform can be queried and retain.
+	- retain the public/private IPs of the instaces in case of Ansible playbooks
+
+➢ Output values are like the return values of a Terraform module, and have several uses:
+	➢ A child module can use outputs to expose a subset of its resource attributes to a parent module
+		- data from submodule can be accessed by the paret module
+	➢ A root module can use outputs to print certain values in the CLI output after running terraform apply.
+		- print out info for reporting purposes on aplly command
+	➢ When using remote state, root module outputs can be accessed by other configurations via a terraform_remote_state data source.
+
+
+
+➢ Each output value exported by a module must be declared using an output block:
+------------------------------------------------------
+output "instance_ip_addr" {				# define output block
+  value = aws_instance.server.private_ip		# define instance parameter we want to get
+}
+------------------------------------------------------
+
+➢ The value argument takes an expression whose result is to be returned to the user.
+
+➢ Outputs are only rendered when Terraform applies your plan. Running terraform plan will not render outputs.
+	- IMPORTANT - ONLY ON APPLY COMMAND, (NOT ON PLAN)
+
+
+
+➢ Outputs can also be used in Scripts.
+
+------------------------------------------------------
+resource "aws_instance" "MyFirstInstnace" {			# instance
+  ami = data.aws_ami.latest-ubuntu.id
+  instance_type = "t2.micro"
+  availability_zone = data.aws_availability_zones.avilable.names[1]
+
+  tags = {
+    Name = "custom_instance"
+  }
+
+  provisionor "local-exec" {								# local-exec provisioner
+    command = "echo aws_instance.MyFirstInstnace.private_ip >> privateips.txt"		# save instance private IP in file
+  }
+}
+------------------------------------------------------
+
+
+
 
 
 
