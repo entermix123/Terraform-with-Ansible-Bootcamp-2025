@@ -488,7 +488,7 @@ nat.tf
 --------------------------------------------------
 #Define External IP 
 resource "aws_eip" "levelup-nat" {			# external ip address
-  vpc = true
+  domain   = "vpc"
 }
 
 resource "aws_nat_gateway" "levelup-nat-gw" {		# nat gateway
