@@ -234,6 +234,331 @@ Now we can lounch instance and we can:		(we have to create the instance in the s
 37. Lab : Create AWS VPC & NAT Gateway
 ======================================
 
+We have 4 files
+➢ provider.tf
+➢ variables.tf
+➢ vpc.tf
+➢ nat.tf
+
+
+
+provider.tf
+--------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+
+variables.tf
+--------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "AKIASMSIZOF42P2VUDSZ"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "Security_Group"{
+    type = list
+    default = ["sg-24076", "sg-90890", "sg-456789"]
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  default = "levelup_key.pub"
+}
+
+variable "INSTANCE_USERNAME" {
+  default = "ubuntu"
+}
+--------------------------------------------------
+
+
+VPC
+=-=
+
+We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+
+AWS VPC
+-------
+➢ search 'aws vpc' in the search bar on left and choose 'aws_vpc'
+   ➢ Example usage and syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc#example-usage
+   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc#argument-reference
+
+AWS SUBNET
+----------
+➢ search 'aws subnet'
+   ➢ Example usage and syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#example-usage
+   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#argument-reference
+
+AWS INTERNET GATEWAY
+--------------------
+➢ search 'aws internet gateway'
+  ➢ Example syntax - ttps://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway#argument-reference
+
+AWS ROUTE TABLE
+---------------
+➢ search 'aws route table'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#argument-reference
+
+AWS ROUTE TABLE ASSOCIATION
+---------------------------
+➢ search 'aws route table assocation'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#argument-reference
+
+
+vpc.tf
+--------------------------------------------------
+#Create AWS VPC
+resource "aws_vpc" "levelupvpc" {
+  cidr_block       = "10.0.0.0/16"			# Classless Inter-Domain Routing (CIDR) block.
+  instance_tenancy = "default"		# more than one instance can run on the same hardware - preffered - minimized consts
+  enable_dns_support   = "true"
+  enable_dns_hostnames = "true"	  # create hostname and dns of our instance name, the name of our aws instance will work as dns
+  enable_classiclink   = "false"
+
+  tags = {
+    Name = "levelupvpc"
+  }
+}
+
+# Public Subnets in Custom VPC
+resource "aws_subnet" "levelupvpc-public-1" {		# public subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.1.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "true"	# on launch the public IP will be asociated with this instance - public subnet
+  availability_zone       = "us-east-2a"	# first availability zone for public subnet
+
+  tags = {
+    Name = "levelupvpc-public-1"		# name of the subnet
+  }
+}
+
+resource "aws_subnet" "levelupvpc-public-2" {		# public subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.2.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "true"			# map the public IP to this ubnet - public subnet
+  availability_zone       = "us-east-2b"		# second availability zone for public subnet
+
+  tags = {
+    Name = "levelupvpc-public-2"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-public-3" {		# public subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.3.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "true"			# map the public IP to this ubnet - public subnet
+  availability_zone       = "us-east-2c"		# third availability zone for public subnet
+
+  tags = {
+    Name = "levelupvpc-public-3"
+  }
+}
+
+# Private Subnets in Custom VPC				
+resource "aws_subnet" "levelupvpc-private-1" {		# private subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.4.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "false"			# not mapping the public IP - private subnet
+  availability_zone       = "us-east-2a"		# first availability zone for private subnet
+
+  tags = {
+    Name = "levelupvpc-private-1"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-private-2" {		# private subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.5.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "false"			# not mapping the public IP
+  availability_zone       = "us-east-2b"		# second availability zone for private subnet
+
+  tags = {
+    Name = "levelupvpc-private-2"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-private-3" {		# private subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.6.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "false"			# not mapping the public IP
+  availability_zone       = "us-east-2c"		# second availability zone for private subnet
+
+  tags = {
+    Name = "levelupvpc-private-3"
+  }
+}
+
+# Custom internet Gateway
+resource "aws_internet_gateway" "levelup-gw" {		# internet Gateway resource and name
+  vpc_id = aws_vpc.levelupvpc.id			# ID of our VPC
+
+  tags = {
+    Name = "levelup-gw"
+  }
+}
+
+#Routing Table for the Custom VPC
+resource "aws_route_table" "levelup-public" {		# routing table resource and name
+  vpc_id = aws_vpc.levelupvpc.id			# ID of our VPC
+  route {
+    cidr_block = "0.0.0.0/0"				# all IPs
+    gateway_id = aws_internet_gateway.levelup-gw.id	# our gateway ID
+  }
+
+  tags = {
+    Name = "levelup-public-1"
+  }
+}
+
+resource "aws_route_table_association" "levelup-public-1-a" {	# associate with our first public subnet
+  subnet_id      = aws_subnet.levelupvpc-public-1.id		# our first public subnet id
+  route_table_id = aws_route_table.levelup-public.id		# our route table id
+}
+
+resource "aws_route_table_association" "levelup-public-2-a" {	# associate with our second public subnet
+  subnet_id      = aws_subnet.levelupvpc-public-2.id		# our second public subnet id
+  route_table_id = aws_route_table.levelup-public.id		# our route table id
+}
+
+resource "aws_route_table_association" "levelup-public-3-a" {	# associate with our third public subnet
+  subnet_id      = aws_subnet.levelupvpc-public-3.id		# our third public subnet id
+  route_table_id = aws_route_table.levelup-public.id		# our route table id
+}
+--------------------------------------------------
+
+
+
+With the lelp of the Internet Gateway and NAT Gateway our instance can communicate with internet.
+We can find all NAT Gateway configurations in AWS documentation - 
+
+EXTERNAL IP
+-----------
+➢ search 'aws eip'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#argument-reference
+
+
+AWS NAT GATEWAY
+---------------
+➢ search 'aws_nat_gateway'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway#argument-reference
+
+
+AWS ROUTE TABLE
+---------------
+➢ search 'aws route table'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#argument-reference
+
+
+AWS ROUTE TABLE ASSOCIATION
+---------------------------
+➢ search 'aws route table assocation'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#argument-reference
+
+
+nat.tf
+--------------------------------------------------
+#Define External IP 
+resource "aws_eip" "levelup-nat" {			# external ip address
+  vpc = true
+}
+
+resource "aws_nat_gateway" "levelup-nat-gw" {		# nat gateway
+  allocation_id = aws_eip.levelup-nat.id		# external ip id
+  subnet_id     = aws_subnet.levelupvpc-public-1.id	# our first public subnet id
+  depends_on    = [aws_internet_gateway.levelup-gw]	# depends on our internet gateway
+}
+
+# VPC for the NAT Gateway so presented machine on internet CAN NOT access our machines on AWS
+# Our AWS instance can access internet (egress allowed), external internet gateway connections not allowed (ingress is restricted)
+resource "aws_route_table" "levelup-private" {		# aws route table 
+  vpc_id = aws_vpc.levelupvpc.id			# our VPC id
+  route {
+    cidr_block     = "0.0.0.0/0"			# all IPs
+    nat_gateway_id = aws_nat_gateway.levelup-nat-gw.id	# nat gateway id
+  }
+
+  tags = {
+    Name = "levelup-private"
+  }
+}
+
+# route associations private subnets with NAT Gateway
+resource "aws_route_table_association" "level-private-1-a" {	# associate with our first private subnet
+  subnet_id      = aws_subnet.levelupvpc-private-1.id		# our first private subnet id
+  route_table_id = aws_route_table.levelup-private.id		# route table id
+}
+
+resource "aws_route_table_association" "level-private-1-b" {	# associate with our second private subnet
+  subnet_id      = aws_subnet.levelupvpc-private-2.id		# our second private subnet id
+  route_table_id = aws_route_table.levelup-private.id		# route table id
+}
+
+resource "aws_route_table_association" "level-private-1-c" {	# associate with our third private subnet
+  subnet_id      = aws_subnet.levelupvpc-private-3.id		# our third private subnet id
+  route_table_id = aws_route_table.levelup-private.id		# route table id
+}	
+--------------------------------------------------
+
+
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan -var AWS_REGION="us-east-1"
+	# the plan should be successful and we can review the logs
+	terminal --> AWS Secret access key
+
+
 ➢ 
 
 ➢ 
