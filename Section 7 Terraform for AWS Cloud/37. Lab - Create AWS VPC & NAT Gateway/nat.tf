@@ -1,6 +1,6 @@
 #Define External IP 
 resource "aws_eip" "levelup-nat" {
-  vpc = true
+  domain   = "vpc"
 }
 
 resource "aws_nat_gateway" "levelup-nat-gw" {
