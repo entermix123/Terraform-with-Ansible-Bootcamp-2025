@@ -856,7 +856,7 @@ terraform {
 We have to create S3 bucket in AWS
 	- got to AWS/S3/Create bucket
 		- Bucket type: Directory
-		- Choose Zone: us-east			# or whatever is available
+		- Choose Zone: us-east-2		# or whatever is available
 		- check 'I acknowledge that in the event of an Availability Zone outage, my data might be unavailable or lost.'
 		- Bucket name: tf-state-4563rf		# must be globally unique name 
 		- Encryption type: Server-side encryption with Amazon S3 managed keys (SSE-S3)
@@ -878,14 +878,73 @@ backend.tf
 --------------------------------------------------
 terraform {
     backend "s3" {
-        bucket = "tf-state-98fty"
-        key    = "development/terraform_state"
-        region = "us-east-2"
+        bucket = "tf-state-4563rf"				# the name of the created AWS bucket
+        key    = "development/terraform_state"			# set the path of the terraform key
+        region = "us-east-2"					# set the region of the created AWS S3 bucket region
     }
 }
 --------------------------------------------------
 
 
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Pull the repo
+	terminal --> git clone repo_url
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+We need to configure AWS for the terraform backend
+	terminal --> aws configure
+	terminal --> AWS Access Key ID [None]: Access key
+	terminal --> AWS Secret Access Key [None]: Secret Access key
+	terminal --> Default region name [None]: us-west-2			# or whatever
+	terminal --> Default output format [None]: enter
+
+Navigate to the teraform working derectory
+	terminal --> cd terraform_work_folder
+
+INIT
+----
+We need to have created AWS S3 bucket.
+Initialize terrafomr
+	terminal --> terraform init
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan -var AWS_REGION="us-east-1"
+	# the plan should be successful and we can review the logs
+	terminal --> AWS Secret access key
+
+result:
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+On AWS/S3 we can enter the created S3 bucket and see that we have created 'development' directory. Inside we have file 'terraform_stete' in JSON format.
+	➢ The Etag of the 'terraform_stete' file is the version of the current terraform state. We can see all Etags (versions) of the 'terraform_stete' file on this page.
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes			# confirm destruction
 
 
 
