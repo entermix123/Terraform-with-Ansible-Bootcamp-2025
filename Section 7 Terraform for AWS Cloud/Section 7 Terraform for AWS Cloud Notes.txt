@@ -339,7 +339,6 @@ resource "aws_vpc" "levelupvpc" {
   instance_tenancy = "default"		# more than one instance can run on the same hardware - preffered - minimized consts
   enable_dns_support   = "true"
   enable_dns_hostnames = "true"	  # create hostname and dns of our instance name, the name of our aws instance will work as dns
-  enable_classiclink   = "false"
 
   tags = {
     Name = "levelupvpc"
@@ -540,6 +539,8 @@ Update the linux package manager
 
 Pull the repo
 	terminal --> git clone repo_url
+	or
+	terminal --> git pull
 
 We need to install AWS CLI on the machine
 	terminal --> sudo apt-get install awscli
