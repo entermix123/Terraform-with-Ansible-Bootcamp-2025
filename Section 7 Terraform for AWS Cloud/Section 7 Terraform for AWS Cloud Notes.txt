@@ -18,28 +18,242 @@ Section 7: Terraform for AWS Cloud
 
 
 
+
 34. AWS VPC Introduction
 ========================
+
+➢ Amazon Virtual Private Cloud (Amazon VPC) enables you to launch AWS resources into a virtual network that you've defined.
+
+➢ Amazon VPC is the networking layer for Amazon EC2 Instances.
+
+➢ For Fresh account Amazon have default VPC Network.
+	- Amazon VPC is requirement to create EC2 instances
+
+➢ Best Practice to always create your own VPC with your own Settings and Configuration.
+	- always configure new VPC for each new EC2 instance
+
+
+Few Key Points and Terminology
+------------------------------
+
+➢ Virtual private cloud (VPC) — A virtual network dedicated to your AWS account.
+
+➢ Subnet — A range of IP addresses in your VPC.
+
+➢ Route table — A set of rules, called routes, that are used to determine where network traffic is directed.
+
+➢ Internet gateway — A gateway that you attach to your VPC to enable communication between resources in your VPC and the internet.
+
+➢ VPC endpoint — Enables you to privately connect your VPC to supported AWS services and VPC endpoint services powered by
+PrivateLink without requiring an internet gateway, NAT device, VPN connection, or AWS Direct Connect connection.
+
+
+
+What user can do with VPC
+-------------------------
+
+➢ Launch instances in a subnet of your choosing. You can choose our own subnet addressing.
+
+➢ You can assign custom IP address ranges in each subnet.
+	- assign the resources that need access to internet into subnet that have access to internet
+
+➢ You can configure route tables between subnets.
+
+➢ You can create an internet gateway and attach it to our VPC.
+
+➢ It provides much better security control over your AWS resources.
+
+➢ You can assign security groups to individual instances.
+	- what traffic the instance can accept and to whom the instance can access
+	- can provide individual instance label
+
+➢ You also have subnet network access control lists (ACLS).
+	- define the control at subnet level inside of the VPC - that will make the VPC more easy to use
+
+➢ For Small or Medium Setup One VPC will be enough.
+
+➢ An Instance Launched in one VPC can never communicate to Instance Launched in another VPC via Private IP.
+	- instance in one VPC can communicate only with another VPC true Private IP and not with instance in another VPC
+	- instance in one VPC can communicate directly with instance in another VPC true Public IP
+
+➢ Public IP is must to setup the inter VPC communication.
+
+➢ Two VPCs can be linked via PVC Peering.
+
+
+
+VPC Peering
+-----------
+
+➢ VPC Peering (bridge) is a networking connection that allows you to connect one VPC with another VPC through a direct network route using
+private IP addresses.
+	- this allow instances in different VPC to communicate true Private IP
+
+➢ Instances behave as if they were on the same private network.
+
+➢ You can peer VPC's with other AWS accounts as well as other VPCs in the same account.
+
+➢ Peering is in a star configuration, i.e., 1 VPC peers other 4 VPCs.
+
+➢ You can peer between regions. Suppose you have one VPC in one region and other VPC in another region, then you can peer the VPCs between different regions.
+
+➢ One VPC can be connected via 1 or more VPCs.
+
+
 
 
 
 35. AWS VPC Introduction II
 ===========================
 
+Subnet in VPC
+-------------
+
+➢ Virtual private cloud (VPC) is a virtual network dedicated to your AWS account. It is logically isolated from other virtual
+networks in the AWS Cloud.
+
+➢ When you create a VPC, you must specify a range of IPv4 addresses for the VPC in the form of a Classless Inter-Domain Routing (CIDR) block.
+
+➢ 10.0.0.0/16 is the primary CIDR block for your VPC.
+
+➢ VPC spans all of the Availability Zones in the Region. After creating a VPC, you can add one or more subnets in each Availability Zone.
+	- usually the regions have 3 or 4 avalability zones - a, b, c and/or d
+
+
+
+Subnet in VPC
+-------------
+
+➢ If a subnet's traffic is routed to an internet gateway, the subnet is known as a public subnet.
+	- the subnet have access to internet - public subnet
+
+➢ If a subnet doesn't have a route to the internet gateway, the subnet is known as a private subnet.
+	- the subnet DO NOT have access to internet - private subnet
+
+
+
+VPC and subnet sizing for IPv4
+------------------------------
+
+We have 3 ranges:
+
+➢ 10.0.0.0 - 10.255.255.255 (10/8 prefix) - User VPC must be /16 or smaller, for example, 10.0.0.0/16. - Default
+
+➢ 172.16.0.0 - 172.31.255.255 (172.16/12 prefix) - User VPC must be /16 or smaller, for example, 172.31.0.0/16.
+
+➢ 192.168.0.0 - 192.168.255.255 (192.168/16 prefix) - User VPC can be smaller, for example 192.168.0.0/20.
+
+
+
+Subnet in VPC - To add a CIDR block to your VPC, the following rules apply:
+---------------------------------------------------------------------------
+
+➢ The allowed block size is between a /28 netmask and /16 netmask.
+
+➢ CIDR block must not overlap with any existing CIDR block that's associated with the VPC.
+
+➢ User cannot increase or decrease the size of an existing CIDR block.
+	- We can add new CIDR block but not change the size of existing one
+
+
+Security Group in AWS
+---------------------
+
+➢ Security group acts as a virtual firewall for your instance to control inbound and outbound traffic.
+
+➢ Upto 5 SGs can be assigned to Instance in AWS.
+
+➢ SGs are Instance Level not Subnet Level.
+	- SG can be associated with instances and not networks
+
+
+Basics of Security Group in AWS
+--------------------------------
+
+➢ User can specify allow rules, but not deny rules.
+	- set incoming and outgoing rules
+	- cannot define deny rule in the security group
+
+➢ User can specify separate rules for inbound and outbound traffic.
+
+➢ Security group rules enable you to filter traffic based on protocols and port numbers.
+	- filter on port
+	- filter on protocol
+
+➢ By default, a Security Group don’t have any Inbound Rule.
+
+➢ By default, a security group includes an outbound rule that allows all outbound traffic.
+
+➢ There are quotas on the number of security groups that you can create per VPC, the number of rules that you can add to each security group, and the number of security groups that you can associate with a network interface.
+
+
 
 
 36. Demo : AWS VPC & Security Group
 ===================================
+
+How we can create a VPC:
+➢ Go to AWS/VPC/Create VPC
+	➢ Resources to create: VPC and more
+	➢ Name tag auto-generation: levelup_custom_vpc
+	➢ IPv4 CIDR block: 10.0.0.0/16			# Default
+	➢ IPv6 CIDR block: No IPv6 CIDR block		# Default
+	➢ Number of Availability Zones (AZs): 1 
+	➢ Number of public subnets: 1			# Default
+	➢ Number of private subnets: 1			# Default
+	➢ NAT gateways ($): None			# Default
+	➢ VPC endpoints: None
+	➢ DNS options: checked [Enable DNS hostnames, Enable DNS resolution]
+	➢ Create VPC
+
+We can reviw our new VPC in AWS/VPC.
+
+Now we can lounch instance and we can:		(we have to create the instance in the same region that the VPC was created)
+--------------------------------------
+	➢ use the newly created VPC in Network section
+	➢ set a storage - default settings
+
+
+We will create new security group
+---------------------------------
+➢ go to AWS/Security Groups/New Security Group
+	➢ Security group name: levelup-sg
+	➢ Description: Demo sg
+	➢ VPC: select the newly created VPC
+	➢ Create security group
+
+Now we can lounch instance and we can:		(we have to create the instance in the same region that the VPC was created)
+--------------------------------------
+	➢ use the newly created VPC in Network section
+	➢ set a storage - default settings
+	➢ select the newly created security group
+
 
 
 
 37. Lab : Create AWS VPC & NAT Gateway
 ======================================
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
 
 
 38. Launch EC2 Instance using Custom VPC
 ========================================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 
