@@ -686,44 +686,6 @@ For this example we will use AWS EC2 instance
 createInstance.tf
 ------------------------------------------------------
 
-data "aws_availability_zones" "avilable" {}
-
-data "aws_ami" "latest-ubuntu" {
-  most_recent = true
-  owners = ["099720109477"]
-
-  filter {
-    name = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-
-resource "aws_instance" "MyFirstInstnace" {
-  ami           = data.aws_ami.latest-ubuntu.id
-  instance_type = "t2.micro"
-  availability_zone = data.aws_availability_zones.avilable.names[1]
-
-  provisioner "local-exec" {								
-    command = "echo ${aws_instance.MyFirstInstnace.private_ip} >> my_private_ips.txt"	
-  }
-
-  tags = {
-    Name = "custom_instance"
-  }
-}
-
-output "public_ip" {					
-  value = aws_instance.MyFirstInstnace.public_ip 	
-}
-
-
-
 data "aws_availability_zones" "available" {}  # Fixed typo in "available"
 
 data "aws_ami" "latest_ubuntu" {  # Changed to underscore (best practice)
@@ -784,6 +746,31 @@ Plan terraform resources
 	terminal --> AWS Secret access key
 
 
+result:
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + public_ip = (known after apply)		# after the apply the public ip will be printed on the console
+						# after the apply the file with the private IP also will be created
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+	We can check if the file is created and on the consol the public_ip is printed
+
+Check the instance creation on AWS/EC2 and check the public and private IPs. Compare the private IP with the IP saved in the file locally.
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes			# confirm destruction
+
 
 
 
@@ -792,10 +779,117 @@ Plan terraform resources
 32. Remote State in Terraform
 =============================
 
+➢ Terraform is able to find the resources it created and update them accordingly. We have seen Terraform Plan and terraform apply commands.
+
+➢ Terraform records information about what infrastructure it created in a Terraform state file.
+
+➢ File called terraform.tfstate
+
+➢ Terraform also maintain the back-up of earlier statefile in file named terraform.tfstate.backup
+	- When we have working terraform resources, and we make changes and apply them, a backup for the earlier state will be created
+
+➢ On command Terraform Apply terraform backup is written and new state file created.
+
+
+
+
+➢ If the remote state is changed and user executes terraform apply again. Terraform will make the changes to meet the correct remote state.
+
+Problems while team is working on terraform
+-------------------------------------------
+
+➢ Shared storage for state files - To be able to use Terraform to update your infrastructure, each of your team members needs access to the same Terraform state files. That means you need to store those files in a shared location.
+
+➢ Locking state files - As soon as data is shared, you run into a new problem: locking. Without locking, if two team members are running Terraform at the same time, you may run into race conditions as multiple Terraform processes make concurrent updates to the state files, leading to conflicts, data loss, and state file corruption.
+
+➢ Isolating state files - When making changes to your infrastructure, it’s a best practice to isolate different environments.
+	- separate direcories for the different environment managed by terraform
+
+➢ Most common technique for allowing multiple team members to access a common set of files is to put them in version control (e.g. Git). But this is a bad idea.
+
+➢ Manual error: It’s too easy to forget to pull down the latest changes from version control before running Terraform or to push
+your latest changes to version control after running Terraform.
+
+➢ Locking: Most version control systems do not provide any form of locking that would prevent two team members from running
+terraform apply on the same state file at the same time.
+
+➢ Secrets: All data in Terraform state files is stored in plain text. This is a problem because certain Terraform resources
+need to store sensitive data.
+
+➢ Instead of using version control, the best way to manage shared storage for state files is to use Terraform’s built-in support for remote backends. A Terraform backend determines how Terraform loads and stores state.
+
+
+
+Remote Backend: Remote Backend solves all problems we listed earlier.
+---------------------------------------------------------------------
+
+➢ Manual error: Once you configure a remote backend, Terraform will automatically load the state file from that backend every time you run plan or apply and it’ll automatically store the state file in that backend after each apply, so there’s no chance of manual error
+
+➢ Locking: Most of the remote backends natively support locking. To run terraform apply, Terraform will automatically acquire a lock; if someone else is already running apply, they will already have the lock, and you will have to wait.
+
+➢ Secrets: Most of the remote backends natively support encryption in transit and encryption on disk of the state file.
+
+
+
+Store state in S3 Bucket:
+-------------------------
+
+--------------------------------------------------
+terraform {
+  backend "s3" {
+    bucket = "mybucket"
+    key = "path/to/my/key"
+    region = “us-east-1"
+  }
+}
+--------------------------------------------------
+
+➢ While using AWS S3 as backend, it’s recommended to use AWS configure instead of AWS creds in variables.
+	- The backend service in terraform will NOT use the variables
+
+
 
 
 33. Lab : Remote State in Terraform
 ===================================
+
+We have to create S3 bucket in AWS
+	- got to AWS/S3/Create bucket
+		- Bucket type: Directory
+		- Choose Zone: us-east			# or whatever is available
+		- check 'I acknowledge that in the event of an Availability Zone outage, my data might be unavailable or lost.'
+		- Bucket name: tf-state-4563rf		# must be globally unique name 
+		- Encryption type: Server-side encryption with Amazon S3 managed keys (SSE-S3)
+		- Create bucket
+
+
+We have 5 files
+---------------
+4 from the last Lab
+	➢ createInstance.tf
+	➢ provider.tf
+	➢ variables.tf
+	➢ securitygroup.tf
+1 new for terraform remote backend
+	➢ backend.tf 
+
+
+backend.tf 
+--------------------------------------------------
+terraform {
+    backend "s3" {
+        bucket = "tf-state-98fty"
+        key    = "development/terraform_state"
+        region = "us-east-2"
+    }
+}
+--------------------------------------------------
+
+
+
+
+
+
 
 
 
