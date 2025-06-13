@@ -1250,8 +1250,8 @@ We have 3 files
 createInstance.tf
 --------------------------------------------------
 resource "aws_key_pair" "levelup_key" {			# KeyPair for terraform AWS login
-    key_name = "levelup_key"
-    public_key = file(var.PATH_TO_PUBLIC_KEY)
+    key_name = "levelup_key"				# key name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)		# public key path to location
 }
 
 #Create AWS Instance
@@ -1372,7 +1372,11 @@ Plan terraform resources
 	terminal --> AWS Secret access key
 
 	# the plan should be successful and we can review the logs
-	# result: 	Plan: 4 to add, 0 to change, 0 to destroy.	
+	# result: 	
+		Plan: 2 to add, 0 to change, 0 to destroy.
+
+		Changes to Outputs:
+  		+ public_ip = (known after apply)	
 
 APPLY
 -----
@@ -1381,15 +1385,29 @@ Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
 
+On the console we can see instance public ip 
 Login to AWS and go set the correct region configured - us-east-2
 Check resources creation on AWS/EC2:
-Check if volumes are created on AWS/EC2/Volumes
 
-
-We can now try to connect the AWS instance from local PC/box.
-Copy the public IP from AWS/EC2.
+We can connect the AWS instance from local PC/box.
+Copy the public IP from the console
 	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
 
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+Now we are logged into the instance.
+
+Check the status of the installed apache2
+	instance terminal --> systemctl status apache2
+
+We can browse the public IP of the AWS instance and we should receive the message from the script 'Deployed Machine via Terraform' 
+
+If we cannot connect to the instance we have to go to AWS/EC2/Security Group/Inbound Traffic and allow our local PC IP
+
+Exit the AWS instance
+	instance terminal --> exit
 
 DESTROY
 -------
@@ -1406,9 +1424,221 @@ We can now destroy the created resources on AWS
 46. Lab : User Data using Cloud Init
 ====================================
 
-➢ 
+We have 5 files
+➢ createInstance.tf
+➢ provider.tf
+➢ variables.tf
+➢ init.cfg
+➢ cloudinit.tf
 
-➢ 
+
+init.cfg
+--------------------------------------------------
+#cloud-config
+
+repo_update: true		
+repo_upgrade: all		# this will update all packages on our linux box
+
+packages:			# define packages for install
+- apache2
+
+runcmd:					# set execution of commands
+- systemctl start apache2		# start apache service
+- sudo systemctl enable apache2		# enable apache
+- [ sh, -c, 'echo "<h1>Deployed Machine via Terraform</h1>" | sudo tee /var/www/html/index.html']	# print success message
+
+output:
+all: '| tee -a /var/log/cloud-init-output.log'		# save log into file cloud-init-output.log
+--------------------------------------------------
+
+
+
+cloudinit.tf
+--------------------------------------------------
+data "template_file" "install-apache" {			# set template file
+    template = file("init.cfg")				# path to location to config file
+}
+
+data "template_cloudinit_config" "install-apache-config" {	# define template file
+    gzip          = false					
+    base64_encode = false					# not encoded
+
+    part {						
+        filename     = "init.cfg"
+        content_type = "text/cloud-config"
+        content      = data.template_file.install-apache.rendered
+    }
+}
+--------------------------------------------------
+
+
+createInstance.tf
+--------------------------------------------------
+resource "aws_key_pair" "levelup_key" {			# KeyPair for terraform to connect AWS
+    key_name = "levelup_key"				# key name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)		# key path to location
+}
+
+#Create AWS Instance
+resource "aws_instance" "MyFirstInstnace" {		# instance
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# amazone machine image - image AMI, region
+  instance_type = "t2.micro"				# type machine - t2.micro - free tier
+  availability_zone = "us-east-2a"			# zone
+  key_name      = aws_key_pair.levelup_key.key_name	# key name
+
+  user_data = data.template_cloudinit_config.install-apache-config.rendered	# path to template file - script
+
+  tags = {						# tag
+    Name = "custom_instance"
+  }
+}
+
+output "public_ip" {					# print instance public ip on launch
+  value = aws_instance.MyFirstInstnace.public_ip 
+}
+--------------------------------------------------
+
+
+provider.tf
+--------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+variables.tf
+--------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "AKIAY65Y5OPLU3XH5T6O"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  default = "levelup_key.pub"
+}
+
+variable "INSTANCE_USERNAME" {
+  default = "ubuntu"
+}
+--------------------------------------------------
+
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 2 to add, 0 to change, 0 to destroy.
+
+		Changes to Outputs:
+  		+ public_ip = (known after apply)	
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+On the console we can see instance public ip. Copy it and use it to login to the instance.
+
+We can connect the AWS instance from local PC/box.
+Copy the public IP from the console
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+Now we are logged into the instance.
+
+List files in the base directory
+	instance terminal --> ls
+
+	# cloud-init.log file should be available
+
+Print the log file to see the logs
+	instance terminal --> cat cloud-init.log
+
+Chck for apache2 status
+	instance terminal --> systemctl apache2
+	
+	# the service should be running
+
+Exit the AWS instance
+	instance terminal --> exit
+
+We can browse the instance public IP from our local PC
+	browser --> instance_public_ip
+
+	# we should receive message set in the init.cfg - 'Deployed Machine via Terraform'
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes			# confirm destruction
+
+
+
+
 
 
 
