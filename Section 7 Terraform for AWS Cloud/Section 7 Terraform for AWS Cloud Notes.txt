@@ -643,26 +643,26 @@ We can see all parameters and syntax for the VPC - https://registry.terraform.io
 security_group.tf
 --------------------------------------------------
 #Security Group for levelupvpc
-resource "aws_security_group" "allow-levelup-ssh" {
-  vpc_id      = aws_vpc.levelupvpc.id
-  name        = "allow-levelup-ssh"
-  description = "security group that allows ssh connection"
+resource "aws_security_group" "allow-levelup-ssh" {			# security group
+  vpc_id      = aws_vpc.levelupvpc.id					# our VPC id
+  name        = "allow-levelup-ssh"					# SG name
+  description = "security group that allows ssh connection"		# short description
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  egress {								# egress rule - outbond traffic
+    from_port   = 0							# from port traffic accepted - all ports
+    to_port     = 0							# to port traffic accepted - all ports
+    protocol    = "-1"							# "-1" - all protocols, we can use also list []
+    cidr_blocks = ["0.0.0.0/0"]						# all IPs for outgoing traffic - best practice
   }
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  ingress {								# ingress rule - inbound traffic			
+    from_port   = 22							# from port 22 only incoming traffic
+    to_port     = 22							# to port 22 only incoming traffic
+    protocol    = "tcp"							# tcp protocol only
+    cidr_blocks = ["0.0.0.0/0"]	 					# all IPs - not recommended
+  } Pest prectice - We should specify only the IP of our local PC/box that will execute terraform commands
   
-  tags = {
+  tags = {								# tag
     Name = "allow-levelup-ssh"
   }
 }
@@ -672,20 +672,20 @@ resource "aws_security_group" "allow-levelup-ssh" {
 createInstance.tf
 --------------------------------------------------
 
-resource "aws_key_pair" "levelup_key" {
-    key_name = "levelup_key"
-    public_key = file(var.PATH_TO_PUBLIC_KEY)
+resource "aws_key_pair" "levelup_key" {			# create KeyPair
+    key_name = "levelup_key"				# key name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)		# key path to location
 }
 
-resource "aws_instance" "MyFirstInstnace" {
-  ami           = lookup(var.AMIS, var.AWS_REGION)
-  instance_type = "t2.micro"
-  key_name      = aws_key_pair.levelup_key.key_name
+resource "aws_instance" "MyFirstInstnace" {		# instance
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# image
+  instance_type = "t2.micro"				# tier hardware
+  key_name      = aws_key_pair.levelup_key.key_name	# key name
 
-  vpc_security_group_ids = [aws_security_group.allow-levelup-ssh.id]
-  subnet_id = aws_subnet.levelupvpc-public-2.id
+  vpc_security_group_ids = [aws_security_group.allow-levelup-ssh.id]	# security group ids
+  subnet_id = aws_subnet.levelupvpc-public-2.id			# 2nd public subnet id, so aws do not take the default subnet
 
-  tags = {
+  tags = {								# tag
     Name = "custom_instance"
   }
 
@@ -693,7 +693,97 @@ resource "aws_instance" "MyFirstInstnace" {
 --------------------------------------------------
 
 
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
 
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Creatate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	Plan: 21 to add, 0 to change, 0 to destroy.
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+Login to AWS and go set the correct region configured - us-east-2
+Check resources creation on AWS/EC2:
+Check security group on AWS/EC2/Security Group
+Check inbound and outbound rules on AWS/EC2/Security Group/Security 
+
+
+We can now try to connect the AWS instance from local PC/box.
+Copy the public IP from AWS/EC2.
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+	# ssh instance_public_ip		- connect to the AWS instance
+	# -l ubuntu				- used user
+	# -i levelup_key			- private key
+
+	terminal --> yes		# when ask for connection fingerprint
+
+Now we are logged on the AWS instance
+	Use root user
+		terminal --> sudo -s
+
+	Update package manager
+		terminal --> suco apt-get update
+
+		# this mean we have connection to the internet - egress connection
+
+	Install wget and curl
+		terminal --> apt-get install wget
+		terminal --> apt-get install curl
+
+	Open google tab
+		terminal --> curl https://google.com
+
+		# result: we get the html of google homepage
+
+	Colse the connection of AWS isntance
+		terminal --> exit
+
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes			# confirm destruction
 
 
 
@@ -702,8 +792,22 @@ resource "aws_instance" "MyFirstInstnace" {
 40. We Need You!!!
 ==================
 
+Hello Cloud Geeks
 
-➢ 
+Sorry to break you up here. I need your feedback.
+
+Future students of this course would love to see your opinions! Please take 10-15 seconds to leave a review of this course.
+
+
+You can modify your feedback anytime during learning, after completing, or even after your Certification Exam.
+
+5 Star Rating Appreciated :)! Even if you have suggestions you are always welcome!
+
+
+Thank You in advance!!!!
+
+Happy Learning!
+
 
 
 
@@ -711,19 +815,114 @@ resource "aws_instance" "MyFirstInstnace" {
 41. Elastic Block Store (EBS) in AWS
 ====================================
 
-➢ 
+➢ EBS - Elastic Block Storage. EBS volume is a durable, block-level storage device that you can attach to your instances.
 
-➢ 
+➢ EBS is like a secondary disk with Instance, which is flexible. Two types:
+	- boot disk - when the instance is rebooted or destroyed, the boot disk is also destroyed
+	- secondary disk (EBS) - permanent disk, not erased when instance is rebboted or destroyed
+
+➢ User can dynamically increase size, modify the provisioned IOPS capacity, and change volume type on live production volumes.
+	- we can manage the syze of the disk without stop or terminate the instace 
+	- we can modify I/O capacity
+	- we can change Disk type 
+	- same disk will be attached when instance is updated (rebooted, recreated, updated)
+
+➢ User can attach multiple EBS volumes to a single instance.
+	- we can attach different types of disks on one instance
+		- different type of data are configured to be saved on specific disk partitions		
+
+➢ EBS volume and instance must be in the same Availability Zone.
+
+
+
+Types of AWS EBS Volumes - Two Amazon EBS volume type categories: SSD-backed volumes and HDD-backed volumes.
+------------------------
+
+➢ SSD-backed volumes are optimized for transactional workloads, where the volume performs a lot of small read/write operations. The performance of such volumes is measured in IOPS (input/output operations per second)
+
+➢ HDD-backed volumes are designed for large sequential workloads where throughput is much more important (and the performance is measured with MiB/s).
+
+-----------------------------------------------------------------
+Solid State Drive (SSD)		|	Hard Disk Drive (HDD)	|
+--------------------------------|--------------------------------
+General Purpose SSD		|Throughput Optimized HDD	|
+Balanced for economy and	|Inexpensive, for high use,	|
+performance			|intensive workload		|
+--------------------------------|-------------------------------|
+Provisioned IOPS SSD		|Cold HDD			|
+High Performance, for important |Cheap, used for infreaquent	|
+applications			|access				|
+				|				|
+				|				|
+-----------------------------------------------------------------
+
+
+General Purpose SSD (gp2) - Balanced for price and performance and recommended for most use cases.
+-------------------------
+	➢ Max 3000 IOPS allowed in gp2.
+	➢ Sizes of gp2 volumes can vary from 1 GiB to 16 TiB, while maximum throughput is capped at 160 MiB/s.
+
+
+Provisioned IOPS SSD (io1) - Used for critical production applications and databases that need the high performance (up to 32,000
+--------------------------    IOPS).
+	➢ Io1 volume sizes vary from 4 GiB to 16 TiB, while throughput is maxed at 500 MiB/s
+
+
+Throughput Optimized HDD (st1) - HDD is designed for applications that require larger storage and bigger throughput, such as big 
+------------------------------	 data or data warehousing, where IOPS is not that relevant.
+	➢ Maximum throughput is capped at 500 MiB/s, sizes vary from starting 500 GiB to 16 TiB.
+	
+	
+Cold HDD (sc1) - Cold HDD (sc1) is a magnetic storage format suitable for scenarios where storing data at low cost is the main
+--------------   criteria. Sizes vary from 500 GiB to 16 TiB, throughput can reach 250 MiB/s.
+
 
 
 
 42. Demo : Elastic Block Store (EBS) in AWS
 ===========================================
 
-➢ 
+We will launch new instance on AWS:
+	Go to AWS/EC2/Launch new instance
+		➢ Application and OS Images (Amazon Machine Image)
+			- Amazon Linux / 64 bit
+			- Amazon Machine Image (AMI): Amazon Machine 2023 karnel-6.1 AMI 	# free tier
+		➢ Instance type: t2.micro							# free tier
+		
+		➢ Network settings
+			- Network: vpc
+			- Subnet No-preference (default subnet in any avalability zone)
+			- Auto-assign public IP: Enabled
+			- Firewall (security groups): Create security Group
+				- cheched 'Allow SSH traffic from' - My IP
 
-➢ 
+		➢ Configure storage
+			- 8 GB, gp3 - Root volume, 3000 IOPS, Not encrypted	# this is the default Disk (boot disk)
+			- We can add new one and see the types
 
+		➢ Launch the instance
+
+To manage storages we have to wait intil the instance is in running state.
+
+Whe nthe isntance is in running state go to Elastik Block Storage (EBS) / Volumes
+		➢ We can see details for each volume we have
+	Create new volume:
+		➢ Volume settings
+			- Volume type: Cnhoose a suitable type
+			- Size: Choose appropriate size
+			- IOPS: --
+			- Throughput (MiB/s)
+			- Availability Zone: xxxxa, xxxxb, xxxxc		# must be the same as the instance
+			- Snapshot ID - optional: 
+			- Encryption: check - optional
+
+		➢ Tags - optional
+		➢ Create Volume
+
+We can now attach the newly crated volume to existing instance.
+
+Terminate the instance on AWS/EC2.
+We can see that the craeted volume is still available after the instance is terminated.
 
 
 
@@ -731,9 +930,104 @@ resource "aws_instance" "MyFirstInstnace" {
 43. Lab : Elastic Block Store (EBS) in AWS
 ==========================================
 
-➢ 
+We have 3 files
+➢ createInstance.tf
+➢ provder.tf
+➢ variables.tf
 
-➢ 
+
+provder.tf
+--------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+createInstance.tf
+--------------------------------------------------
+
+resource "aws_key_pair" "levelup_key" {             	# KeyPair for login
+    key_name = "levelup_key"				# public key name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)		# public key location path
+}
+
+#Create AWS Instance
+resource "aws_instance" "MyFirstInstnace" {		# AWS instance
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# amazon machine image AMI
+  instance_type = "t2.micro"				# type hardware - t2.micro is free tier
+  availability_zone = "us-east-2a"			# zone
+  key_name      = aws_key_pair.levelup_key.key_name	# access key name
+
+  tags = {						# tag
+    Name = "custom_instance"
+  }
+}
+
+#EBS resource Creation
+resource "aws_ebs_volume" "ebs-volume-1" {		# Volume
+  availability_zone = "us-east-2a"			# region - must be same as the instance region
+  size              = 50				# size
+  type              = "gp2"				# type
+
+  tags = {						# tag
+    Name = "Secondary Volume Disk"
+  }
+}
+
+#Atatch EBS volume with AWS Instance				# 
+resource "aws_volume_attachment" "ebs-volume-1-attachment" {
+  device_name = "/dev/xvdh"
+  volume_id   = aws_ebs_volume.ebs-volume-1.id
+  instance_id = aws_instance.MyFirstInstnace.id
+}
+--------------------------------------------------
+
+
+
+variables.tf
+--------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "AKIAY65Y5OPLU3XH5T6O"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  default = "levelup_key.pub"
+}
+
+variable "INSTANCE_USERNAME" {
+  default = "ubuntu"
+}
+--------------------------------------------------
+
+
+
+
+
+
 
 
 
