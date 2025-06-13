@@ -946,6 +946,19 @@ provider "aws" {
 --------------------------------------------------
 
 
+AWS EBS VOLUME
+--------------
+➢ search 'aws_ebs_volume'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ebs_volume#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ebs_volume#argument-reference
+
+AWS VOLUME ATTACHEMENT
+----------------------
+➢ search 'aws_volume_attachment'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/volume_attachment#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/volume_attachment#argument-reference
+
+
 createInstance.tf
 --------------------------------------------------
 
@@ -977,11 +990,11 @@ resource "aws_ebs_volume" "ebs-volume-1" {		# Volume
   }
 }
 
-#Atatch EBS volume with AWS Instance				# 
-resource "aws_volume_attachment" "ebs-volume-1-attachment" {
-  device_name = "/dev/xvdh"
-  volume_id   = aws_ebs_volume.ebs-volume-1.id
-  instance_id = aws_instance.MyFirstInstnace.id
+#Atatch EBS volume with AWS Instance				
+resource "aws_volume_attachment" "ebs-volume-1-attachment" {	# volume attachement
+  device_name = "/dev/xvdh"		#  (Required) The device name to expose to the instance (for example, /dev/sdh or xvdh)
+  volume_id   = aws_ebs_volume.ebs-volume-1.id			# our ebs volume id
+  instance_id = aws_instance.MyFirstInstnace.id			# our instance id
 }
 --------------------------------------------------
 
@@ -1024,6 +1037,166 @@ variable "INSTANCE_USERNAME" {
 --------------------------------------------------
 
 
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	Plan: 4 to add, 0 to change, 0 to destroy.	
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+Login to AWS and go set the correct region configured - us-east-2
+Check resources creation on AWS/EC2:
+Check if volumes are created on AWS/EC2/Volumes
+
+
+We can now try to connect the AWS instance from local PC/box.
+Copy the public IP from AWS/EC2.
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+	# ssh instance_public_ip		- connect to the AWS instance
+	# -l ubuntu				- used user
+	# -i levelup_key			- private key
+
+	terminal --> yes		# when ask for connection fingerprint
+
+Now we are loged on aour AWS instance
+	switch to the root user
+	instance terminal --> sudo -s
+
+List volumes to check all disks
+	instance terminal --> df -h		
+
+	# we can see only the boot/default volume
+	# the attached disk is not listed
+
+To use the attached volume we need to clear the file system on our disk and alocate the attached disk
+
+Clear instance file system
+	instance terminal --> mkfs.ext4 /dev/xvdh		# '/dev/xvdh' - the type of the attached volume
+
+Create directory and mount the attached  disk
+	instance terminal --> mkdir -p /data			# create data directory
+	instance terminal --> mount /dev/hvdh /data		# mount the colume with the local directory
+
+
+Now we can work with the disk but when we reboot the machine, the attached disk will be destroyed. How to avoid that?
+
+Open fstab config file
+	instance terminal --> vim fstab		
+
+the first line is existing. We add the second line '/dev/xvdh /data ext4 defaults 0 0'
+-------------------------------------------------
+LABEL=cloudimg-rootfs	/ 	ext4	defaults,discard	0 0
+/dev/xvdh /data ext4 defaults 0 0
+-------------------------------------------------
+save chanes - escpace, :wq!, enter
+
+Now e can reboot our instance on AWS/EC2/instance/actions/reboot
+Copy the public IP from AWS/EC2.
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+List volumes to check all disks
+	instance terminal --> df -h
+
+	# the attached volume is present
+
+
+Now the volume will not dissapear but the data in the volume will dissapear. How to solve?
+
+Create a file in the volume to check data availability
+	instance terminal --> echo 'Hi, this is Jordan' > test.txt
+
+We will check when we terminate the instance if the data and the volume will be deleted.
+Terminate the instance from AWS/EC2 dashboard
+
+Use terraform to plan and create the instance again	
+	terminal --> terraform plan			
+	
+	# we can see what is goint to be created - 2 resources only
+		- aws_instance.MyFirstInstance				# the instance
+		- aws_volume_attachment.ebs-volume-1-attachment		# volume attahcment
+
+	Apply the planned resources
+	terminal --> terraform apply
+	terminal --> yes		# confirm 
+		
+	
+Login to the instance again 
+Copy the public IP from AWS/EC2.
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+	# ssh instance_public_ip		- connect to the AWS instance
+	# -l ubuntu				- used user
+	# -i levelup_key			- private key
+
+	terminal --> yes		# when ask for connection fingerprint
+
+Now we are loged on aour AWS instance
+	switch to the root user
+	instance terminal --> sudo -s
+
+List volumes to check all disks
+	instance terminal --> df -h
+
+	# the disk is not presented
+
+
+Create directory and mount the attached  disk
+	instance terminal --> mkdir -p /data			# create data directory
+	instance terminal --> mount /dev/hvdh /data		# mount the colume with the local directory
+
+Navigate to /data folder and list files
+	instance terminal --> cd /data
+	instance terminal --> ls
+
+	# we can se that the test file is present	
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes			# confirm destruction
 
 
 
@@ -1034,18 +1207,199 @@ variable "INSTANCE_USERNAME" {
 44. User Data in AWS
 ====================
 
-➢ 
+How we can pass User Data in time of instance launch
+----------------------------------------------------
 
-➢ 
+➢ In AWS, user have option to pass user data to the instance at launch.
+	- configuration script
+	- install script
+	- execute script
+
+➢ User data can be used to perform common automated configuration tasks and even run scripts after the instance starts.
+
+➢ User can pass two types of user data to Amazon EC2: shell scripts and cloud-init directives.
+	- simple shell script - will execute after the instance is lounched
+	- cloud-init directive - will execute after the instance is lounched
+
+➢ User data shell scripts must start with the #! characters and the path to the interpreter you want to read the script (commonly /bin/bash).
+	- first line of the script must be '#! /bin/bash' - configure the interpreter that will execute the script
+
+➢ Scripts entered as user data are executed as the root user, so do not use the sudo command in the script.
+	- no 'sudo' in teh script because the script is executed by the root user
+
+➢ By default, user data scripts and cloud-init directives run only during the first boot cycle when an EC2 instance is launched.
+	- the sripts will be exeuted only once at the instance lounch
+	- the sript will NOT execute on stop/start or reboot of the instance
+
+➢ If user stop an instance, modify the user data, and start the instance, the new user data is not executed automatically.
+	- modifying user data and stop/start ro reboot the instance will NOT execute the script automatically
+
 
 
 
 45. Lab: User Data using Script
 ===============================
 
-➢ 
+We have 3 files
+➢ createInstance.tf
+➢ provider.tf
+➢ variables.tf
+➢ installapache.sh
 
-➢ 
+
+createInstance.tf
+--------------------------------------------------
+resource "aws_key_pair" "levelup_key" {			# KeyPair for terraform AWS login
+    key_name = "levelup_key"
+    public_key = file(var.PATH_TO_PUBLIC_KEY)
+}
+
+#Create AWS Instance
+resource "aws_instance" "MyFirstInstnace" {		# aws instance
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# amazone machine image AMI - image and region
+  instance_type = "t2.micro"				# type hardware - t2.micro - free tier
+  availability_zone = "us-east-2a"			# zone - a, b, c or d
+  key_name      = aws_key_pair.levelup_key.key_name	# path of the access key
+
+  user_data = file("installapache.sh")			# path to user data file - script
+
+  tags = {						# tag
+    Name = "custom_instance"
+  }
+}
+
+output "public_ip" {					# print public IP of the instance on the console on launch
+  value = aws_instance.MyFirstInstnace.public_ip 
+}
+
+--------------------------------------------------
+
+
+provider.tf
+--------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+variables.tf
+--------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "AKIAY65Y5OPLU3XH5T6O"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  default = "levelup_key.pub"
+}
+
+variable "INSTANCE_USERNAME" {
+  default = "ubuntu"
+}
+--------------------------------------------------
+
+
+
+installapache.sh
+--------------------------------------------------
+#! /bin/bash						# configure interpreter with root user
+apt-get update						# update package manager
+apt-get install -y apache2				# install apache2
+systemctl start apache2									# start apache2
+systemctl enable apache2								# activate apache2
+echo "<h1>Deployed Machine via Terraform</h1>" | sudo tee /var/www/html/index.html	# print message
+
+--------------------------------------------------
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	Plan: 4 to add, 0 to change, 0 to destroy.	
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+Login to AWS and go set the correct region configured - us-east-2
+Check resources creation on AWS/EC2:
+Check if volumes are created on AWS/EC2/Volumes
+
+
+We can now try to connect the AWS instance from local PC/box.
+Copy the public IP from AWS/EC2.
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes			# confirm destruction
+
+
+
+
 
 
 
