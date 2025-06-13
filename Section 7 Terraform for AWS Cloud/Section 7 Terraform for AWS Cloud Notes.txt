@@ -555,36 +555,147 @@ Initialize terrafomr
 PLAN
 ----
 Plan terraform resources
-	terminal --> terraform plan -var AWS_REGION="us-east-1"
-	# the plan should be successful and we can review the logs
+	terminal --> terraform plan
 	terminal --> AWS Secret access key
 
+	# the plan should be successful and we can review the logs
+	# result: 	Plan: 18 to add, 0 to change, 0 to destroy.
 
-➢ 
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
 
-➢ 
+Go to AWS and set the correct region and check for the created resources.
+Check on AWS/VPC that the VPC is created. 
+Check on AWS/VPC/Subnets that all 6 subnets are created.
+Check on AWS/VPC/Route Tables that we have private and public routing tables created
+	- We can chcek the routes on AWS/VPC/Route Tables/Routes
+	- We can check associated subnets on AWS/VPC/Route Tables/Subnets Associated
+	- We can check the Tags on AWS/VPC/Route Tables/Tags
+Check NAT Gatgeway on AWS/VPC/NAT Gateway
+	- check Elastic IP
+Check Internet Gateway on AWS/VPC/Internet Gateway
 
-➢ 
 
-➢ 
 
 
 
 38. Launch EC2 Instance using Custom VPC
 ========================================
 
-➢ 
+Requirements to create Instance with custom VPC
+-----------------------------------------------
 
-➢ 
+➢ Will see, how to launch the EC2 Instance using Custom VPC created via TF.
 
-➢ 
+➢ We will be using Custom Security Group and KeyPair to login AWS machine.
+	- We have to create security group 
+	- We have to create KeyPair for login to AWS
 
-➢ 
+➢ Security group works as a Firewall, managed by AWS.
+	- Up to 5 security groups can be attached to single instance
+	- define inbound rules
+	- define outbound rules
+
+➢ To SSH the machine, SSH inbound Rule must be defined in security group.
+	➢ Allow ingress port 22 , IP address range 0.0.0.0/0 (All IPs)
+		- we have to make sure that port 22 is not open for all users for all IP ranges
+	➢ Best Practice to only all specified IPs.
+		- we have to restrict access by IPs (specific group of PCs - office, home etc.)
+
+➢ Create key pair and upload public key on AWS to SSH the AWS Instance.
+
+➢ Private key always be need to present on your box not on AWS.
+
+
 
 
 
 39. Lab : Launch EC2 Instance using Custom VPC
 ==============================================
+
+We have 6 files:
+----------------
+➢ provider.tf
+➢ variables.tf
+➢ nat.tf
+➢ vpc.tf
+➢ security_group.tf
+➢ createInstance.tf
+
+
+First 4 files are from last Lab. New files are:
+➢ security_group.tf
+➢ createInstance.tf
+
+
+AWS SECURITY GROUPS
+-------------------
+We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+➢ search 'aws security group'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#argument-reference
+
+
+security_group.tf
+--------------------------------------------------
+#Security Group for levelupvpc
+resource "aws_security_group" "allow-levelup-ssh" {
+  vpc_id      = aws_vpc.levelupvpc.id
+  name        = "allow-levelup-ssh"
+  description = "security group that allows ssh connection"
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  tags = {
+    Name = "allow-levelup-ssh"
+  }
+}
+--------------------------------------------------
+
+
+createInstance.tf
+--------------------------------------------------
+
+resource "aws_key_pair" "levelup_key" {
+    key_name = "levelup_key"
+    public_key = file(var.PATH_TO_PUBLIC_KEY)
+}
+
+resource "aws_instance" "MyFirstInstnace" {
+  ami           = lookup(var.AMIS, var.AWS_REGION)
+  instance_type = "t2.micro"
+  key_name      = aws_key_pair.levelup_key.key_name
+
+  vpc_security_group_ids = [aws_security_group.allow-levelup-ssh.id]
+  subnet_id = aws_subnet.levelupvpc-public-2.id
+
+  tags = {
+    Name = "custom_instance"
+  }
+
+}
+--------------------------------------------------
+
+
+
+
+
 
 
 
@@ -592,34 +703,64 @@ Plan terraform resources
 ==================
 
 
+➢ 
+
+
+
 
 41. Elastic Block Store (EBS) in AWS
 ====================================
+
+➢ 
+
+➢ 
 
 
 
 42. Demo : Elastic Block Store (EBS) in AWS
 ===========================================
 
+➢ 
+
+➢ 
+
+
+
 
 
 43. Lab : Elastic Block Store (EBS) in AWS
 ==========================================
+
+➢ 
+
+➢ 
 
 
 
 44. User Data in AWS
 ====================
 
+➢ 
+
+➢ 
+
 
 
 45. Lab: User Data using Script
 ===============================
 
+➢ 
+
+➢ 
+
 
 
 46. Lab : User Data using Cloud Init
 ====================================
+
+➢ 
+
+➢ 
 
 
 
