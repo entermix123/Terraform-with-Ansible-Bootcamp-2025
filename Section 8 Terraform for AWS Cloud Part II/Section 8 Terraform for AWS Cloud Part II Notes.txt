@@ -14,53 +14,230 @@ Section 8: Terraform for AWS Cloud Part II
 56. Lab : AWS Load Balancing
 
 
+
 47. AWS RDS Basics
 ==================
+
+
+RDS - Amazon Relational Database Service
+----------------------------------------
+
+➢ It’s Amazon managed DB Solution.
+	- Amazon will maintain the complete DB service from backup to upgrade
+
+➢ RDS Manages BackUp, Software Patching, Auto Failure Detection and recovery
+	- RD service created on HA mode - high availability mode (services created on 2-3 availability zones, two of them are synced - redundant)
+	- we can provide backup plan - when to perform backups and for how many days we want to keep our backup
+	- all updates, upgrades and paches are executed by amazon with no service desruption
+
+➢ User have Automatic Backup and manual Backup Options.
+
+
+
+RDS Supports below RDBMS
+------------------------
+	➢ MySQL
+	➢ MariaDB
+	➢ Postgre SQL
+	➢ Oracle
+	➢ MS SQL Server
+
+➢ RDS have HA functionality with auto replication.
+	- set redundant service on close availability zone, so when the primary service is not working, the redundant service assure the sevice availability - takes the traffic
+
+
+RDS Auto Scaling
+----------------
+➢ RDS auto scale storage capacity in response to growing db workload with Zero Down Time.
+
+
+Steps to create RDS Instances:
+------------------------------
+
+➢ Create a Subnet Group - Allow in which Subnets the database will be in.
+	- if RDS in HA mode we have to define more than one Subnet, so both of the instance are created in different subnet
+	- we need subnet group form more thatn one subnet - private subnet
+
+➢ Create Parameter Group - Allow to change setting in DB using parameters.
+	- DB settings are managed with Parameter Group, RDS do NOT allow ssh connection
+	- we can manage RDS only from parameters
+
+➢ Create Security group - Allow incoming traffic to RDS instance.
+	- we need to grand connection ONLY to the instances that will perform actions on RDS 
+
+➢ Create RDS Instance Itself.
+	- when all requirements above are covered, we can create RDS instance
+
+
+RDS AWS Components:
+-------------------
+	➢ DB Instances
+	➢ Regions and Availability Zones
+	➢ Security Groups
+	➢ DB Parameter Groups
+	➢ DB Option Groups
+
 
 
 
 48. Lab : Create RDS
 ====================
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
 
 
 49. AWS Access and Identity Management
 ======================================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
 
 
 
 50. Lab : IAM Users and Groups
 ==============================
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+
 
 
 51. Lab : AWS IAM Roles
 =======================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
 
 
 
 52. EC2 Instance Autoscaling
 ============================
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+
 
 
 53. Lab : EC2 Instance Autoscaling
 ==================================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
 
 
 
 54. Your Reviews are Important!
 ===============================
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+
 
 
 55. Load Balancing in AWS
 =========================
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+
 
 
 56. Lab : AWS Load Balancing
 ============================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
 
 
 
