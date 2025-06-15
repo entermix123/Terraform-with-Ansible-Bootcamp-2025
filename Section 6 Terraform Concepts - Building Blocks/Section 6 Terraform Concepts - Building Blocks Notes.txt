@@ -356,6 +356,8 @@ DESTROY
 -------
 We can now destroy the created resources on AWS
 	terminal --> terraform destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
+	terminal --> yes 			# confirm
 
 
 
@@ -598,6 +600,7 @@ DESTROY
 -------
 Destroy terraform resources
 	terminal --> terrafomr destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
 	terminal --> yes			# confirm destruction of the resources
 
 
@@ -769,6 +772,7 @@ DESTROY
 -------
 We can now destroy the created resources on AWS
 	terminal --> terraform destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
 	terminal --> yes			# confirm destruction
 
 
@@ -944,6 +948,7 @@ DESTROY
 -------
 We can now destroy the created resources on AWS
 	terminal --> terraform destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
 	terminal --> yes			# confirm destruction
 
 
