@@ -83,6 +83,432 @@ RDS AWS Components:
 48. Lab : Create RDS
 ====================
 
+We will
+	1. Create RDS
+	2. Login to the RDS instance
+
+We have 6 files
+---------------
+➢ createInstance.tf
+➢ provider.tf
+➢ variables.tf
+➢ vpc.tf
+➢ security_group.tf
+➢ rds.tf
+
+
+
+createInstance.tf
+--------------------------------------------------
+resource "aws_key_pair" "levelup_key" {			# KeyPair for terraform AWS login
+    key_name = "levelup_key"				# key name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)		# public key path to location
+}
+
+#Create AWS Instance
+resource "aws_instance" "MyFirstInstnace" {
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# amazone machine image AMI - image and region
+  instance_type = "t2.micro"				# type hardware - t2.micro - free tier
+  availability_zone = "us-east-2a"			# zone - a, b, c or d
+  key_name      = aws_key_pair.levelup_key.key_name			# path of the access key
+  vpc_security_group_ids = [aws_security_group.allow-levelup-ssh.id]	# VPC security group ID
+  subnet_id = aws_subnet.levelupvpc-public-1.id				# our first public subnet ID
+
+  tags = {								# tag
+    Name = "custom_instance"
+  }
+}
+
+output "public_ip" {							# print instance public ip on lounch
+  value = aws_instance.MyFirstInstnace.public_ip 
+}
+--------------------------------------------------
+
+
+vpc.tf
+--------------------------------------------------
+#Create AWS VPC
+resource "aws_vpc" "levelupvpc" {
+  cidr_block       = "10.0.0.0/16"	# Classless Inter-Domain Routing (CIDR) block.
+  instance_tenancy = "default"		# more than one instance can run on the same hardware - preffered - minimized consts
+  enable_dns_support   = "true"
+  enable_dns_hostnames = "true"	  # create hostname and dns of our instance name, the name of our aws instance will work as dns
+
+
+  tags = {
+    Name = "levelupvpc"
+  }
+}
+
+# Public Subnets in Custom VPC
+resource "aws_subnet" "levelupvpc-public-1" {		# public subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.1.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "true"		# on launch the public IP will be asociated with this instance - public subnet
+  availability_zone       = "us-east-2a"	# first availability zone for public subnet
+
+  tags = {					# tag of the subnet
+    Name = "levelupvpc-public-1"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-public-2" {		# second public subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.2.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "true"			# map the public IP to this ubnet - public subnet
+  availability_zone       = "us-east-2b"		# second availability zone for public subnet
+		
+  tags = {						# tag the subnet
+    Name = "levelupvpc-public-2"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-public-3" {		# third public subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.3.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "true"			# map the public IP to this ubnet - public subnet
+  availability_zone       = "us-east-2c"		# third availability zone for public subnet
+
+  tags = {						# tag
+    Name = "levelupvpc-public-3"
+  }
+}
+
+# Private Subnets in Custom VPC
+resource "aws_subnet" "levelupvpc-private-1" {		# first private subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.4.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "false"			# not mapping the public IP - private subnet
+  availability_zone       = "us-east-2a"		# first availability zone for private subnet
+
+  tags = {						# tag
+    Name = "levelupvpc-private-1"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-private-2" {		# second private subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.5.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "false"			# not mapping the public IP - private subnet
+  availability_zone       = "us-east-2b"		# second availability zone for private subnet
+
+  tags = {						# tag
+    Name = "levelupvpc-private-2"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-private-3" {		# third private subnet
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.6.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "false"			# not mapping the public IP - private subnet
+  availability_zone       = "us-east-2c"		# third availability zone for private subnet
+
+  tags = {						# tag
+    Name = "levelupvpc-private-3"
+  }
+}
+
+# Custom internet Gateway
+resource "aws_internet_gateway" "levelup-gw" {		# internet Gateway resource and name
+  vpc_id = aws_vpc.levelupvpc.id			# ID of our VPC
+
+  tags = {						# tag internet gateway
+    Name = "levelup-gw"
+  }
+}
+
+#Routing Table for the Custom VPC			
+resource "aws_route_table" "levelup-public" {		# routing table resource and name
+  vpc_id = aws_vpc.levelupvpc.id			# ID of our VPC
+  route {
+    cidr_block = "0.0.0.0/0"				# all IPs
+    gateway_id = aws_internet_gateway.levelup-gw.id	# our internet gateway ID
+  }
+
+  tags = {						# tag routing table
+    Name = "levelup-public-1"
+  }
+}
+
+resource "aws_route_table_association" "levelup-public-1-a" {		# associate with our first public subnet
+  subnet_id      = aws_subnet.levelupvpc-public-1.id			# our first public subnet id
+  route_table_id = aws_route_table.levelup-public.id			# our route table id
+}
+
+resource "aws_route_table_association" "levelup-public-2-a" {		# associate with our second public subnet
+  subnet_id      = aws_subnet.levelupvpc-public-2.id			# our second public subnet id
+  route_table_id = aws_route_table.levelup-public.id			# our route table id
+}
+
+resource "aws_route_table_association" "levelup-public-3-a" {		# associate with our third public subnet
+  subnet_id      = aws_subnet.levelupvpc-public-3.id			# our third public subnet id
+  route_table_id = aws_route_table.levelup-public.id			# our route table id
+}
+--------------------------------------------------
+
+
+
+security_group.tf
+--------------------------------------------------
+#Security Group for levelupvpc
+resource "aws_security_group" "allow-levelup-ssh" {		# security group resource
+  vpc_id      = aws_vpc.levelupvpc.id				# our VPC id
+  name        = "allow-levelup-ssh"				# SG name
+  description = "security group that allows ssh connection"	# short description
+
+  egress {					# egress rule - outbond traffic
+    from_port   = 0				# from port traffic accepted - all ports
+    to_port     = 0				# to port traffic accepted - all ports
+    protocol    = "-1"				# "-1" - all protocols, we can use also list []
+    cidr_blocks = ["0.0.0.0/0"]			# all IPs for outgoing traffic - best practice
+  }  
+
+  ingress {					# ingress rule - inbound traffic
+    from_port   = 22				# from port 22 only incoming traffic
+    to_port     = 22				# to port 22 only incoming traffic
+    protocol    = "tcp"				# tcp protocol only
+    cidr_blocks = ["0.0.0.0/0"]			# all IPs - not recommended
+  }	# Best prectice - We should specify only the IP of our local PC/box that will execute terraform commands
+  
+  tags = {					# tag
+    Name = "allow-levelup-ssh"
+  }
+}
+
+#Security Group for MariaDB				
+resource "aws_security_group" "allow-mariadb" {		# mariadb security group 
+  vpc_id      = aws_vpc.levelupvpc.id			# our VPC id 
+  name        = "allow-mariadb"				# SG name
+  description = "security group for Maria DB"		# short description
+
+  egress {					# ingress rule - inbound traffic
+    from_port   = 0				# from port traffic accepted - all ports
+    to_port     = 0				# to port traffic accepted - all ports
+    protocol    = "-1"				# "-1" - all protocols, we can use also list []
+    cidr_blocks = ["0.0.0.0/0"]			# all IPs for outgoing traffic - best practice
+  }
+
+  ingress {					# ingress rule - inbound traffic
+    from_port   = 3306				# from port 3306 only incoming traffic
+    to_port     = 3306				# to port 3306 only incoming traffic
+    protocol    = "tcp"				# tcp protocol only
+    security_groups = [aws_security_group.allow-levelup-ssh.id]	   # SG of the aws instance that will access the MariaDB
+  }
+  
+  tags = {					# tag
+    Name = "allow-mariadb"
+  }
+}
+--------------------------------------------------
+
+
+
+We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+
+AWS DB SUBNET
+-------------
+➢ search 'aws db subnet group' (under RDS Relational Database)
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group#argument-reference
+
+
+AWS DB PARAMETER GROUP
+----------------------
+➢ search 'aws db parameter group' (under RDS Relational Database) - choose the specific DB, for this example MariaDB
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_parameter_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_parameter_group#argument-reference
+
+
+AWS DB INSTANCE
+---------------
+➢ search 'aws db instance' (under RDS Relational Database) - for this example MariaDB
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance#argument-reference
+
+
+rds.tf
+--------------------------------------------------
+#RDS Resources
+resource "aws_db_subnet_group" "mariadb-subnets" {
+  name        = "mariadb-subnets"
+  description = "Amazon RDS subnet group"
+  subnet_ids  = [aws_subnet.levelupvpc-private-1.id, aws_subnet.levelupvpc-private-2.id]
+}
+
+#RDS Parameters
+resource "aws_db_parameter_group" "levelup-mariadb-parameters" {
+  name        = "levelup-mariadb-parameters"
+  family      = "mariadb10.4"
+  description = "MariaDB parameter group"
+
+  parameter {
+    name  = "max_allowed_packet"
+    value = "16777216"
+  }
+}
+
+#RDS Instance properties
+resource "aws_db_instance" "levelup-mariadb" {
+  allocated_storage       = 20             # 20 GB of storage
+  engine                  = "mariadb"
+  engine_version          = "10.4.8"
+  instance_class          = "db.t2.micro"  # use micro if you want to use the free tier
+  identifier              = "mariadb"
+  username                = "root"           # username
+  password                = "mariadb141"     # password
+  db_subnet_group_name    = aws_db_subnet_group.mariadb-subnets.name
+  parameter_group_name    = aws_db_parameter_group.levelup-mariadb-parameters.name
+  multi_az                = "false"            # set to true to have high availability: 2 instances synchronized with each other
+  vpc_security_group_ids  = [aws_security_group.allow-mariadb.id]
+  storage_type            = "gp2"
+  backup_retention_period = 30                                          # how long you’re going to keep your backups
+  availability_zone       = aws_subnet.levelupvpc-private-1.availability_zone # prefered AZ
+  skip_final_snapshot     = true                                        # skip final snapshot when doing terraform destroy
+  
+  tags = {
+    Name = "levelup-mariadb"
+  }
+}
+
+output "rds" {
+  value = aws_db_instance.levelup-mariadb.endpoint
+}
+--------------------------------------------------
+
+
+provider.tf
+--------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+variables.tf
+--------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "AKIAY65Y5OPLU3XH5T6O"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  default = "levelup_key.pub"
+}
+
+variable "INSTANCE_USERNAME" {
+  default = "ubuntu"
+}
+--------------------------------------------------
+
+
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 2 to add, 0 to change, 0 to destroy.
+
+		Changes to Outputs:
+  		+ public_ip = (known after apply)	
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+On the console we can see instance public ip 
+Login to AWS and go set the correct region configured - us-east-2
+Check resources creation on AWS/EC2:
+
+We can connect the AWS instance from local PC/box.
+Copy the public IP from the console
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+Now we are logged into the instance.
+
+Check the status of the installed apache2
+	instance terminal --> systemctl status apache2
+
+We can browse the public IP of the AWS instance and we should receive the message from the script 'Deployed Machine via Terraform' 
+
+If we cannot connect to the instance we have to go to AWS/EC2/Security Group/Inbound Traffic and allow our local PC IP
+
+Exit the AWS instance
+	instance terminal --> exit
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes			# confirm destruction
+
+
+
+
+
 ➢ 
 
 ➢ 

@@ -660,7 +660,7 @@ resource "aws_security_group" "allow-levelup-ssh" {			# security group
     to_port     = 22							# to port 22 only incoming traffic
     protocol    = "tcp"							# tcp protocol only
     cidr_blocks = ["0.0.0.0/0"]	 					# all IPs - not recommended
-  } Pest prectice - We should specify only the IP of our local PC/box that will execute terraform commands
+  } # Best prectice - We should specify only the IP of our local PC/box that will execute terraform commands
   
   tags = {								# tag
     Name = "allow-levelup-ssh"
@@ -1240,7 +1240,7 @@ How we can pass User Data in time of instance launch
 45. Lab: User Data using Script
 ===============================
 
-We have 3 files
+We have 4 files
 ➢ createInstance.tf
 ➢ provider.tf
 ➢ variables.tf
