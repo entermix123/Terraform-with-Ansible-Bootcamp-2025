@@ -119,7 +119,7 @@ resource "aws_instance" "MyFirstInstnace" {
   }
 }
 
-output "public_ip" {							# print instance public ip on lounch
+output "public_ip" {							# print instance public ip on launch
   value = aws_instance.MyFirstInstnace.public_ip 
 }
 --------------------------------------------------
@@ -324,6 +324,8 @@ AWS DB INSTANCE
 ➢ search 'aws db instance' (under RDS Relational Database) - for this example MariaDB
   ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance#example-usage
   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance#argument-reference
+  ➢ MariaDB Latest Version - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.MariaDB.Parameters.html
+  ➢ MariaDB latest engine version - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MariaDB.Concepts.VersionMgmt.html
 
 
 rds.tf
@@ -359,18 +361,18 @@ resource "aws_db_instance" "levelup-mariadb" {
   db_subnet_group_name    = aws_db_subnet_group.mariadb-subnets.name			# link hte db subnet
   parameter_group_name    = aws_db_parameter_group.levelup-mariadb-parameters.name	# link the db parameter group
   multi_az                = "false"            # set to true to have high availability: 2 instances synchronized with each other
-  vpc_security_group_ids  = [aws_security_group.allow-mariadb.id]
-  storage_type            = "gp2"
+  vpc_security_group_ids  = [aws_security_group.allow-mariadb.id]  	# db security group id
+  storage_type            = "gp2"					# type disk
   backup_retention_period = 30                                          # how long you’re going to keep your backups
-  availability_zone       = aws_subnet.levelupvpc-private-1.availability_zone # prefered AZ
+  availability_zone       = aws_subnet.levelupvpc-private-1.availability_zone # prefered AZ - same as the first private subnet 
   skip_final_snapshot     = true                                        # skip final snapshot when doing terraform destroy
   
-  tags = {
+  tags = {								# tag
     Name = "levelup-mariadb"
   }
 }
 
-output "rds" {
+output "rds" {								# print the endpoint for mariadb RDS on launch
   value = aws_db_instance.levelup-mariadb.endpoint
 }
 --------------------------------------------------
@@ -476,8 +478,9 @@ Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
 
-On the console we can see instance public ip 
-Login to AWS and go set the correct region configured - us-east-2
+It may take from 5 to 15 minutes for resource creation.
+On the console we can see instance public ip and mariadb endpoint.
+
 Check resources creation on AWS/EC2:
 
 We can connect the AWS instance from local PC/box.
@@ -490,54 +493,146 @@ Copy the public IP from the console
 
 Now we are logged into the instance.
 
-Check the status of the installed apache2
-	instance terminal --> systemctl status apache2
+Update the instance package manager
+	instance terminal --> sudo apt-get update
 
-We can browse the public IP of the AWS instance and we should receive the message from the script 'Deployed Machine via Terraform' 
+Install mysql-client
+	instance terminal --> sudo apt-get install mysql-client
+	instance terminal --> yes			# confirm
 
-If we cannot connect to the instance we have to go to AWS/EC2/Security Group/Inbound Traffic and allow our local PC IP
+Connect to MariaDB with te mysql-client
+	instance terminal --> mysql -u root -h mariadb.cyfn1frcqyc9.us-east-2.rds.amazonaws.com -p'maria141'
+
+	# mysql				- use mysql
+	# -u root			- set user - user is set in the rds.tf/"aws_db_instance" section
+	# -h mariadb.cyfn1frcqyc9.us-east-2.rds.amazonaws.com - the endpoint of the db - we can copy from the console after apply
+	# -p'mariadb141'		- password - password is set in the rds.tf/"aws_db_instance" section, no space "-p'pass'"
+
+Now we are logged in on the MariaDB instance
+We can list the databases
+	mariadb terminal --> show databases;
+
+	# result: default databases in table fomrat - 6 dbs
+
+Exit MariaDB instance
+	mariadb terminal --> exit
 
 Exit the AWS instance
 	instance terminal --> exit
+
+We can check MariaDB on AWS/RDS/DB Instances
+
 
 DESTROY
 -------
 We can now destroy the created resources on AWS
 	terminal --> terraform destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
 	terminal --> yes			# confirm destruction
 
 
 
+SUMMARY
+
+Steps to create RDS Instances:
+------------------------------
+
+➢ Create a Subnet Group - Allow in which Subnets the database will be in. 
+	- vpc.tf (internet gateway and subnets), security_group.tf
+
+➢ Create Parameter Group - Allow to change setting in DB using parameters. 
+	- rds.tf
+
+➢ Create Security group - Allow incoming traffic to RDS instance. 
+	- security_group.tf
+
+➢ Create RDS Instance Itself. 
+	- rds.tf
 
 
-➢ 
 
-➢ 
 
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
 
 
 49. AWS Access and Identity Management
 ======================================
 
-➢ 
+Managing the security access with AIM (principal) User
 
-➢ 
+➢ IAM - Access and Identity Management.
 
-➢ 
+➢ IAM enables you to manage access to AWS services and resources in a very secure manner.
 
-➢ 
+➢ AWS Identity and Access Management (IAM) is a web service for securely controlling access to AWS resources.
 
-➢ 
 
-➢ 
+
+How Does IAM Work?
+------------------
+
+➢ Principal is an entity that can perform actions on an AWS resource. A user, a role or an application can be a principal.
+	- IAM principal can be a user, role or application
+
+➢ Authentication is the process of confirming the identity of the principal trying to access an AWS product. The principal must provide its credentials or required keys for authentication.
+
+➢ Request: A principal sends a request to AWS specifying the action and which resource should perform it.
+	- principal will specify creadentials, resource and type action
+
+➢ Authorization: By default, all resources are denied. IAM authorizes a request only if all parts of the request are allowed by a matching policy. After authenticating and authorizing the request, AWS approves the action.
+
+➢ Actions are used to view, create, edit or delete a resource.
+
+➢ Resources: A set of actions can be performed on a resource related to your AWS account.
+
+
+
+Components of IAM
+-----------------
+
+➢ Users : IAM user is an identity with an associated credential and permissions attached to it.
+	- we need to assign creadentials and permissions to the user
+
+➢ This could be an actual person who is a user, or it could be an application that is a user.
+
+➢ Each IAM user is associated with only one AWS account.
+
+
+
+Components of IAM
+-----------------
+
+➢ Groups : A collection of IAM users is an IAM group.
+
+➢ IAM groups used to specify permissions for multiple users so that any permissions applied to the group are applied to the individual users in that group.
+	- Developer group - Role Base Access Control - RBAC
+
+➢ New member of the Group inherit the policies and permissions of the Group automatically.
+
+
+Components of IAM
+-----------------
+
+➢ Policies : IAM policy sets permission and controls access to AWS resources.
+
+➢ Policy is a JSON data document.
+
+➢ Permissions specify who has access to the resources and what actions they can perform. Policy would contain the following
+information:
+	➢ Who can access it
+	➢ What actions that user can take
+	➢ Which AWS resources that user can access
+	➢ When they can be accessed (timeframe)
+
+
+Components of IAM
+-----------------
+
+➢ Roles : IAM role is a set of permissions that define what actions are allowed and denied by an entity in the AWS console.
+
+➢ Role permissions are temporary credentials.
+	- we set permision to backend to modify the DB and not frontend service.
+
 
 
 
@@ -545,7 +640,134 @@ We can now destroy the created resources on AWS
 50. Lab : IAM Users and Groups
 ==============================
 
-➢ 
+We have 3 files
+---------------
+➢ iamuser.tf
+➢ providers.tf
+➢ variables.tf
+
+We will craete IAM user and will NOT destroy it with terraform. Thi IAM user will be used in the next lectures and Labs.
+	- NO terraform destroy
+
+
+AWS IAM USER
+------------
+➢ search 'aws iam user'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user#argument-reference
+  ➢ Attribute Reference - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user#attribute-reference
+
+
+AWS IAM GROUP MEMBERSHIP
+------------------------
+➢ search 'aws iam group membership'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_group_membership#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_group_membership#argument-reference
+  ➢ Attribute Reference - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_group_membership#attribute-reference
+
+
+AWS IAM POLICY ATTACHMENT
+-------------------------
+➢ search 'aws iam policy attachment'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy_attachment#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy_attachment#argument-reference
+  ➢ Attribute Reference - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy_attachment#attribute-reference
+
+
+
+iamuser.tf
+--------------------------------------------------
+#TF File for IAM Users and Groups
+
+resource "aws_iam_user" "adminuser1" {			# admin user 1
+  name = "adminuser1"					# name for user 1
+}
+
+resource "aws_iam_user" "adminuser2" {			# admin user 2
+  name = "adminuser2"					# name for admin user 2 
+}
+
+# Group TF Definition
+resource "aws_iam_group" "admingroup" {			# admin group
+  name = "admingroup"					# name of the group
+}
+
+#Assign User to AWS Group
+resource "aws_iam_group_membership" "admin-users" {	# group membership 
+  name = "admin-users"					# name of the membership
+  users = [						# list of the users
+    aws_iam_user.adminuser1.name,
+    aws_iam_user.adminuser2.name,
+  ]
+  group = aws_iam_group.admingroup.name			# group of the users
+}
+
+#Policy for AWS Group
+resource "aws_iam_policy_attachment" "admin-users-attach" {	# policy resource
+  name       = "admin-users-attach"				# policyresource  name
+  groups     = [aws_iam_group.admingroup.name]			# associate groups
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"	# set policy rights - administrative access
+}
+--------------------------------------------------
+
+
+
+providers.tf
+--------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+variables.tf
+--------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "AKIAY65Y5OPLU3XH5T6O"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  default = "levelup_key.pub"
+}
+
+variable "INSTANCE_USERNAME" {
+  default = "ubuntu"
+}
+--------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
 
 ➢ 
 
