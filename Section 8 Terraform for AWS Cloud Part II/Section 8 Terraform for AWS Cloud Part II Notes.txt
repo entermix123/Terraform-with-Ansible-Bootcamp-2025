@@ -760,24 +760,77 @@ variable "INSTANCE_USERNAME" {
 
 
 
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
 
 
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 5 to add, 0 to change, 0 to destroy.
 
 
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+# result:
+aws_iam_user.adminuser1: Creating...
+aws_iam_user.adminuser2: Creating...
+aws_iam_group.admingroup: Creating...
+aws_iam_user.adminuser2: Creation complete after 1s [id=adminuser2]
+aws_iam_user.adminuser1: Creation complete after 1s [id=adminuser1]
+aws_iam_group.admingroup: Creation complete after 1s [id=admingroup]
+aws_iam_group_membership.admin-users: Creating...
+aws_iam_policy_attachment.admin-users-attach: Creating...
+aws_iam_policy_attachment.admin-users-attach: Creation complete after 0s [id=admin-users-attach]
+aws_iam_group_membership.admin-users: Creation complete after 0s [id=admin-users]
 
 
+Check resources creation on 
+Users - AWS/IAM/Users
+User Groups - AWS/IAM/Users groups - admingroup is new, inside we have the two users: adminuser1 and adminuser2
+	- inside User details we can see AdministratorAccess permissions
 
 
+NO DESTROY
+----------
 
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
 
 
@@ -785,17 +838,306 @@ variable "INSTANCE_USERNAME" {
 51. Lab : AWS IAM Roles
 =======================
 
-➢ 
+We have 5 files
+---------------
+➢ createInstance.tf
+➢ iamroles.tf
+➢ s3bucket.tf
+➢ provider.tf
+➢ variables.tf
 
-➢ 
 
-➢ 
 
-➢ 
+createInstance.tf
+--------------------------------------------------
+resource "aws_key_pair" "levelup_key" {
+    key_name = "levelup_key"
+    public_key = file(var.PATH_TO_PUBLIC_KEY)
+}
 
-➢ 
+#Create AWS Instance
+resource "aws_instance" "MyFirstInstnace" {
+  ami           = lookup(var.AMIS, var.AWS_REGION)
+  instance_type = "t2.micro"
+  availability_zone = "us-east-2a"
+  key_name      = aws_key_pair.levelup_key.key_name
+  
+  iam_instance_profile = aws_iam_instance_profile.s3-levelupbucket-role-instanceprofile.name
 
-➢ 
+  tags = {
+    Name = "custom_instance"
+  }
+}
+
+output "public_ip" {
+  value = aws_instance.MyFirstInstnace.public_ip 
+}
+--------------------------------------------------
+
+
+
+
+AWS IAM ROLE
+------------
+➢ search 'aws iam role'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role#argument-reference
+
+
+AWS IAM ROLE POLICY
+-------------------
+➢ search 'aws iam role'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy#argument-reference
+
+
+AWS IAM INSTANCE PROFILE
+------------------------
+➢ search 'aws iam role'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile#argument-reference
+
+
+
+iamroles.tf
+--------------------------------------------------
+#Roles to access the AWS S3 Bucket
+resource "aws_iam_role" "s3-levelupbucket-role" {	# iam role resource
+  name               = "s3-levelupbucket-role"		# iam role name
+  assume_role_policy = <<EOF				#
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+
+}
+
+#Policy to attach the S3 Bucket Role
+resource "aws_iam_role_policy" "s3-levelupmybucket-role-policy" {
+  name = "s3-levelupmybucket-role-policy"
+  role = aws_iam_role.s3-levelupbucket-role.id
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+              "s3:*"
+            ],
+            "Resource": [
+              "arn:aws:s3:::levelup-bucket-141",
+              "arn:aws:s3:::levelup-bucket-141/*"
+            ]
+        }
+    ]
+}
+EOF
+
+}
+
+#Instance identifier
+resource "aws_iam_instance_profile" "s3-levelupbucket-role-instanceprofile" {
+  name = "s3-levelupbucket-role"
+  role = aws_iam_role.s3-levelupbucket-role.name
+}
+--------------------------------------------------
+
+
+
+
+AWS S3 BUCKET
+-------------
+➢ search 'aws s3 bucket'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket#argument-reference
+
+
+s3bucket.tf
+--------------------------------------------------
+#Create AWS S3 Bucket
+
+resource "aws_s3_bucket" "levelup-s3bucket" {
+  bucket = "levelup-bucket-141"
+
+  tags = {
+    Name = "levelup-bucket-141"
+  }
+}
+--------------------------------------------------
+
+
+
+provider.tf
+--------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+variables.tf
+--------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "AKIAY65Y5OPLU3XH5T6O"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  default = "levelup_key.pub"
+}
+
+variable "INSTANCE_USERNAME" {
+  default = "ubuntu"
+}
+--------------------------------------------------
+
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 19 to add, 0 to change, 0 to destroy.
+
+		Changes to Outputs:
+  		  + public_ip = (known after apply)
+  		  + rds       = (known after apply)	
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+It may take from 5 to 15 minutes for resource creation.
+On the console we can see instance public ip and mariadb endpoint.
+
+Check resources creation on AWS/EC2:
+
+We can connect the AWS instance from local PC/box.
+Copy the public IP from the console
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+Now we are logged into the instance.
+
+Update the instance package manager
+	instance terminal --> sudo apt-get update
+
+Install mysql-client
+	instance terminal --> sudo apt-get install mysql-client
+	instance terminal --> yes			# confirm
+
+Connect to MariaDB with te mysql-client
+	instance terminal --> mysql -u root -h mariadb.cyfn1frcqyc9.us-east-2.rds.amazonaws.com -p'maria141'
+
+	# mysql				- use mysql
+	# -u root			- set user - user is set in the rds.tf/"aws_db_instance" section
+	# -h mariadb.cyfn1frcqyc9.us-east-2.rds.amazonaws.com - the endpoint of the db - we can copy from the console after apply
+	# -p'mariadb141'		- password - password is set in the rds.tf/"aws_db_instance" section, no space "-p'pass'"
+
+Now we are logged in on the MariaDB instance
+We can list the databases
+	mariadb terminal --> show databases;
+
+	# result: default databases in table fomrat - 6 dbs
+
+Exit MariaDB instance
+	mariadb terminal --> exit
+
+Exit the AWS instance
+	instance terminal --> exit
+
+We can check MariaDB on AWS/RDS/DB Instances
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
+	terminal --> yes			# confirm destruction
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -816,6 +1158,15 @@ variable "INSTANCE_USERNAME" {
 ➢ 
 
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 53. Lab : EC2 Instance Autoscaling
