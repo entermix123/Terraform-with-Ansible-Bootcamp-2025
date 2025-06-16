@@ -11,8 +11,177 @@ Section 9: Terraform Modules | Cloud Reusable
 
 
 
+
 57. Terraform Module and Application
 ====================================
+
+➢ How we can make the Infrastructure Code Reusable?
+
+
+Problem with Terraform Config Structure
+---------------------------------------
+
++--environments
+| +--dev
+| | +--main.tf
+| |
+| +--production
+| | +--main.tf
+| |
+| +--staging
+|   +--main.tf
+|
++--main.tf
++--rovider.tf
+
+➢ How User will add the New Resource Like Elastic Cache in above Structure?
+
+
+
+Terraform Modules - Terraform Modules provides re-usable code.
+-----------------
+
+➢ With Terraform, user can put code inside of a Terraform module and reuse that module in multiple places.
+
+➢ Modules are the key ingredient to writing reusable, maintainable, and testable Terraform code.
+
+➢ Terraform’s way of creating modules is very simple: create a directory that holds a bunch of .tf files.
+
+➢ Similar to functions in programming languages, module is reusable code that can be invoked multiple times with different inputs.
+
++--elasticache		# new directory
+| +--main.tf		# new file and refer it to the different environments
+|
++--environments
+| +--dev
+| | +--main.tf
+| |
+| +--production
+| | +--main.tf
+| |
+| +--staging
+|   +--main.tf
+|
++--main.tf
+
+
+
+➢ Below Syntax can be used to add elasticache in other Envs.
+
+--------------------------------------------------
+module "dev-elasticache" {				# module
+  source = "../../elasticache"				# body of the module with relative or absolute path
+}
+--------------------------------------------------
+
+We can use the module in each environment, but we must change the module name for the specific env.
+
+
+
+Configurable Terraform Modules
+------------------------------
+
+➢ Now that user have our reusable module in place, user will hit another problem: each environment might have its own requirement from a certain resource.
+
+➢ Eg. In dev we might need just one cache.m3.medium node in our Elasticache cluster, but in production, we might need 3 cache.m3.large nodes in the cluster.
+
+➢ Above Issue can be solved by making the module configurable using Input varaibles.
+
+
++--elasticache
+| +--main.tf
+| +--variables.tf		# craete variables.tf for the module
+|
++--environments
+| +--dev
+| | +--main.tf
+| |
+| +--production
+| | +--main.tf
+| |
+| +--staging
+|   +--main.tf
+|
++--main.tf
+
+➢ variables.tf file will hold the variables that configure the module.
+
+
+
+➢ Sample Variable file.
+--------------------------------------------------
+variable "environment" {}
+variable "node_count" {}
+variable "node_type" {}
+variable "availability_zones" { type = "list" }
+--------------------------------------------------
+
+
+Sample Module main.tf file.
+--------------------------------------------------
+resource "aws_elasticache_group" "elasticache-cluster" {		# define resource
+  availability_zones = ["${var.availability_zones}"]			# set list of availability zones
+  replication_group_id = "tf-${var.environment}-group"			# set replication groups
+  replication_group_description = “${var.environment} group"		# rep gr description
+  node_type = "${var.node_type}"					# node type
+  number_cache_clusters = "${var.node_count}"				# coun tcache cluster
+  parameter_group_name = “default.redis3.1"				# parameter group name - hard coded here
+  port = 6379								# port
+--------------------------------------------------
+
+
+
+We use the variable template and configure the 'dev' environment
+
+Module call in Dev Env
+--------------------------------------------------
+module "dev-elasticache" {				# define the module
+  source = "../../elasticache"				# set template source
+  environment = "dev"					# set env name
+  node_count = 1					# node count
+  node_type = “cache.m3.small"				# node hardware type
+  availability_zones = ["us-east-1a", "us-east-1b"]	# list of availability zones
+}
+--------------------------------------------------
+
+
+We use the same template but for different environment - production
+
+Module call in prod Env
+--------------------------------------------------
+module "production-elasticache" {
+  source = "../../elasticache"
+  environment = “prod"
+  node_count = 3
+  node_type = "cache.m3.large"
+  availability_zones = ["us-east-1a", "us-east-1b"]
+}
+--------------------------------------------------
+
+
+
+Source of Modules
+-----------------
+
+➢ Registry
+We can search for ready modules on terrafomr site - https://registry.terraform.io/
+	- search for 'ec2 instances', click on 'see all' for modules
+	# results are only for AWS (EC2 is aws resource)
+	# https://registry.terraform.io/modules/terraform-aws-modules/ec2-instance/aws/latest#usage
+	# we can see the module version, syntax and details
+
+	In every module there is GitHub link
+		- https://github.com/terraform-aws-modules/terraform-aws-ec2-instance
+
+➢ GitHub
+	- We can use terraform modules from GitHub bu cloning the code with GitHub CLI
+		- https://github.com/terraform-aws-modules/terraform-aws-ec2-instance
+
+➢ Local File Path
+	- We refer local location of the create module
+
+
+
 
 
 
@@ -20,21 +189,228 @@ Section 9: Terraform Modules | Cloud Reusable
 ======================================
 
 
+We have 2 files
+---------------
+➢ main.tf	- basic configuration file
+➢ proider.tf
+
+To use created modules we need to provide only nessecary variables values. We can see which variables we must specify from the variables.tf in the repo. If no default values are set, we need to provide the variable and its value.
+	- Module variables.tf - https://github.com/terraform-aws-modules/terraform-aws-ec2-instance/blob/master/variables.tf
+	- We can see example usage - https://github.com/terraform-aws-modules/terraform-aws-ec2-instance?tab=readme-ov-file#usage
+
+main.tf
+--------------------------------------------------
+module "ec2_cluster" {									# module name
+    source = "github.com/terraform-aws-modules/terraform-aws-ec2-instance.git"		# we consume GitHub source
+    # we can copy the module GitHub repo address and use it without 'https://' prefix
+
+    # we can open variables.tf in the GitHub repo and see which variables do not have default values - they are required
+    name    = "my-cluster"				# cluster name
+    ami     = "ami-0f40c8f97004632f9"			# AMI (amazon machine image)
+    instance_type          = "t2.micro"			# hardware type - t2.micro - free tier
+    subnet_id   = "subnet-e92f9cc8"			# subnet name from AWS/VPC/Subnets in the us-east-1 region
+
+    tags = {						# tags
+    Terraform   = "true"
+    Environment = "dev"
+    }
+}
+--------------------------------------------------
+
+
+
+proider.tf
+--------------------------------------------------
+provider "aws" {					# provider resource
+  access_key = "AKIAY65Y5OPLU3XH5T6O"			# access key
+  secret_key = ""					# secret key must be hidden, we will provide it in runtime
+  region     = "us-east-1"				# region
+}
+--------------------------------------------------
+
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 18 to add, 0 to change, 0 to destroy.
+
+		Changes to Outputs:
+		  + ELB = (known after apply)	
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
+	terminal --> yes
+
+
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+
+
 
 59. Lab : Local Path Module
 ===========================
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 
 60. Lab : AWS VPC Module Part I
 ===============================
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 61. Lab : AWS VPC Module Part II
 ================================
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 62. Lab : AWS VPC Module Part III
 =================================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
