@@ -125,6 +125,38 @@ output "public_ip" {							# print instance public ip on launch
 --------------------------------------------------
 
 
+
+AWS VPC
+-------
+➢ search 'aws vpc' in the search bar on left and choose 'aws_vpc'
+   ➢ Example usage and syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc#example-usage
+   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc#argument-reference
+
+AWS SUBNET
+----------
+➢ search 'aws subnet'
+   ➢ Example usage and syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#example-usage
+   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#argument-reference
+
+AWS INTERNET GATEWAY
+--------------------
+➢ search 'aws internet gateway'
+  ➢ Example syntax - ttps://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway#argument-reference
+
+AWS ROUTE TABLE
+---------------
+➢ search 'aws route table'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#argument-reference
+
+AWS ROUTE TABLE ASSOCIATION
+---------------------------
+➢ search 'aws route table assocation'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#argument-reference
+
+
 vpc.tf
 --------------------------------------------------
 #Create AWS VPC
@@ -1449,10 +1481,7 @@ Plan terraform resources
 
 	# the plan should be successful and we can review the logs
 	# result: 	
-		Plan: 6 to add, 0 to change, 0 to destroy.
-
-		Changes to Outputs:
-  		  + public_ip = (known after apply)	
+		Plan: 7 to add, 0 to change, 0 to destroy.	
 
 APPLY
 -----
@@ -1461,9 +1490,680 @@ Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
 
-On the console we can see instance public ip 
+Check resources creation on AWS/EC2.
+We can check autoscaling groups on AWS/EC2/Auto Scaling Groups
+	- we can see the policies
+	- activity, instance management, monitoring and more
+We can see cloud watch on AWS Management Console/CloudWatch
+	- go to Alarms - We have 2 alarms
+		- OK - increase scaling - no load or increased traffic
+		- NOK - decreased scaling - the load is below 10%, but the minimum count servers requirement is allready satified
 
-Check resources creation on AWS/EC2 and AWS/S3
+We will simulate increased load on the instance to trigger the upscaling policy.
+
+We can connect the AWS instance from local PC/box.
+Copy the public IP from the console
+	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
+
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+Now we are logged into the instance.
+
+Switch to root user
+	instance terminal --> sudo -s
+
+Update the instance package manager
+	instance terminal --> apt-get update
+
+Install stress test
+	instance terminal --> apt-get install stress
+
+Start stress test fo increase the load i=on the instance
+	instance terminal --> stress --cpu 2 --timeout 300
+
+	# stress			- common stress command
+	# --cpu 2			- cpu number
+	# --timeout 300			- period in seconds - 300s = 5 minutes
+
+Go to the AWS/CloudWatch and check the graphs. Both alarms are OK. 
+Few minutes later we have NOK alarm for increased load and new instance is created on AWS/EC2.
+We can check the events on AWS/EC2/Auto Scaling Groups/Activities
+
+After end of the 5 minutes stress on the instance descaling alarm will trigger decreasing policy and the second instance on AWS/EC2 will be terminated.
+We can monitor the events on AWS/EC2/Auto Scaling Groups/Activities.
+
+Exit the AWS instance
+	instance terminal --> exit
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
+	terminal --> yes
+
+
+
+
+
+
+54. Your Reviews are Important!
+===============================
+
+Your reviews are very important to me! That's the single most motivating factor for me to keep going. So please consider leaving a few lines when writing a review:
+
+I always aim for a 5-star course. If you don't think the course is 5 stars, please write to me at anshulc55@gmail.com about what you think is missing and how I can improve.
+
+
+If you have already reviewed the course and want to change your review, it's quite simple-
+
+You can change your course review from the course player by:
+
+1. Click the three dots at the top right-hand corner of the page.
+
+2. Next, click Edit your rating.
+
+3. Make the changes, and click Save and Exit to finalize your edits.
+
+
+
+
+
+55. Load Balancing in AWS
+=========================
+
+➢ Amazon AWS Elastic Load Balancer is a purpose built service for distributing workloads.
+	- load balancer will distribute the traffic across all available instances
+
+➢ For ELB, User must specify One Public Subnet for at least two availability zones.
+	- at least one public subnet and two availability zones for load balancing
+
+➢ Accept incoming traffic from client and route to Target.
+
+➢ Monitor Health of registered target and send traffic to only healthy Targets.
+	- as soon as health check start fail, AWS will mark the isntance as unhealthy and load balancer will NOT send traffic 
+
+➢ Deleting ELB won’t delete the targets associated to it.
+	- if we delete the load balancer, the instances will NOT be deleted - no cascate deletion.
+	- we need to provide a confirmation before deleting a load balancer (ELB by default prevented = true - option)
+
+➢ Supports SSL offloading which allow ELB to bypass SSL termination by removing SSL based encryption.
+	- load balancer decript traffic and then send it to the instances
+	- load balancer encript traffic when sending to the user (external target)
+
+
+		Clients				Elastic Load Balancer				EC2 IKnstances
+
+												-----------------
+							----------------------------------------|  Instance 1	|
+							|					|		|
+	Tablet-------------------		-----------------				-----------------
+				|		|		|				-----------------
+	Mobile--------------------------------->| Balancer	|-------------------------------|  Instance 2	|
+				|		|		|				|		|
+	PC-----------------------		-----------------				-----------------
+							|						.
+							|						.
+							|						.
+							|						.
+							|					-----------------
+							----------------------------------------|  Instance N	|
+												|		|
+												-----------------
+
+If all instances are healty, the load balancer will route traffic across all instances. The load balancer will not route traffic to unhealthy instances.
+
+
+
+
+Types of AWS Elastic Load Balancers
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+➢ Classic Load Balancer
+
+➢ Network Load Balancer
+
+➢ Application Load Balancer
+
+
+
+
+
+Classic Load Balancer - Used for EC2 Classic Instances only (one way traffic only - NOT RECOMMENDED)
+--------------------- 
+	➢ This is the previous generation’s load balancer and also it doesn’t allow host-based or path based routing.
+		- NOT RECOMMENDED
+
+	➢ Routing decisions can be taken in transport layer (TCP/SSL) or the application layer (HTTP/HTTPS).
+
+	➢ Classic Load Balancers require a fixed connection between the load balancer port and container instance port.
+		- NOT RECOMMENDED
+
+
+
+Network Load Balancer - Works at Forth Layer of OSI, it uses TCP and UDP connections only. (CANNOT be used for HTTP & HTTPS)
+---------------------
+	➢ It can handle millions of requests per second.
+		
+	➢ Support the Static IP address for Load Balancer.
+
+	➢ It supports routing request to multiple applications on single EC2 Instance.
+		- all different applications must listen on different ports
+
+						
+		availability zone		|		availability zone	
+			A			|			B
+		-----------------		v		-----------------
+	VPC	|		|	-----------------	|		|
+	--------------------------------|   Balancer	|--------------------------------
+	|	| -------------	|	|		|	| -------------	|	|
+	|	| |	      | |	-----------------	| |           |	|	|
+	|	| |	      | |		|		| |           |	|	|
+	|	| | Instances |<|-------------------------------|>| Instances | |	|
+	|	| |	      | |				| |           | |	|
+	|	| |	      | |				| |           |	|	|
+	|	| -------------	|				| -------------	|	|
+	|	|		|				|		|	|
+	---------------------------------------------------------------------------------
+		|		|				|		|
+		-----------------				-----------------
+
+
+
+Application Load Balancer - Application Load Balancer in AWS makes routing decisions at the application layer (HTTP/ HTTPs) of the 
+-------------------------   OSI model. - MOST ADVANCED LOAD BALANCER - RECOMMENDED
+
+➢ ALB supports path-based and host-based routing.		
+	➢ path based routing example: 
+		- when we open yahoo.com and open one of the subpages the path is changed to yahoo.com/some_page
+
+	➢ host-based routing example:
+		- here we can have multiple instances for one url
+			- few instances for home page
+			- few instances for my card etc.
+		
+➢ Cross-Zone load balancing is enabled.
+
+
+
+		availability zone		|		availability zone	
+			A			|			B
+		-----------------		v		-----------------
+	VPC	|		|	-----------------	|		|
+	--------------------------------|   Balancer	|--------------------------------
+	|	| -------------	|	|		|	| -------------	|	|
+	|	| | Path 1    |<|---	-----------------   ----|>| Path 2    |	|	|
+	|	| |	      | |  |		|	    |	| |           |	|	|
+	|	| |Instance 1 |<|-------------------------------|>|Instance 2 | |	|
+	|	| |           | |  |			    |	| |           | |	|
+	|	| | App 1     |<|---			    ----|>| App 2     |	|	|
+	|	| -------------	|				| -------------	|	|
+	|	|		|				|		|	|
+	---------------------------------------------------------------------------------
+		|		|				|		|
+		-----------------				-----------------
+
+
+We can assign specific hardware to specific path only - specific load preferences.
+
+
+
+
+56. Lab : AWS Load Balancing
+============================
+
+We have 5 files
+---------------
+➢ autoscaling.tf
+➢ elb.tf
+➢ prvider.tf
+➢ variables.tf
+➢ vpc.tf
+
+It si a good practice to keep all similar resources in separate files
+	- all Security Groups should be in security_groups.tf
+	- all ELB configs should be in elb.tf
+	- etc.
+
+For this example we are mixing different resources in one file.
+
+
+
+AWS LAUNCH CONFIGURATION
+------------------------
+➢ search 'aws launch configuration'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_configuration#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_configuration#argument-reference
+
+
+AWS AUTOSCALING GROUP
+---------------------
+➢ search 'aws autoscaling group'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group#argument-reference
+
+
+autoscaling.tf
+--------------------------------------------------
+#AutoScaling Launch Configuration
+resource "aws_launch_configuration" "levelup-launchconfig" {		# aws lounch configuration resource
+  name_prefix     = "levelup-launchconfig"				# launch configuration name
+  image_id        = lookup(var.AMIS, var.AWS_REGION)			# AIM ID (amazon machine image) and region
+  instance_type   = "t2.micro"						# type hardware - t2.micro free tier
+  key_name        = aws_key_pair.levelup_key.key_name			# secret key name
+  security_groups = [aws_security_group.levelup-instance.id]		# sec group id
+  user_data       = "#!/bin/bash\napt-get update\napt-get -y install net-tools nginx\nMYIP=`ifconfig | grep -E '(inet 10)|(addr:10)' | awk '{ print $2 }' | cut -d ':' -f2`\necho 'Hello Team\nThis is my IP: '$MYIP > /var/www/html/index.html"
+
+  lifecycle {
+    create_before_destroy = true	# first destroy existing instance if creating a new one
+  }
+}
+
+#Generate Key
+resource "aws_key_pair" "levelup_key" {				# sec key resoource
+    key_name = "levelup_key"					# key name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)			# path to public sec key location
+}
+
+#Autoscaling Group
+resource "aws_autoscaling_group" "levelup-autoscaling" {		# aws autoscaling group resource
+  name                      = "levelup-autoscaling"			# autoscaling group name
+  vpc_zone_identifier       = [aws_subnet.levelupvpc-public-1.id, aws_subnet.levelupvpc-public-2.id]	# public subnet 1 & 2 ids 
+  launch_configuration      = aws_launch_configuration.levelup-launchconfig.name	# launch configuration name
+  min_size                  = 2								# min count instances
+  max_size                  = 2								# max count instances
+  health_check_grace_period = 200		# after 200s continuous checks failed, new instance will be created
+  health_check_type         = "ELB"				# health check will be perormed by ELB
+  load_balancers            = [aws_elb.levelup-elb.name]				# used load balancer name
+  force_delete              = true							# delete instance if not healthy
+
+  tag {
+    key                 = "Name"
+    value               = "LevelUp Custom EC2 instance via LB"
+    propagate_at_launch = true
+  }
+}
+
+output "ELB" {							# print dns name of the load balancer on launch
+  value = aws_elb.levelup-elb.dns_name
+}
+--------------------------------------------------
+
+
+
+AWS LOAD BALANCER
+-----------------
+➢ search 'aws elb'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elb#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elb#argument-reference
+
+AWS SECURITY GROUP
+------------------
+We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+➢ search 'aws security group'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#argument-reference
+
+
+elb.tf
+--------------------------------------------------
+#AWS ELB Configuration
+resource "aws_elb" "levelup-elb" {			# load balancer resource
+  name            = "levelup-elb"								# load balancer name
+  subnets         = [aws_subnet.levelupvpc-public-1.id, aws_subnet.levelupvpc-public-2.id]	# 2 public subnets ids
+  security_groups = [aws_security_group.levelup-elb-securitygroup.id]				# sec group id
+  
+  listener {				# set listener for incoming requests
+    instance_port     = 80		# instance will listen to port 80
+    instance_protocol = "http"		# with protocol http
+    lb_port           = 80		# balancer will listen to port 80
+    lb_protocol       = "http"		# with protocol http
+  }
+
+  health_check {			# health check configs
+    healthy_threshold   = 2		# will mark instance healthy after 2 consecutive success health checks
+    unhealthy_threshold = 2		# will mark instance unhealthy after 2 consecutive fail health checks
+    timeout             = 3		# timeout 3s
+    target              = "HTTP:80/"
+    interval            = 30		# after 30s this check will be triggered on port 80 with HTTP
+  }	
+
+  cross_zone_load_balancing   = true	# allow balancing across different availability zones
+  connection_draining         = true	# Allows the ELB to complete active requests to an instance before removing it from
+					# service (e.g., during scaling-in, deployments, or unhealthy instances).
+					# Prevents abrupt termination of user sessions.
+					# How draining works - When enabled, the ELB stops sending new requests to a deregistered 
+					# instance but allows existing requests to complete.
+					# If requests exceed the connection_draining_timeout, they are forcibly closed.
+
+  connection_draining_timeout = 400	# perform connection draining for 400s
+
+  tags = {				# tag elb
+    Name = "levelup-elb"
+  }
+}
+
+#Security group for AWS ELB
+resource "aws_security_group" "levelup-elb-securitygroup" {	# SG resource for load balancer
+  vpc_id      = aws_vpc.levelupvpc.id				# vpc id
+  name        = "levelup-elb-sg"				# SG name
+  description = "security group for Elastic Load Balancer"	# short description
+  
+  egress {				# load balancer outbound traffic
+    from_port   = 0			# from all ports - no restrictions
+    to_port     = 0			# to all ports - no restrictions
+    protocol    = "-1"			# '-1' all protocols - no restrictions - recommended for egress traffic
+    cidr_blocks = ["0.0.0.0/0"]		# IP range - public connection
+  }
+
+  ingress {				# load balancer inbound traffic
+    from_port   = 80			# from port 80 
+    to_port     = 80			# to port 80
+    protocol    = "tcp"			# TCP protocol only
+    cidr_blocks = ["0.0.0.0/0"]		# no restriction - public accessable
+  }
+
+  tags = {
+    Name = "levelup-elb-sg"
+  }
+}
+
+#Security group for the Instances
+resource "aws_security_group" "levelup-instance" {		# SG resource
+  vpc_id      = aws_vpc.levelupvpc.id				# vpc id
+  name        = "levelup-instance"				# SG name
+  description = "security group for instances"			# shoet description
+  
+  egress {				# instance outbound traffic rule
+    from_port   = 0			# from all ports
+    to_port     = 0			# to all ports
+    protocol    = "-1"			# '-1' - allow all protocols 
+    cidr_blocks = ["0.0.0.0/0"]		# IP range - not restricted
+  }
+
+  ingress {				# instance ingress traffic rule
+    from_port   = 22			# from port 22 only
+    to_port     = 22			# to port 22 only
+    protocol    = "tcp"			# TCP protocol only
+    cidr_blocks = ["0.0.0.0/0"]		# IP range - not restricted - not recommended - (recommended to specify ELB IP)
+  }
+
+  ingress {				# second instance inbound traffic rule for the load balancer
+    from_port       = 80		# from port 80
+    to_port         = 80		# to port 80
+    protocol        = "tcp"		# TCP protocol only
+    security_groups = [aws_security_group.levelup-elb-securitygroup.id]	 # ELB SG id 
+  }	# only the load balancer can make connection on port 80 with the instance
+
+  tags = {
+    Name = "levelup-instance"
+  }
+}
+--------------------------------------------------
+
+
+prvider.tf
+--------------------------------------------------
+provider "aws" {
+  access_key = var.AWS_ACCESS_KEY
+  secret_key = var.AWS_SECRET_KEY
+  region     = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+variables.tf
+--------------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type = string
+    default = "AKIAY65Y5OPLU3XH5T6O"
+}
+
+variable "AWS_SECRET_KEY" {}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "AMIS" {
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+    }
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "levelup_key"
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  default = "levelup_key.pub"
+}
+
+variable "INSTANCE_USERNAME" {
+  default = "ubuntu"
+}
+--------------------------------------------------
+
+
+
+AWS VPC
+-------
+➢ search 'aws vpc' in the search bar on left and choose 'aws_vpc'
+   ➢ Example usage and syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc#example-usage
+   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc#argument-reference
+
+AWS SUBNET
+----------
+➢ search 'aws subnet'
+   ➢ Example usage and syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#example-usage
+   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#argument-reference
+
+AWS INTERNET GATEWAY
+--------------------
+➢ search 'aws internet gateway'
+  ➢ Example syntax - ttps://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway#argument-reference
+
+AWS ROUTE TABLE
+---------------
+➢ search 'aws route table'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#argument-reference
+
+AWS ROUTE TABLE ASSOCIATION
+---------------------------
+➢ search 'aws route table assocation'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#argument-reference
+
+
+
+vpc.tf
+--------------------------------------------------
+#Create AWS VPC
+resource "aws_vpc" "levelupvpc" {
+  cidr_block       = "10.0.0.0/16"	# Classless Inter-Domain Routing (CIDR) block
+  instance_tenancy = "default"		# more than one instance can run on the same hardware - preffered - minimized consts
+  enable_dns_support   = "true"
+  enable_dns_hostnames = "true"	  # create hostname and dns of our instance name, the name of our aws instance will work as dns
+
+  tags = {
+    Name = "levelupvpc"
+  }
+}
+
+# Public Subnets in Custom VPC
+resource "aws_subnet" "levelupvpc-public-1" {		# first public subnet resource
+  vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
+  cidr_block              = "10.0.1.0/24"		# IP range - we can't overlap with other subnets IP ranges
+  map_public_ip_on_launch = "true"	    	# on launch the public IP will be asociated with this instance - public subnet
+  availability_zone       = "us-east-2a"	# first availability zone for public subnet
+
+  tags = {					# tag
+    Name = "levelupvpc-public-1"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-public-2" {
+  vpc_id                  = aws_vpc.levelupvpc.id
+  cidr_block              = "10.0.2.0/24"
+  map_public_ip_on_launch = "true"
+  availability_zone       = "us-east-2b"
+
+  tags = {
+    Name = "levelupvpc-public-2"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-public-3" {
+  vpc_id                  = aws_vpc.levelupvpc.id
+  cidr_block              = "10.0.3.0/24"
+  map_public_ip_on_launch = "true"
+  availability_zone       = "us-east-2c"
+
+  tags = {
+    Name = "levelupvpc-public-3"
+  }
+}
+
+# Private Subnets in Custom VPC
+resource "aws_subnet" "levelupvpc-private-1" {
+  vpc_id                  = aws_vpc.levelupvpc.id
+  cidr_block              = "10.0.4.0/24"
+  map_public_ip_on_launch = "false"
+  availability_zone       = "us-east-2a"
+
+  tags = {
+    Name = "levelupvpc-private-1"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-private-2" {
+  vpc_id                  = aws_vpc.levelupvpc.id
+  cidr_block              = "10.0.5.0/24"
+  map_public_ip_on_launch = "false"
+  availability_zone       = "us-east-2b"
+
+  tags = {
+    Name = "levelupvpc-private-2"
+  }
+}
+
+resource "aws_subnet" "levelupvpc-private-3" {
+  vpc_id                  = aws_vpc.levelupvpc.id
+  cidr_block              = "10.0.6.0/24"
+  map_public_ip_on_launch = "false"
+  availability_zone       = "us-east-2c"
+
+  tags = {
+    Name = "levelupvpc-private-3"
+  }
+}
+
+# Custom internet Gateway
+resource "aws_internet_gateway" "levelup-gw" {
+  vpc_id = aws_vpc.levelupvpc.id
+
+  tags = {
+    Name = "levelup-gw"
+  }
+}
+
+#Routing Table for the Custom VPC
+resource "aws_route_table" "levelup-public" {
+  vpc_id = aws_vpc.levelupvpc.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.levelup-gw.id
+  }
+
+  tags = {
+    Name = "levelup-public-1"
+  }
+}
+
+resource "aws_route_table_association" "levelup-public-1-a" {
+  subnet_id      = aws_subnet.levelupvpc-public-1.id
+  route_table_id = aws_route_table.levelup-public.id
+}
+
+resource "aws_route_table_association" "levelup-public-2-a" {
+  subnet_id      = aws_subnet.levelupvpc-public-2.id
+  route_table_id = aws_route_table.levelup-public.id
+}
+
+resource "aws_route_table_association" "levelup-public-3-a" {
+  subnet_id      = aws_subnet.levelupvpc-public-3.id
+  route_table_id = aws_route_table.levelup-public.id
+}
+--------------------------------------------------
+
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+	terminal --> AWS Secret access key
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 7 to add, 0 to change, 0 to destroy.	
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
+
+Check resources creation on AWS/EC2.
+We can check autoscaling groups on AWS/EC2/Auto Scaling Groups
+	- we can see the policies
+	- activity, instance management, monitoring and more
+We can see cloud watch on AWS Management Console/CloudWatch
+	- go to Alarms - We have 2 alarms
+		- OK - increase scaling - no load or increased traffic
+		- NOK - decreased scaling - the load is below 10%, but the minimum count servers requirement is allready satified
+
+We will simulate increased load on the instance to trigger the upscaling policy.
 
 We can connect the AWS instance from local PC/box.
 Copy the public IP from the console
@@ -1482,8 +2182,11 @@ Update the instance package manager
 	instance terminal --> apt-get update
 
 
-We can see the access role on AWS/EC2/Details.
-	
+
+
+
+
+
 Exit the AWS instance
 	instance terminal --> exit
 
@@ -1499,56 +2202,8 @@ We can now destroy the created resources on AWS
 
 
 
-54. Your Reviews are Important!
-===============================
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
 
-
-
-55. Load Balancing in AWS
-=========================
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-
-
-
-56. Lab : AWS Load Balancing
-============================
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
 
 
