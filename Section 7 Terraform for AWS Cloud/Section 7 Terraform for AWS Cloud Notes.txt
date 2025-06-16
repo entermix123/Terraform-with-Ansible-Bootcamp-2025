@@ -335,7 +335,7 @@ vpc.tf
 --------------------------------------------------
 #Create AWS VPC
 resource "aws_vpc" "levelupvpc" {
-  cidr_block       = "10.0.0.0/16"			# Classless Inter-Domain Routing (CIDR) block.
+  cidr_block       = "10.0.0.0/16"			# Classless Inter-Domain Routing (CIDR) block
   instance_tenancy = "default"		# more than one instance can run on the same hardware - preffered - minimized consts
   enable_dns_support   = "true"
   enable_dns_hostnames = "true"	  # create hostname and dns of our instance name, the name of our aws instance will work as dns
@@ -346,7 +346,7 @@ resource "aws_vpc" "levelupvpc" {
 }
 
 # Public Subnets in Custom VPC
-resource "aws_subnet" "levelupvpc-public-1" {		# public subnet
+resource "aws_subnet" "levelupvpc-public-1" {		# first public subnet resource
   vpc_id                  = aws_vpc.levelupvpc.id	# ID of our VPC
   cidr_block              = "10.0.1.0/24"		# IP range - we can't overlap with other subnets IP ranges
   map_public_ip_on_launch = "true"	# on launch the public IP will be asociated with this instance - public subnet
@@ -639,8 +639,8 @@ First 4 files are from last Lab. New files are:
 ➢ createInstance.tf
 
 
-AWS SECURITY GROUPS
--------------------
+AWS SECURITY GROUP
+------------------
 We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
 ➢ search 'aws security group'
   ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#example-usage
