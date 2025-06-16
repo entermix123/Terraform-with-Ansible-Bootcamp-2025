@@ -2145,7 +2145,10 @@ Plan terraform resources
 
 	# the plan should be successful and we can review the logs
 	# result: 	
-		Plan: 7 to add, 0 to change, 0 to destroy.	
+		Plan: 18 to add, 0 to change, 0 to destroy.
+
+		Changes to Outputs:
+		  + ELB = (known after apply)	
 
 APPLY
 -----
@@ -2154,41 +2157,31 @@ Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
 
+We wait until all resources are created. When created we can see the ELB endpoint printed on the console (dns address).
+Wait a little bit more for nginx service to start and send request to the load balancer.
+
+Send request to the ELB
+	terminal --> curl levelup-elb-1784717867.us-east-2.elb.amazon.com 
+
+	# we should receive the message we set in the autoscale.tf/"aws_launch_configuration"/user_data param
+	# result:
+		Hello Team
+		This is my IP: 10.0.2.10
+
+Send request to the ELB again
+	terminal --> curl levelup-elb-1784717867.us-east-2.elb.amazon.com 
+
+	# we should recieve the same message but with different IP. 
+	# this mean that the load balancer route the traffic to the second instance
+	# result 
+		Hello Team
+		This is my IP: 10.0.1.110
+
+We can send request to the same address from our local PC via browser. The result should be the same.
+
 Check resources creation on AWS/EC2.
-We can check autoscaling groups on AWS/EC2/Auto Scaling Groups
-	- we can see the policies
-	- activity, instance management, monitoring and more
-We can see cloud watch on AWS Management Console/CloudWatch
-	- go to Alarms - We have 2 alarms
-		- OK - increase scaling - no load or increased traffic
-		- NOK - decreased scaling - the load is below 10%, but the minimum count servers requirement is allready satified
-
-We will simulate increased load on the instance to trigger the upscaling policy.
-
-We can connect the AWS instance from local PC/box.
-Copy the public IP from the console
-	terminal --> ssh instance_public_ip -l ubuntu -i levelup_key
-
-	# ssh instance_public_ip		- connect to the instance
-	# -l ubuntu				- login as ubuntu user
-	# -i levelup_key			- use terraform public key
-
-Now we are logged into the instance.
-
-Switch to root user
-	instance terminal --> sudo -s
-
-Update the instance package manager
-	instance terminal --> apt-get update
-
-
-
-
-
-
-
-Exit the AWS instance
-	instance terminal --> exit
+We can check the ELB on AWS/Load Balancers
+	- We can manually remove instances from the load balancer and they will NOT be recreated.
 
 
 DESTROY
