@@ -796,7 +796,28 @@ output "public_instance_ip" {					# print instance public IP on launch
 }
 -----------------------------------------------
 
-Login to the igitalOcean ubuntu and pull the files from github.
+
+
+
+62. Lab : AWS VPC Module Part III
+=================================
+
+In this lab we will continue the last 2 labs and execute commands on the DigitalOcean/Local working machine. 
+
+We have directory and file structure:
+
+module			
+  netowrk		
+    - main.tf 		
+    - variable.tf
+    - output.tf
+- main.tf
+- variable.tf
+- output.tf
+
+
+
+Login to the DigitalOcean ubuntu and pull the files from github.
 	terminal --> ssh root@IP
 	terminal --> password
 
@@ -812,20 +833,35 @@ We need to install AWS CLI on the machine
 	terminal --> sudo apt-get install awscli
 	terminal --> y					# confirm
 
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-INIT
-----
-Initialize terrafomr
-	terminal --> terraform init
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
+Navigate to root/.ssh folder
+	terminal --> cd /root/.ssh/
 
 Generate private and public key
 	terminal --> ssh-keygen -f levelup_key
 	terminal --> enter
 	terminal --> enter
 
+	# in our variable.tf file we set the path to the key in this directory
+
 Verify key creation
 	terminal --> ls
 	# we should have 2 new files - levelup-key and levelup-key.pub
+
+Navigate back to the terraform working directory
+	terminal --> cd /oath/to/the/project
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
 
 PLAN
 ----
@@ -835,10 +871,13 @@ Plan terraform resources
 
 	# the plan should be successful and we can review the logs
 	# result: 	
-		Plan: 18 to add, 0 to change, 0 to destroy.
+		Plan: 8 to add, 0 to change, 0 to destroy.
 
 		Changes to Outputs:
-		  + ELB = (known after apply)	
+		  + public_instance_ip = [
+		      + (known after apply),
+		    ]
+
 
 APPLY
 -----
@@ -847,31 +886,12 @@ Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
 
-We wait until all resources are created. When created we can see the ELB endpoint printed on the console (dns address).
-Wait a little bit more for nginx service to start and send request to the load balancer.
+Wait untill all resources are created. 
+We can see the instance public ip printed on the console.
 
-Send request to the ELB
-	terminal --> curl levelup-elb-1784717867.us-east-2.elb.amazon.com 
-
-	# we should receive the message we set in the autoscale.tf/"aws_launch_configuration"/user_data param
-	# result:
-		Hello Team
-		This is my IP: 10.0.2.10
-
-Send request to the ELB again
-	terminal --> curl levelup-elb-1784717867.us-east-2.elb.amazon.com 
-
-	# we should recieve the same message but with different IP. 
-	# this mean that the load balancer route the traffic to the second instance
-	# result 
-		Hello Team
-		This is my IP: 10.0.1.110
-
-We can send request to the same address from our local PC via browser. The result should be the same.
-
-Check resources creation on AWS/EC2.
-We can check the ELB on AWS/Load Balancers
-	- We can manually remove instances from the load balancer and they will NOT be recreated.
+Check the resources on AWS.
+Go to the sepcific region - us-east-2
+Check AWS/VPC and AWS/EC2 resources and their details.
 
 
 DESTROY
@@ -882,32 +902,4 @@ We can now destroy the created resources on AWS
 	terminal --> yes
 
 
-
-
-
-
-62. Lab : AWS VPC Module Part III
-=================================
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
