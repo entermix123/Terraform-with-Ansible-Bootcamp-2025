@@ -262,76 +262,276 @@ Verify key creation
 
 PLAN
 ----
+Delete the secret access key and access key from provider.tf
+	terminal --> vi provider.tf
+--------------------------------------------------
+provider "aws" {
+  region     = "us-east-1"
+}
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
 Plan terraform resources
 	terminal --> terraform plan
-	terminal --> AWS Secret access key
 
 	# the plan should be successful and we can review the logs
 	# result: 	
-		Plan: 18 to add, 0 to change, 0 to destroy.
-
-		Changes to Outputs:
-		  + ELB = (known after apply)	
+		Plan: 1 to add, 0 to change, 0 to destroy.
 
 APPLY
 -----
 Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> terraform apply
-	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
+
+Check resource creation in AWS/EC2. This way we can use the module to create EC2 instance and provideonly required and managed variables.
 
 
 DESTROY
 -------
 We can now destroy the created resources on AWS
 	terminal --> terraform destroy
-	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
 	terminal --> yes
 
 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
 
 
 
 59. Lab : Local Path Module
 ===========================
-➢ 
 
-➢ 
+We have 2 directories
+--------------------
+➢ custom_vpc
+  ➢ Development
+    ➢ Development
+      - main.tf
 
-➢ 
+➢ custom_vpc
+  ➢ Development_QA
+    ➢ Development_QA
+      - main.tf
 
-➢ 
 
-➢ 
+Development/Development/main.tf
+--------------------------------------------------
+module "dev-vpc"{
+    source                          = "../../custom_vpc"
 
-➢ 
+    vpcname                         = "dev01-vpc"
+    cidr                            = "10.0.2.0/24"
+    enable_dns_support              = "true"
+    enable_classiclink              = "false"
+    enable_classiclink_dns_support  = "false"
+    enable_ipv6                     = "true"
+    vpcenvironment                  = "Development-Engineering"
 
-➢ 
+}
+--------------------------------------------------
 
-➢ 
 
-➢ 
+Development_QA/Development_QA/main.tf
+--------------------------------------------------
+module "dev-qa-vpc"{
+    source                          = "../../custom_vpc"
 
-➢ 
+    vpcname                         = "dev02-qa-vpc"
+    cidr                            = "10.0.1.0/24"
+    enable_dns_support              = "true"
+    enable_classiclink              = "false"
+    enable_classiclink_dns_support  = "false"
+    enable_ipv6                     = "false"
+    vpcenvironment                  = "Development-QA-Engineering"
+    AWS_REGION                      = "us-east-1"
+}
+--------------------------------------------------
+
+And 3 files
+-----------
+➢ custom_vpc
+  ➢ vpc.tf
+  ➢ variable.tf
+  ➢ provider.tf
+
+
+vpc.tf
+-----------------------------------------------
+# VPC
+resource "aws_vpc" "aws_vpc_levelup" {
+
+  cidr_block                       = var.cidr
+  instance_tenancy                 = var.instance_tenancy
+  enable_dns_hostnames             = var.enable_dns_hostnames
+  enable_dns_support               = var.enable_dns_support
+  # enable_classiclink               = var.enable_classiclink
+  # enable_classiclink_dns_support   = var.enable_classiclink_dns_support
+  assign_generated_ipv6_cidr_block = var.enable_ipv6
+
+  tags = {
+      name = var.vpcname
+      environment = var.vpcenvironment
+  }
+}
+-----------------------------------------------
+
+
+variable.tf
+-----------------------------------------------
+variable "AWS_ACCESS_KEY" {
+    type        = string
+    default     = "AKIASMSIZOF42P2VUDSZ"
+}
+
+variable "AWS_REGION" {
+    type        = string
+    default     = "us-east-2"
+}
+
+variable "vpcname" {
+  description = "Name to be used on all the resources as identifier"
+  type        = string
+  default     = ""
+}
+
+variable "cidr" {
+  description = "The CIDR block for the VPC"
+  type        = string
+  default     = "0.0.0.0/0"
+}
+
+variable "instance_tenancy" {
+  description = "A tenancy option for instances launched into the VPC"
+  type        = string
+  default     = "default"
+}
+
+variable "enable_dns_hostnames" {
+  description = "Should be true to enable DNS hostnames in the VPC"
+  type        = bool
+  default     = false
+}
+
+variable "enable_dns_support" {
+  description = "Should be true to enable DNS support in the VPC"
+  type        = bool
+  default     = true
+}
+
+variable "enable_classiclink" {
+  description = "Should be true to enable ClassicLink for the VPC. Only valid in regions and accounts that support EC2 Classic."
+  type        = bool
+  default     = null
+}
+
+variable "enable_classiclink_dns_support" {
+  description = "Should be true to enable ClassicLink DNS Support for the VPC. Only valid in regions and accounts that support EC2 Classic."
+  type        = bool
+  default     = null
+}
+
+variable "enable_ipv6" {
+  description = "Requests an Amazon-provided IPv6 CIDR block."
+  type        = bool
+  default     = false
+}
+
+variable "vpcenvironment" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = "Development"
+}
+-----------------------------------------------
+
+
+provider.tf
+-----------------------------------------------
+provider "aws" {
+  region     = var.AWS_REGION
+}
+-----------------------------------------------
+
+
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 new files - levelup-key and levelup-key.pub
+
+PLAN
+----
+Delete the secret access key and access key from provider.tf
+	terminal --> vi provider.tf
+--------------------------------------------------
+provider "aws" {
+  region     = "us-east-1"
+}
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 1 to add, 0 to change, 0 to destroy.
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> yes				# confirm
+
+Check resource creation in AWS/EC2. This way we can use the module to create EC2 instance and provideonly required and managed variables.
+
+
+DESTROY
+-------
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes
 
 ➢ 
 
