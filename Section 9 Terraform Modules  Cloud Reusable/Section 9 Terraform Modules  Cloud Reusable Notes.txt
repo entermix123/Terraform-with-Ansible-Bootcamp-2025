@@ -309,6 +309,8 @@ We can now destroy the created resources on AWS
 59. Lab : Local Path Module
 ===========================
 
+This example show that we can reuse modeules for different environments.
+
 We have 2 directories
 --------------------
 ➢ custom_vpc
@@ -334,7 +336,7 @@ module "dev-vpc"{
     enable_classiclink_dns_support  = "false"
     enable_ipv6                     = "true"
     vpcenvironment                  = "Development-Engineering"
-
+    # no region configured, uses the default region in variable.tf
 }
 --------------------------------------------------
 
@@ -477,6 +479,339 @@ We need to install AWS CLI on the machine
 	terminal --> sudo apt-get install awscli
 	terminal --> y					# confirm
 
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
+Navigate to custom_vpc directory
+	terminal --> cd custom_vpc
+
+Manage Development environment
+------------------------------
+
+INIT	Development env
+----
+Navigate to Development dir and initialize terraform
+	terminal --> cd Development
+	terminal --> terraform init
+
+PLAN	Development env
+----
+Plan terraform resources in Development dir
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 
+		Plan: 1 to add, 0 to change, 0 to destroy.
+
+APPLY	Development env
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> yes
+
+
+Manage Development_QA environment
+---------------------------------
+
+Navigate to Development_QA folder
+	terminal --> cd ../Development_QA
+
+INIT	Development_QA env
+----
+Navigate to Development dir and initialize terraform
+	terminal --> cd Development
+	terminal --> terraform init
+
+PLAN	Development_QA env
+----
+Plan terraform resources in Development dir
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 
+		Plan: 1 to add, 0 to change, 0 to destroy.
+
+APPLY	Development_QA env
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> yes
+
+Check resource creation in AWS/VPC in the different regions.
+
+
+DESTROY
+-------
+
+We can destroy VPC resources with terraform in Development and Development_QA directory
+
+We can now destroy the created resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes
+
+
+
+
+60. Lab : AWS VPC Module Part I
+===============================
+
+In this example we will create complete network module
+
+INFO: Classless Inter-Domain Routing (CIDR) is an IP address allocation method that improves data routing efficiency on the internet.
+
+Create directory structure as follow
+module
+  netowrk
+
+In module/network we have 3 files
+---------------------------------
+module
+  netowrk
+    ➢ main.tf 
+    ➢ variable.tf
+    ➢ output.tf
+
+
+
+main.tf 
+-----------------------------------------------
+#AWS VPC Resource
+resource "aws_vpc" "levelup_vpc" {			# VPC resource
+  cidr_block            = var.cidr_vpc			# IP range
+  enable_dns_support    = true
+  enable_dns_hostnames  = true
+  
+  tags = {						# tag
+    Environment         = var.environment_tag
+  }
+}
+
+#AWS Internet Gateway
+resource "aws_internet_gateway" "levelup_igw" {		# Internet Gateway resource
+  vpc_id        = aws_vpc.levelup_vpc.id		# VPC id
+  
+  tags = {						# tag
+    Environment = var.environment_tag
+  }
+}
+
+# AWS Subnet for VPC
+resource "aws_subnet" "subnet_public" {			# public subnet resource
+  vpc_id                    = aws_vpc.levelup_vpc.id	# vpc id
+  cidr_block                = var.cidr_subnet		# 
+  map_public_ip_on_launch   = "true"			# link public ip on launch
+  availability_zone         = var.availability_zone	# availability zones from variable.tf
+  
+  tags = {						# tag
+    Environment             = var.environment_tag
+  }
+}
+
+# AWS Route Table
+resource "aws_route_table" "levelup_rtb_public" {	# route table resource
+  vpc_id            = aws_vpc.levelup_vpc.id		# vpc id
+
+  route {
+      cidr_block    = "0.0.0.0/0"				# allow all ip 
+      gateway_id    = aws_internet_gateway.levelup_igw.id	# our internet gateway id
+  }
+
+  tags = {							# tag
+    Environment     = var.environment_tag
+  }
+}
+
+# AWS Route Association 
+resource "aws_route_table_association" "levelup_rta_subnet_public" {	# route table association resource
+  subnet_id      = aws_subnet.subnet_public.id				# public subnet id
+  route_table_id = aws_route_table.levelup_rtb_public.id		# route table id
+}
+
+# AWS Security group
+resource "aws_security_group" "levelup_sg_22" {			# security group resource
+  name = "levelup_sg_22"					# sg name
+  vpc_id = aws_vpc.levelup_vpc.id				# vpc id
+
+  # SSH access from the VPC
+  ingress {					# inbound traffic configuration
+      from_port     = 22			# from port 22
+      to_port       = 22			# to port 22
+      protocol      = "tcp"			# protocol TCP only
+      cidr_blocks   = ["0.0.0.0/0"]		# all IPs - no restrictions
+  }
+
+  egress {					# outbound traffic configuration
+    from_port       = 0				# all ports
+    to_port         = 0				# all ports
+    protocol        = "-1"			# '-1' - all protocols
+    cidr_blocks     = ["0.0.0.0/0"]		# all IPs - no restrictions
+  }
+
+  tags = {					# tag
+    Environment     = var.environment_tag
+  }
+}
+-----------------------------------------------
+
+
+
+output.tf
+-----------------------------------------------
+output "vpc_id" {					# print vpc id on launch
+  value = aws_vpc.levelup_vpc.id
+}
+output "public_subnet_id" {				# print public subnet id on launch
+  value = aws_subnet.subnet_public.id
+}
+output "sg_22_id" {					# print security group id on launch
+  value = ["${aws_security_group.levelup_sg_22.id}"]
+}
+-----------------------------------------------
+
+
+variable.tf
+-----------------------------------------------
+# Variables
+variable "cidr_vpc" {
+  description = "CIDR block for the VPC"
+  default = "10.1.0.0/16"
+}
+
+variable "cidr_subnet" {
+  description = "CIDR block for the subnet"
+  default = "10.1.0.0/24"
+}
+
+variable "availability_zone" {
+  description = "availability zone to create subnet"
+  default = "us-east-2a"
+}
+
+variable "public_key_path" {
+  description = "Public key path"
+  default = "~/.ssh/levelup_key.pub"
+}
+
+variable "environment_tag" {
+  description = "Environment tag"
+  default = "Production"
+}
+-----------------------------------------------
+
+
+
+
+
+61. Lab : AWS VPC Module Part II
+================================
+
+We continue last 60. Lab - AWS VPC Module Part 1
+
+We have our module/network directory with the files from the last lab
+module
+  netowrk
+    ➢ main.tf 
+    ➢ variable.tf
+    ➢ output.tf
+
+Now we have 3 new files in the main directory
+---------------------------------------------
+➢ main.tf
+➢ variable.tf
+➢ output.tf
+
+
+
+main.tf
+-----------------------------------------------
+#Provider
+provider "aws" {
+	region = var.region
+}
+
+#Module
+module "myvpc" {				# use the already created module
+    source = "./module/network"			# path to module location
+}
+
+#Resource key pair
+resource "aws_key_pair" "levelup_key" {		# KeyPair
+  key_name      = "levelup_key"			# key name
+  public_key    = file(var.public_key_path)	# path to key location
+}
+
+#EC2 Instance
+resource "aws_instance" "levelup_instance" {			# aws ec2 instance
+  ami                       = var.instance_ami			# amazon machine image
+  instance_type             = var.instance_type			# hardware type
+  subnet_id                 = module.myvpc.public_subnet_id	# public subnet id from the module output
+  vpc_security_group_ids    = module.myvpc.sg_22_id		# vpc security group id from the module output
+  key_name                  = aws_key_pair.levelup_key.key_name	# key name
+
+  tags = {							# tag
+		Environment         = var.environment_tag
+	}
+}
+-----------------------------------------------
+
+
+variable.tf
+-----------------------------------------------
+variable "region" {
+  default = "us-east-2"
+}
+
+variable "public_key_path" {
+  description = "Public key path"
+  default = "~/.ssh/levelup_key.pub"
+}
+
+variable "instance_ami" {
+  description = "AMI for aws EC2 instance"
+  default = "ami-05692172625678b4e"
+}
+
+variable "instance_type" {
+  description = "type for aws EC2 instance"
+  default = "t2.micro"
+}
+
+variable "environment_tag" {
+  description = "Environment tag"
+  default = "Production"
+}
+
+-----------------------------------------------
+
+
+output.tf
+-----------------------------------------------
+output "public_instance_ip" {					# print instance public IP on launch
+  value = ["${aws_instance.levelup_instance.public_ip}"]
+}
+-----------------------------------------------
+
+Login to the igitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
 
 INIT
 ----
@@ -494,99 +829,61 @@ Verify key creation
 
 PLAN
 ----
-Delete the secret access key and access key from provider.tf
-	terminal --> vi provider.tf
---------------------------------------------------
-provider "aws" {
-  region     = "us-east-1"
-}
---------------------------------------------------
-save changes - escape, :wq!, enter
-
-Set Secret Access Key and Aceess Key as environemnt variable
-	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
-	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-Check if the secret access key and access key are successfully set as environment variable
-	terminal --> echo $AWS_SECRET_KEY
-	terminal --> echo $AWS_ACCESS_KEY
-
 Plan terraform resources
 	terminal --> terraform plan
+	terminal --> AWS Secret access key
 
 	# the plan should be successful and we can review the logs
 	# result: 	
-		Plan: 1 to add, 0 to change, 0 to destroy.
+		Plan: 18 to add, 0 to change, 0 to destroy.
+
+		Changes to Outputs:
+		  + ELB = (known after apply)	
 
 APPLY
 -----
 Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
 
-Check resource creation in AWS/EC2. This way we can use the module to create EC2 instance and provideonly required and managed variables.
+We wait until all resources are created. When created we can see the ELB endpoint printed on the console (dns address).
+Wait a little bit more for nginx service to start and send request to the load balancer.
+
+Send request to the ELB
+	terminal --> curl levelup-elb-1784717867.us-east-2.elb.amazon.com 
+
+	# we should receive the message we set in the autoscale.tf/"aws_launch_configuration"/user_data param
+	# result:
+		Hello Team
+		This is my IP: 10.0.2.10
+
+Send request to the ELB again
+	terminal --> curl levelup-elb-1784717867.us-east-2.elb.amazon.com 
+
+	# we should recieve the same message but with different IP. 
+	# this mean that the load balancer route the traffic to the second instance
+	# result 
+		Hello Team
+		This is my IP: 10.0.1.110
+
+We can send request to the same address from our local PC via browser. The result should be the same.
+
+Check resources creation on AWS/EC2.
+We can check the ELB on AWS/Load Balancers
+	- We can manually remove instances from the load balancer and they will NOT be recreated.
 
 
 DESTROY
 -------
 We can now destroy the created resources on AWS
 	terminal --> terraform destroy
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
 	terminal --> yes
 
-➢ 
 
 
 
-60. Lab : AWS VPC Module Part I
-===============================
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-
-61. Lab : AWS VPC Module Part II
-================================
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
 
 62. Lab : AWS VPC Module Part III
