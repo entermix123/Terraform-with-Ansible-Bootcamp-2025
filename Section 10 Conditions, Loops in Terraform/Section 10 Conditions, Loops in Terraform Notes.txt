@@ -813,13 +813,19 @@ Verify key creation
 	# in modules/instances/createInstance.tf we use the public key
 
 
-Navigate back to the terraform working directory
-	terminal --> cd /oath/to/the/project
+
+
+Development Deploy
+------------------
+
+Navigate to Development directory
+	terminal --> cd /Terraform_Project_Structure/Development
 
 INIT
 ----
 Initialize terrafomr
 	terminal --> terraform init
+	# we can see console logs of downloaded modules
 
 PLAN
 ----
@@ -828,14 +834,77 @@ Plan terraform resources
 
 	# the plan should be successful and we can review the logs
 	# result: 	
-		Plan: 
+		Plan: 25 to add, 0 to change, 0 to destroy.
 
 APPLY
 -----
 Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> terraform apply
-	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
+
+Check resources creation on AWS and deir details. Set the correct region - us-west-2.
+Check instances on AWS/EC2.
+Check vpc on AWS/VPC.
+Check subnets on AWS/VPC/Subnets.
+etc.
+
+
+
+
+Production Deploy
+-----------------
+
+Navigate to Production directory
+	terminal --> cd /Terraform_Project_Structure/Production
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+	# we can see console logs of downloaded modules
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 25 to add, 0 to change, 0 to destroy.
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> yes				# confirm
+
+If we have errors connected with the availability zones we can change the region of the instance in
+	- Production/variable.tf
+	- modules/instances/variable.tf - mapping of the regions and amazon machine image - ami
+	- try to apply with terraform again
+
+Check resources creation on AWS and deir details. Set the correct region - us-west-1.
+Check instances on AWS/EC2.
+Check vpc on AWS/VPC.
+Check subnets on AWS/VPC/Subnets.
+etc.
+
+
+
+After testing the instances destroy all AWS resources with terraform
+
+DESTROY
+-------
+Navigate to Development and destroy all resources on AWS
+	terminal --> cd Development
+	terminal --> terraform destroy
+	terminal --> yes
+
+Navigate to Production and destroy all resources on AWS
+	terminal --> cd Development
+	terminal --> terraform destroy
+	terminal --> yes
+
 
 
 
