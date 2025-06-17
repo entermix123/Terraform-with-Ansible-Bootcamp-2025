@@ -65,8 +65,9 @@ module "ec2_cluster" {
     ami             = "ami-05692172625678b4e"				# amazon machine image
     instance_type   = "t2.micro"					# type hardware - t2.micro - free tier
     subnet_id       = "subnet-f30171bf"					# vpc public subnet id
-    instance_count  = var.environment == "Production" ? 2 : 1		# condition
+    count  = var.environment == "Production" ? 2 : 1			# condition
     # create 2 instances if environment is 'Production', else create only one instance
+    # depend on the module version it can use 'instance_count' instead of 'count' parametter
 
     tags = {								# tags
     Terraform       = "true"
@@ -124,25 +125,25 @@ PLAN
 ----
 Plan terraform resources
 	terminal --> terraform plan
-	terminal --> AWS Secret access key
 
 	# the plan should be successful and we can review the logs
 	# result: 	
+		Plan: 2 to add, 0 to change, 0 to destroy.
 
+		# We have 2 instances planned, because the nevironment is Production
 
 APPLY
 -----
 Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> terraform apply
-	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
 	terminal --> yes				# confirm
 
+Check the instances and their details on AWS/EC2.
 
 DESTROY
 -------
 We can now destroy the created resources on AWS
 	terminal --> terraform destroy
-	terminal --> xxxxxxxxxxxxxxxxxxxxxx	# provide the seucrity key
 	terminal --> yes
 
 
@@ -153,47 +154,185 @@ We can now destroy the created resources on AWS
 65. Terraform Built-In Functions
 ================================
 
-➢ 
+➢ User can use the Built in Functions in Terraform.
 
-➢ 
+➢ Functions are called with syntax func_name(arg1, arg2,….)
 
-➢ 
+	➢ For example file(“level-up.key”) is used to read the Public Key.
 
-➢ 
 
-➢ 
+We will discuss some commonly used functions:
+---------------------------------------------
 
-➢ 
+➢ base64encode(string) - Returns a base64-encoded representation of the given string.
 
-➢ 
+➢ base64decode(string) - Given a base64-encoded string, decodes it and returns the original string.
 
-➢ 
+➢ chomp(string) - Removes trailing newlines from the given string.
 
-➢ 
+➢ chunklist(list, size) - Returns the list items chunked by size.
+Examples:
 
+	➢ chunklist(aws_subnet.foo.*.id, 1): will outputs [["id1"], ["id2"], ["id3"]]
+
+	➢ chunklist(var.list_of_strings, 2): will outputs [["id1", "id2"], ["id3", "id4"], ["id5"]]
+
+➢ coalesce(string1, string2, ...) - Returns the first non-empty value from the given arguments. At least two arguments must be provided.
+
+➢ coalescelist(list1, list2, ...) - Returns the first non-empty list from the given arguments. At least two arguments must be provided.
+
+➢ compact(list) - Removes empty string elements from a list. This can be useful in some cases, for example when passing joined lists as module variables or when parsing module outputs.
+
+➢ concat(list1, list2, ...) - Combines two or more lists into a single list.
+
+➢ contains(list, element) - Returns true if a list contains the given element and returns false otherwise.
+
+➢ element(list, index) - Returns a single element from a list at the given index.
+
+➢ file(path) - Reads the contents of a file into the string.
+
+➢ length(list) - Returns the number of members in a given list or map, or the number of characters in a given string.
+
+➢ lookup(map, key, [default]) - Performs a dynamic lookup into a map variable. The map parameter should be another
+variable, such as var.amis. If key does not exist in map, the interpolation will fail unless you specify a third argument, default, which should be a string value to return if no key is found in map.
+
+➢ timestamp() - Returns a UTC timestamp string in RFC 3339 format.
+
+➢ trimspace(string) - Returns a copy of the string with all leading and trailing white spaces removed.
+
+➢ uuid() - Returns a random UUID string. This string will change with every invocation of the function.
 
 
 
 66. Lab : Terraform Built-In Functions
 ======================================
 
-➢ 
+We can use terraform console to practice some of the common commands.
 
-➢ 
+Enter the terraform console
+	terminal --> terraform console
 
-➢ 
+Print text
+	console --> "Hello this is me"
 
-➢ 
+	# result: Hello this is me
 
-➢ 
+Encode text
+	console --> base64encode("Terraform_for_deployment_automation")
 
-➢ 
+	# result: "VGVycmFmb3JtX2Zvcl9kZXBsb3ltZW50X2F1dG9tYXRpb24="
 
-➢ 
+Decode text
+	console --> base64decode("VGVycmFmb3JtX2Zvcl9kZXBsb3ltZW50X2F1dG9tYXRpb24=")
 
-➢ 
+	# result: "Terraform_for_deployment_automation"
 
-➢ 
+Chunklist test
+	console --> chunklist(["item1", "item2", "item3"], 1)
+
+	# result: 
+tolist([
+  tolist([
+    "item1",
+  ]),
+  tolist([
+    "item2",
+  ]),
+  tolist([
+    "item3",
+  ]),
+])
+
+Chunklist test
+	console --> chunklist(["item1", "item2", "item3", "item4", "item,5"], 2)
+
+# result:
+tolist([
+  tolist([
+    "item1",
+    "item2",
+  ]),
+  tolist([
+    "item3",
+    "item4",
+  ]),
+  tolist([
+    "item,5",
+  ]),
+])
+
+
+Coalesce - remove empty strings
+	console --> coalesce(" ", "Hello")
+	# result : " "				# coalesce is considering space as string
+
+	console --> coalesce("", "Hello")
+	# result : "Hello"
+
+Compact test - return list of not mepty elements
+	console --> compact(["item1", "item2", "", "item3", "", "item4", "", "item,5"])
+s
+# result:
+tolist([
+  "item1",
+  "item2",
+  "item3",
+  "item4",
+  "item,5",
+])
+
+Concat test - concatinate two lists
+	console --> concat(["item1", "item2", "item3"], ["item4", "item,5"])
+
+# result:
+[
+  "item1",
+  "item2",
+  "item3",
+  "item4",
+  "item,5",
+]
+
+containes - check if the given element exist in the list and return true or false
+	console --> contains(["item1", "item2", "item3", "item4", "item5"], "item5")
+	# result: true
+	console --> contains(["item1", "item2", "item3", "item4", "item5"], "item7")
+	# result: false
+
+element - return the element of the given index
+	console --> element(["item1", "item2", "item3", "item4", "item5"], 7)
+	# result: "item4"
+	element(["item1", "item2", "item3", "item4", "item5"], 7)
+	# reult: "item3"	# after lasat index, starts counting again from the start
+
+uuid - return unique value every new call
+	console --> uuid()
+	# result: "496b678e-9245-5b3f-60e3-b8bc9c720699"
+
+timestamp() - return current time
+	console --> timestamp()
+	# result: "2025-06-17T11:12:50Z"
+
+length - retunr the lenght of a list
+	console --> length(["item1", "item2", "item3", "item4", "item5"])
+	# result: 5
+
+split - split the second argument by the first argument
+	console --> split(",", "US, Canada, Australia")
+
+# result:
+tolist([
+  "US",
+  " Canada",
+  " Australia",
+])
+
+replace - replace elements in the string from a given element with a given element
+	console --> replace("This is India", "i", "!")
+
+	# result: "Th!s !s Ind!a"		# case sensitive - capital "i" is not replaced
+
+
 
 
 
@@ -201,23 +340,119 @@ We can now destroy the created resources on AWS
 67. Loops in TerraFrom HCL
 ==========================
 
-➢ 
+➢ Terraform offers several different looping constructs.
 
-➢ 
+	➢ Count : Loop Over resources
 
-➢ 
+	➢ For : Loop over lists and Maps
 
-➢ 
+	➢ For_each : Loop over resources and inline blocks within a resource.
 
-➢ 
+➢ count parameter - count is used to loop over the resources. This can be used to create the multiple resources in TF.
 
-➢ 
+Example:
 
-➢ 
+➢ Create single IAM User
+--------------------------------------------------
+provider "aws" {
+  region = "us-east-2"
+}
 
-➢ 
+resource "aws_iam_user" "user_example" {
+  name = "myuser"
+}
+--------------------------------------------------
 
-➢ 
+
+➢ What if we want to Create Multiple Users?		THIS IS NOT WORKING !!! NEXT EXAMPLE IS THE CORRECT ONE !
+--------------------------------------------------
+for (i = 0; i < 5; i++) {
+  resource "aws_iam_user" "user_example" {
+    name = "myuser"
+  }
+}
+--------------------------------------------------
+
+➢ Terraform doesn’t have loops on resources like Programming languages.
+
+➢ Count can be used to create multiple copies of resource in TF.	THIS IS THE CORRECT EXAMPLE !
+--------------------------------------------------
+provider "aws" {
+  region = "us-east-2"
+}
+
+resource "aws_iam_user" "user_example" {
+  count = 3
+  name = “myuser.${count.index}“
+}
+--------------------------------------------------
+
+
+➢ for parameter - for is used to iterate over Lists and Maps. For loop is used to generate single Value.
+
+➢ Syntax for ‘for’ loop - [for <ITEM> in <LIST> : <OUTPUT>]
+--------------------------------------------------
+variable "names" {
+  description = "A list of names"
+  type = list(string)
+  default = ["mark", "trinity", "john"]
+}
+
+output "upper_names" {
+  value = [for name in var.names : upper(name)]
+}
+--------------------------------------------------
+
+This example will print all names with capital letter.
+
+
+
+➢ Syntax map - [for <KEY>, <VALUE> in <MAP> : <OUTPUT>]
+--------------------------------------------------
+variable "program" {
+  description = "map"
+    type = map(string)
+    default = {
+    mark = "software engineer"
+    trinity = "AI Program"
+    john = "machine operator"
+  }
+}
+
+output "roles" {
+  value = [for name, role in var.program : "${name} is the - ${role}"]
+}
+--------------------------------------------------
+
+This example will print all names with their role in the format in the output section.
+
+
+
+➢ for_each parameter - for_each is used to create multiple copies of resource or inline blocks.
+
+➢ Syntax for ‘for_each’ loop
+--------------------------------------------------
+resource "<PROVIDER>_<TYPE>" "<NAME>" {
+  for_each = <COLLECTION>
+  [CONFIG ...]
+}
+--------------------------------------------------
+
+
+--------------------------------------------------
+variable "user_names" {					# define user names
+  description = "Create IAM users with these names"
+  type = list(string)
+  default = ["mark", "trinity", "john"]
+}
+
+resource "aws_iam_user" "user_example" {	# create IAM users with the defined names using for_each
+  for_each = toset(var.user_names)		# create set (only unique values) from the list of names
+  name = each.value				# create iam user with each of the values of the set
+}
+--------------------------------------------------
+
+
 
 
 
@@ -225,23 +460,28 @@ We can now destroy the created resources on AWS
 68. Terraform Project Structure
 ===============================
 
-➢ 
+➢ When you start Terraform on Production, you need a good Project Structure.
+	- remove redundancy 
+	- minimize human errors - failures
 
-➢ 
+➢ Terraform Code Modules are necessary in Production Projects.
+	- core modules are essentials
+		- we can use them for different environments - dev, stageing, prod
+		- errors will be captured in early stages and not appear on production envs
 
-➢ 
+➢ Ideally there should be separate environment for Development, Staging and Production.
+	- it is recommended to have separate accounts (IAM) for each environment - wide flexibility
+		- we can have separate VPC for development and production
+		- we can have saparate machine type, firewall rules, configuration, security domain, SGs
 
-➢ 
+➢ That will help, to avoid the errors in Production.
 
-➢ 
+➢ For better isolation, it’s best to create Separate Cloud Accounts for each Environment.
 
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
+➢ Split the Terraform in multiple Services and Directories.
+	- we can devide terraform configuration into services, so each service can have separate directory
+		- whis will help us to the resources in isolation
+		- minimize infrastructure deployment time
 
 
 
@@ -249,25 +489,353 @@ We can now destroy the created resources on AWS
 69. Lab : Terraform Project Structure
 =====================================
 
-➢ 
 
-➢ 
+We have project structure:
+--------------------------
 
-➢ 
+|-- Development 
+|    + main.tf
+|    + variable.tf
+|
+|-- modules
+|   |-- instances
+|   |    + createInstance.tf
+|   |    + variable.tf
+|   |
+|   |-- vpc
+|   |    + variable.tf
+|   |    + vpc.tf
+|   + .DS_Store
+|
+|-- Prodcution
+     + main.tf
+     + variable.tf
 
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
 
+
+For this example we will create Development and Production resources in the same account.
+
+Classless Inter-Domain Routing (CIDR) is an IP address allocation method that improves data routing efficiency on the internet.
+
+
+modules
+-------
+
+modules/instances/createInstance.tf
+--------------------------------------------------
+# Create Instance uisng Custom VPC
+#Resource key pair
+resource "aws_key_pair" "levelup_key" {			# KeyPair
+  key_name      = "levelup_key"				# key name
+  public_key    = file(var.public_key_path)		# path to key location
+}
+
+#Secutiry Group for Instances
+resource "aws_security_group" "allow-ssh" {			# Security Group resource
+  vpc_id      = var.VPC_ID					# vpc id
+  name        = "allow-ssh-${var.ENVIRONMENT}"			# swt prefix to name
+  description = "security group that allows ssh traffic"	# short description
+
+  egress {				# outbound traffic
+    from_port   = 0			# from all ports
+    to_port     = 0			# to all ports
+    protocol    = "-1"			# '-1' - all protocols allowed
+    cidr_blocks = ["0.0.0.0/0"]		# all IPs allowed - Classless Inter-Domain Routing
+  }
+
+  ingress {				# inbound traffic
+    from_port   = 22			# from port 22
+    to_port     = 22			# to port 22 - receive traffic on port 22 only
+    protocol    = "tcp"			# TCP only
+    cidr_blocks = ["0.0.0.0/0"]		# from all IPs - not recommended, (we should specify few IPs only)
+  }
+
+  tags = {				# tags
+    Name         = "allow-ssh"
+    Environmnent = var.ENVIRONMENT	# env tag
+  }
+}
+
+# Create Instance Group
+resource "aws_instance" "my-instance" {			# instance resource
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# amazon machine image by region
+  instance_type = var.INSTANCE_TYPE			# hardware type - t2.micro - free tier
+
+  # the VPC subnet
+  subnet_id = element(var.PUBLIC_SUBNETS, 0)		# use first public subnet
+  availability_zone = "${var.AWS_REGION}a"		# use first availability zone for the region
+
+  # the security group
+  vpc_security_group_ids = ["${aws_security_group.allow-ssh.id}"]	# our SG id
+
+  # the public SSH key
+  key_name = aws_key_pair.levelup_key.key_name				# set usage of key name
+
+  tags = {							# tags
+    Name         = "instance-${var.ENVIRONMENT}"		# prefix the env with 'Instance'
+    Environmnent = var.ENVIRONMENT				# env tag
+  }
+}
+--------------------------------------------------
+
+
+
+modules/instances/variable.tf
+--------------------------------------------------
+# Variable for Create Instance Module
+variable "public_key_path" {			# KeyPair
+  description = "Public key path"		# short description
+  default = "~/.ssh/levelup_key.pub"		# path to key location
+}
+
+variable "VPC_ID" {				# define vpc id variable type only
+    type = string
+    default = ""
+}
+
+variable "ENVIRONMENT" {			# define ENVIRONMENT variable type only
+    type    = string
+    default = ""
+}
+
+variable "AWS_REGION" {				# define AWS_REGION variable type and default value
+default = "us-east-2"
+}
+
+variable "AMIS" {				# define possible amazon machine images for the regions
+    type = map
+    default = {					# map possible AMIs as default values depending on the set region
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-02c8896b265d8c480"
+        eu-west-1 = "ami-0cdd3aca00188622e"
+    }
+}
+
+variable "INSTANCE_TYPE" {		# define INSTANCE_TYPE variable type and default value
+  default = "t2.micro"			# type hardware - t2.micro - free tier
+}
+
+variable "PUBLIC_SUBNETS" {		# define PUBLIC_SUBNETS variable type
+  type = list
+}
+--------------------------------------------------
+
+
+
+modules/vpc/variable.tf
+--------------------------------------------------
+#Define Variable for Custom Module VPC
+
+variable "AWS_REGION" {
+    type    = string
+    default = "us-east-2"
+}
+
+variable "ENVIRONMENT" {
+    type    = string
+    default = ""
+}
+--------------------------------------------------
+
+
+
+modules/vpc/vpc.tf
+--------------------------------------------------
+#Custom VPC for my Project 
+module "levelup-vpc" {					# used module resource
+  source = "terraform-aws-modules/vpc/aws"		# module source
+
+  name = "vpc-${var.ENVIRONMENT}"			# set vpc name prefix
+  cidr = "10.0.0.0/16"					# ip ranges Classless Inter-Domain Routing
+
+  azs             = ["${var.AWS_REGION}a", "${var.AWS_REGION}b", "${var.AWS_REGION}c"]	
+  # set availability zones for the current region
+
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]	# private subs ranges - must not overlap
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]	# public subs ranges - must not overlap
+
+  enable_nat_gateway = false
+  enable_vpn_gateway = false
+
+  tags = {
+    Terraform   = "true"				# tags
+    Environment = var.ENVIRONMENT			# env tag
+  }
+}
+
+#Output Specific to Custom VPC				# print stuff on the console on launch
+output "my_vpc_id" {				
+  description = "VPC ID"
+  value       = module.levelup-vpc.vpc_id		# print vpc id on launch
+}
+
+output "private_subnets" {
+  description = "List of IDs of private subnets"	
+  value       = module.levelup-vpc.private_subnets	# print private subnets on launch
+}
+
+output "public_subnets" {
+  description = "List of IDs of public subnets"
+  value       = module.levelup-vpc.public_subnets	# print public subnets on launch
+}
+--------------------------------------------------
+
+
+
+Development
+-----------
+
+Development/main.tf
+--------------------------------------------------
+# Create Resource for Development Environment
+
+module "dev-vpc" {				# use vpc module
+    source      = "../modules/vpc"		# module source
+
+    ENVIRONMENT = var.Env			# read this variable from dev variable.tf 
+    AWS_REGION  = var.AWS_REGION		# read this variable from dev variable.tf 
+}
+
+module "dev-instances" {			# use instance module
+    source          = "../modules/instances"	# module source
+
+    ENVIRONMENT     = var.Env				# read this variable from dev variable.tf
+    AWS_REGION      = var.AWS_REGION 			# read this variable from dev variable.tf
+    VPC_ID          = module.dev-vpc.my_vpc_id		# use dev vpc id
+    PUBLIC_SUBNETS  = module.dev-vpc.public_subnets	# use dev vpc subnets
+}
+
+provider "aws" {					# use provider region local variable
+  region = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+Development/variable.tf
+--------------------------------------------------
+variable "AWS_REGION" {
+    type    = string
+    default = "us-west-2"
+}
+
+variable "Env" {
+    type    = string
+    default = "development"
+}
+--------------------------------------------------
+
+
+
+
+Production
+----------
+
+Production/main.tf
+--------------------------------------------------
+# Create Resource for Development Environment
+
+module "prod-vpc" {				# use vpc module
+    source      = "../modules/vpc"		# module source
+
+    ENVIRONMENT = var.Env			# use local ENVIRONMENT variable
+    AWS_REGION  = var.AWS_REGION		# use local AWS_REGION variable
+
+}
+
+module "prod-instances" {			# use instance module
+    source          = "../modules/instances"	# module source
+
+    ENVIRONMENT     = var.Env				# use local ENVIRONMENT variable
+    AWS_REGION      = var.AWS_REGION 			# use local AWS_REGION variable
+    VPC_ID          = module.prod-vpc.my_vpc_id		# use prod vpc id
+    PUBLIC_SUBNETS  = module.prod-vpc.public_subnets	# use prod vpc subnets
+}
+
+provider "aws" {					# use local AWS_REGION variable
+  region = var.AWS_REGION
+}
+--------------------------------------------------
+
+
+Production/variable.tf
+--------------------------------------------------
+variable "AWS_REGION" {
+    type    = string
+    default = "eu-west-1"
+}
+
+variable "Env" {
+    type    = string
+    default = "production"
+}
+--------------------------------------------------
+
+
+
+Login to the DigitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
+Navigate to root/.ssh folder
+	terminal --> cd /root/.ssh/
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+
+	# in modules/instances/variable.tf we set the loaction of the public key
+	# in modules/instances/createInstance.tf we use the public key
+
+
+Navigate back to the terraform working directory
+	terminal --> cd /oath/to/the/project
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> xxxxxxxxxxxxxxxxxxxxxx		# provide the seucrity key
+	terminal --> yes				# confirm
 
 
 
