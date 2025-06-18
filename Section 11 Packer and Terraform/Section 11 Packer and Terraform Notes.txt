@@ -811,6 +811,210 @@ variable "ENVIRONMENT" {
 
 
 
+Login to the DigitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+Install Packer on Ubuntu
+------------------------
+
+Navigate to root directory
+	terminal --> cd /root
+
+Install Packer
+	terminal --> wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install packer
+
+Verify Packer installation
+	terminal --> packer -v		# result: Packer v1.13.1
+
+Install packer amazon plugin
+	Navigate to Packer configuration directory
+		terminal --> cd ${HOME}/.config/packer/
+	INstall amazon plugin
+		terminal --> packer plugins install github.com/hashicorp/amazon
+
+Navigate to Packer scenario 1 directory
+	terminal --> cd custom_ami_deployment
+
+Edit scenario1.json file and set aws_access_key and aes_secret_key
+	terminal --> vi install_custom_ami.json
+
+install_custom_ami.json
+--------------------------------------------------
+{
+    "variables": {
+        "aws_access_key": "xxxxxxxxxxxxxxxxx",
+        "aws_secret_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "builders": [
+        {
+            "type": "amazon-ebs",
+            "access_key": "{{user `aws_access_key`}}",
+            "secret_key": "{{user `aws_secret_key`}}",
+            "region": "us-east-2",
+            "source_ami_filter": {
+                "filters": {
+                    "virtualization-type": "hvm",
+                    "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
+                    "root-device-type": "ebs"
+                },
+                "owners": [
+                    "099720109477"
+                ],
+                "most_recent": true
+            },
+            "instance_type": "t2.micro",
+            "ssh_username": "ubuntu",
+            "ami_name": "custom-packer-{{timestamp}}"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell",
+            "script": "./install_nginx.sh",
+            "execute_command": "{{ .Vars }} sudo -E sh '{{ .Path }}'",
+            "pause_before": "10s"
+        }
+    ]
+}
+--------------------------------------------------
+save changes - escape, :wq!, enter
+ 
+
+VALIDATE
+--------
+Validate scenario2.json file
+	terminal --> packer validate install_custom_ami.json
+
+	# result: The configuration is valid.
+
+
+BUILD - this will charge our AWS Account appr. $0.03 per AMI
+-----
+Build Packer consifguration scenario1.json
+	terminal --> packer build scenario2.json
+
+Result logs: 
+- Instance will be created
+- Connect to the instance via ssh and copy instance configurations
+- uploading helloworld.txt to the instance
+- execute the scripts
+- list all content of the image
+- print the message in the heloworld.txt - Hello Team, This is custom AMI via Packer.
+- install nginx
+- install docker.io
+- Stop the instance
+- Create AMI image
+- Terminate the instance
+- Cleaning volumes
+- Deleting resources
+
+Message with the region and created ami name:
+us-east-2: ami-05e456e75daa6779a
+
+
+
+Configure AWS Access and Secret Key:
+------------------------------------
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
+
+Terraform INIT
+--------------
+Initialize terrafomr
+	terminal --> terraform init
+	# we can see console logs of downloaded modules
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 25 to add, 0 to change, 0 to destroy.
+
+APPLY
+-----
+Apply the plan and give the custom AMI id as variable - We can take the AMI id from AWS/AMIs or copy oit after the packer build.
+	terminal --> terraform apply -var AMI_ID=ami-05e456e75daa6779a
+	terminal --> yes				# confirm
+
+Ckech the created resources on AWS
+Check instance on AWS/EC2.
+
+
+Generate keys if not generated
+Navigate to root/.ssh folder
+	terminal --> cd /root/.ssh/
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+
+Copy the public IP from the console and connect to the instance
+	terminal --> ssh instance_public_ip -l ubuntu -i ~/.ssh/levelup_key
+
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+Now we are logged into the instance.
+
+Check if nginx is installed on the machine
+	instance terminal --> apt list --installed | grep nginx
+
+	# result: nginx packages should be present on the machine
+
+Check if docker is installed on the machine
+	instance terminal --> apt list --installed | grep docker
+
+	# result: docker packages should be present on the machine
+
+Try to access niginx
+	instance terminal --> curl localhost
+
+	# the result should be the html of nginx start page
+
+Show docker version
+	instance terminal --> docker --version
+
+	# result: version of docker should be printed
+
+
+This proves that we can preinstall software on custom amis.
+
+Exit the instance 
+	instance terminal --> exit 
+
+DESTROY
+-------
+Destroy all resources on AWS
+	terminal --> terraform destroy
+	terminal --> yes
 
 
 
