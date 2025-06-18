@@ -144,161 +144,6 @@ We have Folder and File structure
 
 
 
-Deploy_Custom_Image
--------------------
-
-Deploy_Custom_Image/custom_ami_deployment/createInstance.tf
---------------------------------------------------
-# Create Instance uisng Custom VPC
-
-module "develop-vpc" {				# use module
-    source      = "../modules/vpc"		# module source
-
-    ENVIRONMENT = var.ENVIRONMENT		# set local variable for ENVIRONMENT
-    AWS_REGION  = var.AWS_REGION		# set local variables for AWS_REGION
-}
-
-provider "aws" {				# provider resource
-  region = var.AWS_REGION			# use local variable with AWS_REGION
-}
-
-#Resource key pair
-resource "aws_key_pair" "levelup_key" {		# KeyPair
-  key_name      = "levelup_key"			# key name
-  public_key    = file(var.public_key_path)	# path to public key location
-}
-
-#Secutiry Group for Instances					
-resource "aws_security_group" "allow-ssh" {			# Security Group resource
-  vpc_id      = module.develop-vpc.my_vpc_id			# use vpc id
-  name        = "allow-ssh-${var.ENVIRONMENT}"			# set name with prefix
-  description = "security group that allows ssh traffic"	# short description
-
-  egress {				# outbound traffic
-    from_port   = 0			# from any port
-    to_port     = 0			# to any port
-    protocol    = "-1"			# '-1' - all protocols
-    cidr_blocks = ["0.0.0.0/0"]		# all IPs - Classless Inter-Domain Routing (CIDR)
-  }
-
-  ingress {				# inbound traffic
-    from_port   = 22			# from port 22
-    to_port     = 22			# to port 22 - port 22 only
-    protocol    = "tcp"			# tcp protocol only
-    cidr_blocks = ["0.0.0.0/0"]		# allow all IPs - Classless Inter-Domain Routing
-  }
-
-  tags = {				# tags
-    Name         = "allow-ssh"
-    Environmnent = var.ENVIRONMENT
-  }
-}
-
-# Create Instance Group
-resource "aws_instance" "my-instance" {					# instance resource
-  ami           = var.AMI_ID						# amazon machine image
-  instance_type = var.INSTANCE_TYPE					# hardware type - t2.micro - free tier
-
-  # the VPC subnet
-  subnet_id = element(module.develop-vpc.public_subnets, 0)		# take first public subment 
-  availability_zone = "${var.AWS_REGION}a"				# use first availability zone
-
-  # the security group
-  vpc_security_group_ids = ["${aws_security_group.allow-ssh.id}"]	# SG id
-
-  # the public SSH key
-  key_name = aws_key_pair.levelup_key.key_name				# use key with name
-
-  tags = {								# tags
-    Name         = "instance-${var.ENVIRONMENT}"
-    Environmnent = var.ENVIRONMENT
-  }
-}
---------------------------------------------------
-
-
-
-Deploy_Custom_Image/custom_ami_deployment/install_custom_ami.json
---------------------------------------------------
-{
-    "variables": {
-        "aws_access_key": "",
-        "aws_secret_key": ""
-    },
-    "builders": [
-        {
-            "type": "amazon-ebs",
-            "access_key": "{{user `aws_access_key`}}",
-            "secret_key": "{{user `aws_secret_key`}}",
-            "region": "us-east-2",
-            "source_ami_filter": {
-                "filters": {
-                    "virtualization-type": "hvm",
-                    "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
-                    "root-device-type": "ebs"
-                },
-                "owners": [
-                    "099720109477"
-                ],
-                "most_recent": true
-            },
-            "instance_type": "t2.micro",
-            "ssh_username": "ubuntu",
-            "ami_name": "custom-packer-{{timestamp}}"
-        }
-    ],
-    "provisioners": [
-        {
-            "type": "shell",
-            "script": "./install_nginx.sh",
-            "execute_command": "{{ .Vars }} sudo -E sh '{{ .Path }}'",
-            "pause_before": "10s"
-        }
-    ]
-}
---------------------------------------------------
-
-
-
-Deploy_Custom_Image/custom_ami_deployment/install_nginx.sh
---------------------------------------------------
-#!/bin/bash
-apt-get update
-apt-get install -y nginx docker.io
---------------------------------------------------
-
-
-
-Deploy_Custom_Image/custom_ami_deployment/variable.tf
---------------------------------------------------
-# Variable for Create Instance Module
-variable "public_key_path" {
-  description = "Public key path"
-  default = "~/.ssh/levelup_key.pub"
-}
-
-variable "ENVIRONMENT" {
-    type    = string
-    default = "development"
-}
-
-variable "AMI_ID" {
-    type    = string
-    default = ""
-}
-
-variable "AWS_REGION" {
-default = "us-east-2"
-}
-
-variable "INSTANCE_TYPE" {
-  default = "t2.micro"
-}
---------------------------------------------------
-
-
-
-
 Scenario 1
 ----------
 
@@ -497,160 +342,6 @@ We have Folder and File structure
 
 
 
-Deploy_Custom_Image
--------------------
-
-Deploy_Custom_Image/custom_ami_deployment/createInstance.tf
---------------------------------------------------
-# Create Instance uisng Custom VPC
-
-module "develop-vpc" {				# use module
-    source      = "../modules/vpc"		# module source
-
-    ENVIRONMENT = var.ENVIRONMENT		# set local variable for ENVIRONMENT
-    AWS_REGION  = var.AWS_REGION		# set local variables for AWS_REGION
-}
-
-provider "aws" {				# provider resource
-  region = var.AWS_REGION			# use local variable with AWS_REGION
-}
-
-#Resource key pair
-resource "aws_key_pair" "levelup_key" {		# KeyPair
-  key_name      = "levelup_key"			# key name
-  public_key    = file(var.public_key_path)	# path to public key location
-}
-
-#Secutiry Group for Instances					
-resource "aws_security_group" "allow-ssh" {			# Security Group resource
-  vpc_id      = module.develop-vpc.my_vpc_id			# use vpc id
-  name        = "allow-ssh-${var.ENVIRONMENT}"			# set name with prefix
-  description = "security group that allows ssh traffic"	# short description
-
-  egress {				# outbound traffic
-    from_port   = 0			# from any port
-    to_port     = 0			# to any port
-    protocol    = "-1"			# '-1' - all protocols
-    cidr_blocks = ["0.0.0.0/0"]		# all IPs - Classless Inter-Domain Routing (CIDR)
-  }
-
-  ingress {				# inbound traffic
-    from_port   = 22			# from port 22
-    to_port     = 22			# to port 22 - port 22 only
-    protocol    = "tcp"			# tcp protocol only
-    cidr_blocks = ["0.0.0.0/0"]		# allow all IPs - Classless Inter-Domain Routing
-  }
-
-  tags = {				# tags
-    Name         = "allow-ssh"
-    Environmnent = var.ENVIRONMENT
-  }
-}
-
-# Create Instance Group
-resource "aws_instance" "my-instance" {					# instance resource
-  ami           = var.AMI_ID						# amazon machine image
-  instance_type = var.INSTANCE_TYPE					# hardware type - t2.micro - free tier
-
-  # the VPC subnet
-  subnet_id = element(module.develop-vpc.public_subnets, 0)		# take first public subment 
-  availability_zone = "${var.AWS_REGION}a"				# use first availability zone
-
-  # the security group
-  vpc_security_group_ids = ["${aws_security_group.allow-ssh.id}"]	# SG id
-
-  # the public SSH key
-  key_name = aws_key_pair.levelup_key.key_name				# use key with name
-
-  tags = {								# tags
-    Name         = "instance-${var.ENVIRONMENT}"
-    Environmnent = var.ENVIRONMENT
-  }
-}
---------------------------------------------------
-
-
-
-Deploy_Custom_Image/custom_ami_deployment/install_custom_ami.json
---------------------------------------------------
-{
-    "variables": {
-        "aws_access_key": "",
-        "aws_secret_key": ""
-    },
-    "builders": [
-        {
-            "type": "amazon-ebs",
-            "access_key": "{{user `aws_access_key`}}",
-            "secret_key": "{{user `aws_secret_key`}}",
-            "region": "us-east-2",
-            "source_ami_filter": {
-                "filters": {
-                    "virtualization-type": "hvm",
-                    "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
-                    "root-device-type": "ebs"
-                },
-                "owners": [
-                    "099720109477"
-                ],
-                "most_recent": true
-            },
-            "instance_type": "t2.micro",
-            "ssh_username": "ubuntu",
-            "ami_name": "custom-packer-{{timestamp}}"
-        }
-    ],
-    "provisioners": [
-        {
-            "type": "shell",
-            "script": "./install_nginx.sh",
-            "execute_command": "{{ .Vars }} sudo -E sh '{{ .Path }}'",
-            "pause_before": "10s"
-        }
-    ]
-}
---------------------------------------------------
-
-
-
-Deploy_Custom_Image/custom_ami_deployment/install_nginx.sh
---------------------------------------------------
-#!/bin/bash
-apt-get update
-apt-get install -y nginx docker.io
---------------------------------------------------
-
-
-
-Deploy_Custom_Image/custom_ami_deployment/variable.tf
---------------------------------------------------
-# Variable for Create Instance Module
-variable "public_key_path" {
-  description = "Public key path"
-  default = "~/.ssh/levelup_key.pub"
-}
-
-variable "ENVIRONMENT" {
-    type    = string
-    default = "development"
-}
-
-variable "AMI_ID" {
-    type    = string
-    default = ""
-}
-
-variable "AWS_REGION" {
-default = "us-east-2"
-}
-
-variable "INSTANCE_TYPE" {
-  default = "t2.micro"
-}
---------------------------------------------------
-
-
-
 
 Scenario 2
 ----------
@@ -819,8 +510,8 @@ We can see that we have 'provisioners' section.
 
 VALIDATE
 --------
-Validate scenario1.json file
-	terminal --> packer validate scenario1.json
+Validate scenario2.json file
+	terminal --> packer validate scenario2.json
 
 	# result: The configuration is valid.
 
@@ -828,11 +519,16 @@ Validate scenario1.json file
 BUILD - this will charge our AWS Account appr. $0.03 per AMI
 -----
 Build Packer consifguration scenario1.json
-	terminal --> packer build scenario1.json
+	terminal --> packer build scenario2.json
 
 Result logs: 
 - Instance will be created
 - Connect to the instance via ssh and copy instance configurations
+- uploading helloworld.txt to the instance
+- execute the scripts
+- list all content of the image
+- print the message in the heloworld.txt - Hello Team, This is custom AMI via Packer.
+- install nginx
 - Stop the instance
 - Create AMI image
 - Terminate the instance
@@ -840,7 +536,9 @@ Result logs:
 - Deleting resources
 
 Message with the region and created ami name:
-us-east-2: ami-05e042e65dac3523c
+us-east-2: ami-05e042e65daa3425d
+
+This image contains Linux Ubuntu with installed Nginx.
 
 We can check/delete the created AMI on AWS/EC2/AMIs.
 
@@ -850,30 +548,269 @@ We can check/delete the created AMI on AWS/EC2/AMIs.
 74. Lab : Terraform + Packer
 ============================
 
+In this lab we will combine Terraform and Packer to create and deploy instance with custom image.
 
 
-➢ 
+Configuration management diagram
+--------------------------------
+							    contains
+VPC --> Security Group --> EC2 Instance   with   Custom AMI -------- Nginx
+ |		|		  |		     |		|
+ ----------------------------------		     |		---- Custom configuration
+		|				     |
+       Managed with Terraform		     Created by Packer
 
-➢ 
+VPC will be created with module,
+The Security Group will use the VPC,
+EC2 Instance will be created with module,
+Cistom AMI will be created by Packer.
 
-➢ 
 
-➢ 
 
-➢ 
+Flow of Packer
+--------------
 
-➢ 
+Validate --> Build --> Save Artifacts (image) --> Use Artifacts further in Terraform
 
-➢ 
 
-➢ 
+We have Folder and File structure
+---------------------------------
 
-➢ 
+|-- Deploy_Custom_Image
+|   |-- custom_ami_deployment
+|   |    + createInstance.tf
+|   |    + install_custom_ami.json
+|   |    + install_nginx.sh
+|   |    + variable.tf
+|   |
+|   |-- modules
+|       |-- vpc
+|	     + variable.tf
+|	     + vpc.tf
+|
+|-- Scenario1
+|    + scenarion1.json
+|
+|-- Scenario2
+     + helloworld.txt
+     + install_nginx.sh
+     + scenarion2.json
 
-➢ 
 
-➢ 
 
-➢ 
+Deploy_Custom_Image
+-------------------
+
+Deploy_Custom_Image/custom_ami_deployment/createInstance.tf
+--------------------------------------------------
+# Create Instance uisng Custom VPC
+
+module "develop-vpc" {				# use module
+    source      = "../modules/vpc"		# module source
+
+    ENVIRONMENT = var.ENVIRONMENT		# set local variable for ENVIRONMENT
+    AWS_REGION  = var.AWS_REGION		# set local variables for AWS_REGION
+}
+
+provider "aws" {				# provider resource
+  region = var.AWS_REGION			# use local variable with AWS_REGION
+}
+
+#Resource key pair
+resource "aws_key_pair" "levelup_key" {		# KeyPair
+  key_name      = "levelup_key"			# key name
+  public_key    = file(var.public_key_path)	# path to public key location
+}
+
+#Secutiry Group for Instances					
+resource "aws_security_group" "allow-ssh" {			# Security Group resource
+  vpc_id      = module.develop-vpc.my_vpc_id			# use vpc id
+  name        = "allow-ssh-${var.ENVIRONMENT}"			# set name with prefix
+  description = "security group that allows ssh traffic"	# short description
+
+  egress {				# outbound traffic
+    from_port   = 0			# from any port
+    to_port     = 0			# to any port
+    protocol    = "-1"			# '-1' - all protocols
+    cidr_blocks = ["0.0.0.0/0"]		# all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  ingress {				# inbound traffic
+    from_port   = 22			# from port 22
+    to_port     = 22			# to port 22 - port 22 only
+    protocol    = "tcp"			# tcp protocol only
+    cidr_blocks = ["0.0.0.0/0"]		# allow all IPs - Classless Inter-Domain Routing
+  }
+
+  tags = {				# tags
+    Name         = "allow-ssh"
+    Environmnent = var.ENVIRONMENT
+  }
+}
+
+# Create Instance Group
+resource "aws_instance" "my-instance" {					# instance resource
+  ami           = var.AMI_ID		# amazon machine image - this will be generated from install_custom_ami.json file
+  instance_type = var.INSTANCE_TYPE					# hardware type - t2.micro - free tier
+
+  # the VPC subnet
+  subnet_id = element(module.develop-vpc.public_subnets, 0)		# take first public subment 
+  availability_zone = "${var.AWS_REGION}a"				# use first availability zone
+
+  # the security group
+  vpc_security_group_ids = ["${aws_security_group.allow-ssh.id}"]	# SG id
+
+  # the public SSH key
+  key_name = aws_key_pair.levelup_key.key_name				# use key with name
+
+  tags = {								# tags
+    Name         = "instance-${var.ENVIRONMENT}"
+    Environmnent = var.ENVIRONMENT
+  }
+}
+--------------------------------------------------
+
+
+
+Deploy_Custom_Image/custom_ami_deployment/install_custom_ami.json
+--------------------------------------------------
+{
+    "variables": {
+        "aws_access_key": "",
+        "aws_secret_key": ""
+    },
+    "builders": [
+        {
+            "type": "amazon-ebs",
+            "access_key": "{{user `aws_access_key`}}",
+            "secret_key": "{{user `aws_secret_key`}}",
+            "region": "us-east-2",
+            "source_ami_filter": {
+                "filters": {
+                    "virtualization-type": "hvm",
+                    "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
+                    "root-device-type": "ebs"
+                },
+                "owners": [
+                    "099720109477"
+                ],
+                "most_recent": true
+            },
+            "instance_type": "t2.micro",
+            "ssh_username": "ubuntu",
+            "ami_name": "custom-packer-{{timestamp}}"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell",
+            "script": "./install_nginx.sh",
+            "execute_command": "{{ .Vars }} sudo -E sh '{{ .Path }}'",
+            "pause_before": "10s"
+        }
+    ]
+}
+--------------------------------------------------
+
+In 'provisioners' section we set execution of 'install_nginx.sh' script and set all variables in the path of the AMI.
+
+
+
+Deploy_Custom_Image/custom_ami_deployment/install_nginx.sh
+--------------------------------------------------
+#!/bin/bash						# use bach interpreter
+apt-get update						# update linux package manager
+apt-get install -y nginx docker.io			# install nginx and docker
+--------------------------------------------------
+
+
+
+Deploy_Custom_Image/custom_ami_deployment/variable.tf
+--------------------------------------------------
+# Variable for Create Instance Module
+variable "public_key_path" {
+  description = "Public key path"
+  default = "~/.ssh/levelup_key.pub"
+}
+
+variable "ENVIRONMENT" {
+    type    = string
+    default = "development"
+}
+
+variable "AMI_ID" {
+    type    = string
+    default = ""
+}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "INSTANCE_TYPE" {
+  default = "t2.micro"
+}
+--------------------------------------------------
+
+
+Deploy_Custom_Image/modlules/vpc/vpc.tf					CREATE VPC
+--------------------------------------------------			----------
+#Custom VPC for my Project 
+module "levelup-vpc" {							# use module
+  source = "terraform-aws-modules/vpc/aws"				# module source
+
+  name = "vpc-${var.ENVIRONMENT}"					# set name with prefix
+  cidr = "10.0.0.0/16"							# set IP ranges - Classless Inter-Domain Routing (CIDR)
+
+  azs             = ["${var.AWS_REGION}a", "${var.AWS_REGION}b", "${var.AWS_REGION}c"]	# set availability zones
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]			# set private subnets ranges
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]			# set public subnets ranges
+
+  enable_nat_gateway = false	# Network Address Translation (NAT) service
+  enable_vpn_gateway = false
+
+  tags = {				# tags
+    Terraform   = "true"	
+    Environment = var.ENVIRONMENT
+  }
+}
+
+#Output Specific to Custom VPC
+output "my_vpc_id" {						# print vpc id on launch
+  description = "VPC ID"
+  value       = module.levelup-vpc.vpc_id
+}
+
+output "private_subnets" {					# print private subnet ids on launch
+  description = "List of IDs of private subnets"
+  value       = module.levelup-vpc.private_subnets
+}
+
+output "public_subnets" {					# print public subnet ids on launch 
+  description = "List of IDs of public subnets"
+  value       = module.levelup-vpc.public_subnets
+}
+--------------------------------------------------
+
+
+
+Deploy_Custom_Image/modlules/vpc/variable.tf
+--------------------------------------------------
+#Define Variable for Custom Module VPC
+
+variable "AWS_REGION" {
+    type    = string
+    default = "us-east-2"				# set default AWS region
+}
+
+variable "ENVIRONMENT" {
+    type    = string
+    default = ""
+}
+--------------------------------------------------
+
+
+
+
 
 
