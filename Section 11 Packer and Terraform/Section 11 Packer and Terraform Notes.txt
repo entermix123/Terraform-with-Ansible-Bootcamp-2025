@@ -102,6 +102,8 @@ Available commands are:
 72. Lab : Create Custom AMI Scenario I
 ======================================
 
+In this Lab we will create custom AMI with scenario1.json. 
+
 Flow of Packer
 --------------
 
@@ -334,6 +336,322 @@ Scenario1/scenarion1.json
 
 
 
+Sceanrio1 
+---------
+
+Login to the DigitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+
+Install Packer on Ubuntu
+------------------------
+
+Navigate to root directory
+	terminal --> cd /root
+
+Install Packer
+	terminal --> wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install packer
+
+Verify Packer installation
+	terminal --> packer -v		# result: Packer v1.13.1
+
+
+Install packer amazon plugin
+	Navigate to Packer configuration directory
+		terminal --> cd ${HOME}/.config/packer/
+	INstall amazon plugin
+		terminal --> packer plugins install github.com/hashicorp/amazon
+
+
+Navigate to Packer scenario 1 directory
+	terminal --> cd /Packer/Scenarion1
+
+Edit scenario1.json file and set aws_access_key and aes_secret_key
+	terminal --> vi scenario1.json
+
+scenario1.json
+--------------------------------------------------
+{
+    "variables": {
+        "aws_access_key": "xxxxxxxxxxxxxxxxxxx",			# add access key
+        "aws_secret_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"		# add secret key
+    },
+    "builders": [
+        {
+            "type": "amazon-ebs",
+            "access_key": "{{user `aws_access_key`}}",
+            "secret_key": "{{user `aws_secret_key`}}",
+            "region": "us-east-2",
+            "source_ami_filter": {
+                "filters": {
+                    "virtualization-type": "hvm",
+                    "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
+                    "root-device-type": "ebs"
+                },
+                "owners": [
+                    "099720109477"
+                ],
+                "most_recent": true
+            },
+            "instance_type": "t2.micro",
+            "ssh_username": "ubuntu",
+            "ami_name": "scenario1-packer-{{timestamp}}"
+        }
+    ]
+}
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+
+VALIDATE
+--------
+Validate scenario1.json file
+	terminal --> packer validate scenario1.json
+
+	# result: The configuration is valid.
+
+
+BUILD - this will charge our AWS Account appr. $0.03 per AMI
+-----
+Build Packer consifguration scenario1.json
+	terminal --> packer build scenario1.json
+
+Result logs: 
+- Instance will be created
+- Connect to the instance via ssh and copy instance configurations
+- Stop the instance
+- Create AMI image
+- Terminate the instance
+- Cleaning volumes
+- Deleting resources
+
+Message with the region and created ami name:
+us-east-2: ami-05e042e65dac3523c
+
+We can check/delete the created AMI on AWS/EC2/AMIs.
+
+
+
+
+
+
+
+73. Lab : Create Custom AMI Scenario II
+=======================================
+
+In this Lab we will create custom AMI with scenario2.json and use prvisioner to configure additional software on the AMI image.
+
+Flow of Packer
+--------------
+
+Validate --> Build --> Save Artifacts (image) --> Use Artifacts further in Terraform
+
+
+Packer template components
+--------------------------
+- variable
+- builder
+- provisioner
+- post-preprocessor
+
+
+
+We have Folder and File structure
+---------------------------------
+
+|-- Deploy_Custom_Image
+|   |-- custom_ami_deployment
+|   |    + createInstance.tf
+|   |    + install_custom_ami.json
+|   |    + install_nginx.sh
+|   |    + variable.tf
+|   |
+|   |-- modules
+|       |-- vpc
+|	     + variable.tf
+|	     + vpc.tf
+|
+|-- Scenario1
+|    + scenarion1.json
+|
+|-- Scenario2
+     + helloworld.txt
+     + install_nginx.sh
+     + scenarion2.json
+
+
+
+Deploy_Custom_Image
+-------------------
+
+Deploy_Custom_Image/custom_ami_deployment/createInstance.tf
+--------------------------------------------------
+# Create Instance uisng Custom VPC
+
+module "develop-vpc" {				# use module
+    source      = "../modules/vpc"		# module source
+
+    ENVIRONMENT = var.ENVIRONMENT		# set local variable for ENVIRONMENT
+    AWS_REGION  = var.AWS_REGION		# set local variables for AWS_REGION
+}
+
+provider "aws" {				# provider resource
+  region = var.AWS_REGION			# use local variable with AWS_REGION
+}
+
+#Resource key pair
+resource "aws_key_pair" "levelup_key" {		# KeyPair
+  key_name      = "levelup_key"			# key name
+  public_key    = file(var.public_key_path)	# path to public key location
+}
+
+#Secutiry Group for Instances					
+resource "aws_security_group" "allow-ssh" {			# Security Group resource
+  vpc_id      = module.develop-vpc.my_vpc_id			# use vpc id
+  name        = "allow-ssh-${var.ENVIRONMENT}"			# set name with prefix
+  description = "security group that allows ssh traffic"	# short description
+
+  egress {				# outbound traffic
+    from_port   = 0			# from any port
+    to_port     = 0			# to any port
+    protocol    = "-1"			# '-1' - all protocols
+    cidr_blocks = ["0.0.0.0/0"]		# all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  ingress {				# inbound traffic
+    from_port   = 22			# from port 22
+    to_port     = 22			# to port 22 - port 22 only
+    protocol    = "tcp"			# tcp protocol only
+    cidr_blocks = ["0.0.0.0/0"]		# allow all IPs - Classless Inter-Domain Routing
+  }
+
+  tags = {				# tags
+    Name         = "allow-ssh"
+    Environmnent = var.ENVIRONMENT
+  }
+}
+
+# Create Instance Group
+resource "aws_instance" "my-instance" {					# instance resource
+  ami           = var.AMI_ID						# amazon machine image
+  instance_type = var.INSTANCE_TYPE					# hardware type - t2.micro - free tier
+
+  # the VPC subnet
+  subnet_id = element(module.develop-vpc.public_subnets, 0)		# take first public subment 
+  availability_zone = "${var.AWS_REGION}a"				# use first availability zone
+
+  # the security group
+  vpc_security_group_ids = ["${aws_security_group.allow-ssh.id}"]	# SG id
+
+  # the public SSH key
+  key_name = aws_key_pair.levelup_key.key_name				# use key with name
+
+  tags = {								# tags
+    Name         = "instance-${var.ENVIRONMENT}"
+    Environmnent = var.ENVIRONMENT
+  }
+}
+--------------------------------------------------
+
+
+
+Deploy_Custom_Image/custom_ami_deployment/install_custom_ami.json
+--------------------------------------------------
+{
+    "variables": {
+        "aws_access_key": "",
+        "aws_secret_key": ""
+    },
+    "builders": [
+        {
+            "type": "amazon-ebs",
+            "access_key": "{{user `aws_access_key`}}",
+            "secret_key": "{{user `aws_secret_key`}}",
+            "region": "us-east-2",
+            "source_ami_filter": {
+                "filters": {
+                    "virtualization-type": "hvm",
+                    "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
+                    "root-device-type": "ebs"
+                },
+                "owners": [
+                    "099720109477"
+                ],
+                "most_recent": true
+            },
+            "instance_type": "t2.micro",
+            "ssh_username": "ubuntu",
+            "ami_name": "custom-packer-{{timestamp}}"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell",
+            "script": "./install_nginx.sh",
+            "execute_command": "{{ .Vars }} sudo -E sh '{{ .Path }}'",
+            "pause_before": "10s"
+        }
+    ]
+}
+--------------------------------------------------
+
+
+
+Deploy_Custom_Image/custom_ami_deployment/install_nginx.sh
+--------------------------------------------------
+#!/bin/bash
+apt-get update
+apt-get install -y nginx docker.io
+--------------------------------------------------
+
+
+
+Deploy_Custom_Image/custom_ami_deployment/variable.tf
+--------------------------------------------------
+# Variable for Create Instance Module
+variable "public_key_path" {
+  description = "Public key path"
+  default = "~/.ssh/levelup_key.pub"
+}
+
+variable "ENVIRONMENT" {
+    type    = string
+    default = "development"
+}
+
+variable "AMI_ID" {
+    type    = string
+    default = ""
+}
+
+variable "AWS_REGION" {
+default = "us-east-2"
+}
+
+variable "INSTANCE_TYPE" {
+  default = "t2.micro"
+}
+--------------------------------------------------
+
+
+
+
 Scenario 2
 ----------
 
@@ -401,6 +719,7 @@ sudo apt-get -y install nginx
 --------------------------------------------------
 
 
+
 Login to the DigitalOcean ubuntu and pull the files from github.
 	terminal --> ssh root@IP
 	terminal --> password
@@ -417,25 +736,6 @@ We need to install AWS CLI on the machine
 	terminal --> sudo apt-get install awscli
 	terminal --> y					# confirm
 
-Set Secret Access Key and Aceess Key as environemnt variable
-	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
-	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-Check if the secret access key and access key are successfully set as environment variable
-	terminal --> echo $AWS_SECRET_KEY
-	terminal --> echo $AWS_ACCESS_KEY
-
-Navigate to root/.ssh folder
-	terminal --> cd /root/.ssh/
-
-Generate private and public key
-	terminal --> ssh-keygen -f levelup_key
-	terminal --> enter
-	terminal --> enter
-
-Verify key creation
-	terminal --> ls
-
 
 Install Packer on Ubuntu
 ------------------------
@@ -451,66 +751,100 @@ sudo apt update && sudo apt install packer
 Verify Packer installation
 	terminal --> packer -v		# result: Packer v1.13.1
 
+Install packer amazon plugin
+	Navigate to Packer configuration directory
+		terminal --> cd ${HOME}/.config/packer/
+	INstall amazon plugin
+		terminal --> packer plugins install github.com/hashicorp/amazon
 
 Navigate to Packer scenario 1 directory
-	terminal --> cd /Packer/scenarion1
+	terminal --> cd /Packer/Scenarion1
 
-INIT
-----
-Initialize terrafomr
-	terminal --> terraform init
-	# we can see console logs of downloaded modules
+Edit scenario1.json file and set aws_access_key and aes_secret_key
+	terminal --> vi scenario2.json
 
-PLAN
-----
-Plan terraform resources
-	terminal --> terraform plan
+scenario2.json
+--------------------------------------------------
+{
+    "variables": {
+        "aws_access_key": "xxxxxxxxxxxxxxxxx",
+        "aws_secret_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "builders": [
+        {
+            "type": "amazon-ebs",
+            "access_key": "{{user `aws_access_key`}}",
+            "secret_key": "{{user `aws_secret_key`}}",
+            "region": "us-east-2",
+            "source_ami_filter": {
+                "filters": {
+                    "virtualization-type": "hvm",
+                    "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
+                    "root-device-type": "ebs"
+                },
+                "owners": [
+                    "099720109477"
+                ],
+                "most_recent": true
+            },
+            "instance_type": "t2.micro",
+            "ssh_username": "ubuntu",
+            "ami_name": "scenario1-packer-{{timestamp}}"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "file",
+            "source": "./helloworld.txt",
+            "destination": "/home/ubuntu/"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "ls -al /home/ubuntu",
+                "cat /home/ubuntu/helloworld.txt"
+            ]
+        },
+        {
+            "type": "shell",
+            "script": "./install_nginx.sh"
+        }
+    ]
+}
+--------------------------------------------------
+save changes - escape, :wq!, enter
 
-	# the plan should be successful and we can review the logs
-	# result: 	
+We can see that we have 'provisioners' section.
+ 
 
-APPLY
+VALIDATE
+--------
+Validate scenario1.json file
+	terminal --> packer validate scenario1.json
+
+	# result: The configuration is valid.
+
+
+BUILD - this will charge our AWS Account appr. $0.03 per AMI
 -----
-Apply the plan made on the DigitalOcean Ubuntu machine
-	terminal --> terraform apply
-	terminal --> yes				# confirm
+Build Packer consifguration scenario1.json
+	terminal --> packer build scenario1.json
+
+Result logs: 
+- Instance will be created
+- Connect to the instance via ssh and copy instance configurations
+- Stop the instance
+- Create AMI image
+- Terminate the instance
+- Cleaning volumes
+- Deleting resources
+
+Message with the region and created ami name:
+us-east-2: ami-05e042e65dac3523c
+
+We can check/delete the created AMI on AWS/EC2/AMIs.
 
 
-
-
-➢ 
-
-
-
-
-73. Lab : Create Custom AMI Scenario II
-=======================================
-
-
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
 
 
 74. Lab : Terraform + Packer
