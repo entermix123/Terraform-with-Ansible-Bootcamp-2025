@@ -199,7 +199,7 @@ resource "aws_internet_gateway" "levelup_igw" {				# internet gateway resource
 
 # ELastic IP for NAT Gateway
 resource "aws_eip" "levelup_nat_eip" {					# external IP
-  vpc      = true							# use vpc
+  domain   = "vpc"							# use vpc
   depends_on = [aws_internet_gateway.levelup_igw]			# depends on the internet gateway
 }
 
