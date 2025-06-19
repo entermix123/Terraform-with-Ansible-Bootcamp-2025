@@ -935,7 +935,7 @@ Plan terraform resources
 
 	# the plan should be successful and we can review the logs
 	# result: 	
-
+		Plan: 11 to add, 0 to change, 0 to destroy.
 
 APPLY
 -----
