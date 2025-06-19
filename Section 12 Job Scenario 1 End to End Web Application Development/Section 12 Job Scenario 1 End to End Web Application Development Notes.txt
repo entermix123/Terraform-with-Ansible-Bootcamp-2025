@@ -13,24 +13,958 @@ Section 12: Job Scenario 1: End to End Web Application Development
 75. Application Overview
 ========================
 
+➢ Discussion on Real Job Scenario.
+
+➢ Application with below components
+	➢ VPC				# Virtual Privet Cloud Network
+	➢ RDS				# Relational DataBase Service
+	➢ WebServer (NGINX)
+
+
+
+Components of the Lab:
+----------------------
+
+➢ RDS - Primary DB with Replication
+	- multi-zone service
+
+➢ Auto Scaling Group and Launch Config
+	- when the load incraese the EC2 instance will be auto scaled
+	- use launch config for the scaling
+
+➢ Load Balancers for Web Server
+	- attach the load balancer with tweb server
+
+➢ EC2 Instance for WebServer
+
+➢ Security Group for Each Resource
+	- for web server
+	- for RDS service
+	- for load balabncer
+
+➢ VPC for our RDS and WebServers
+
+➢ NAT Gateway and Internet Gateway
+
+
 
 
 76. Create VPC Network
 ======================
+
+WebApp
+|
+|-- module
+|   |
+|   |-- rds
+|   |    +-- rds.tf
+|   |    +-- variable.tf
+|   |
+|   |-- vpc
+|        +-- vpc.tf
+|        +-- variable.tf
+|   
+|-- webserver
+     +-- variable.tf
+     +-- webserver_alb.tf
+     +-- webserver_instance.tf
+
+
+
+We have 2 files
+---------------
+- vpc.tf
+- variable.tf
+
+
+AWS VPC
+-------
+➢ search 'aws vpc' in the search bar on left and choose 'aws_vpc'
+   ➢ Example usage and syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc#example-usage
+   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc#argument-reference
+
+
+AWS SUBNET
+----------
+➢ search 'aws subnet'
+   ➢ Example usage and syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#example-usage
+   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#argument-reference
+
+
+AWS INTERNET GATEWAY
+--------------------
+➢ search 'aws internet gateway'
+  ➢ Example syntax - ttps://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway#argument-reference
+
+
+AWS ROUTE TABLE
+---------------
+➢ search 'aws route table'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table#argument-reference
+
+
+AWS ROUTE TABLE ASSOCIATION
+---------------------------
+➢ search 'aws route table assocation'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association#argument-reference
+
+
+ELASTIC IP
+----------
+➢ search 'aws eip'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#argument-reference
+
+
+AWS NAT GATEWAY
+---------------
+➢ search 'aws_nat_gateway'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway#argument-reference
+
+
+
+vpc.tf
+--------------------------------------------------
+
+data "aws_availability_zones" "available" {		# take all availability zones of the provider region
+  state = "available"
+}
+
+# Main  vpc
+resource "aws_vpc" "levelup_vpc" {			# virtual private cloud network
+  cidr_block       = var.LEVELUP_VPC_CIDR_BLOC		# ip ranges - Classless Inter-Domain Routing (CIDR)
+  enable_dns_support = "true"
+  enable_dns_hostnames = "true"
+  tags = {						
+    Name = "${var.ENVIRONMENT}-vpc"			# tag with env prefix
+  }
+}
+
+# Public subnets
+
+#public Subnet 1
+resource "aws_subnet" "levelup_vpc_public_subnet_1" {			# public subnet 1 resource
+  vpc_id     = aws_vpc.levelup_vpc.id					# vpc id
+  cidr_block = var.LEVELUP_VPC_PUBLIC_SUBNET1_CIDR_BLOCK		# ip ranges - Classless Inter-Domain Routing (CIDR)
+  availability_zone = data.aws_availability_zones.available.names[0]	# use the first availability zone
+  map_public_ip_on_launch = "true"					# set public ip on launch
+  tags = {								
+    Name = "${var.ENVIRONMENT}-levelup-vpc-public-subnet-1"		# tag with env prefix
+  }
+}
+
+#public Subnet 2
+resource "aws_subnet" "levelup_vpc_public_subnet_2" {			# public subnet 2 resource
+  vpc_id     = aws_vpc.levelup_vpc.id					# vpc id
+  cidr_block = var.LEVELUP_VPC_PUBLIC_SUBNET2_CIDR_BLOCK		# ip ranges - Classless Inter-Domain Routing (CIDR)
+  availability_zone = data.aws_availability_zones.available.names[1]	# use the second availability zone
+  map_public_ip_on_launch = "true"					# set public ip on launch
+  tags = {								
+    Name = "${var.ENVIRONMENT}-levelup-vpc-public-subnet-2"		# tag with env prefix
+  }
+}
+
+# private subnet 1
+resource "aws_subnet" "levelup_vpc_private_subnet_1" {			# private subnet 1 resource
+  vpc_id     = aws_vpc.levelup_vpc.id					# vpc id
+  cidr_block = var.LEVELUP_VPC_PRIVATE_SUBNET1_CIDR_BLOCK		# ip ranges - Classless Inter-Domain Routing (CIDR)
+  availability_zone = data.aws_availability_zones.available.names[0]	# use the first availability zone
+  tags = {								
+    Name = "${var.ENVIRONMENT}-levelup-vpc-private-subnet-1"		# tag with env prefix
+  }
+}
+
+# private subnet 2							
+resource "aws_subnet" "levelup_vpc_private_subnet_2" {			# private subnet 2 resource
+  vpc_id     = aws_vpc.levelup_vpc.id					# vpc id
+  cidr_block = var.LEVELUP_VPC_PRIVATE_SUBNET2_CIDR_BLOCK		# ip ranges - Classless Inter-Domain Routing (CIDR)
+  availability_zone = data.aws_availability_zones.available.names[1]	# use the second availability zone
+  tags = {								
+    Name = "${var.ENVIRONMENT}-levelup-vpc-private-subnet-2"		# tag with env prefix
+  }
+}
+
+# internet gateway		
+resource "aws_internet_gateway" "levelup_igw" {				# internet gateway resource
+  vpc_id = aws_vpc.levelup_vpc.id					# vpc id
+
+  tags = {								
+    Name = "${var.ENVIRONMENT}-levelup-vpc-internet-gateway"		# tag with env prefix
+  }
+}
+
+# ELastic IP for NAT Gateway
+resource "aws_eip" "levelup_nat_eip" {					# external IP
+  vpc      = true							# use vpc
+  depends_on = [aws_internet_gateway.levelup_igw]			# depends on the internet gateway
+}
+
+# NAT gateway for private ip address
+resource "aws_nat_gateway" "levelup_ngw" {				# Network Address Translation (NAT) service resource
+  allocation_id = aws_eip.levelup_nat_eip.id				# use external IP
+  subnet_id     = aws_subnet.levelup_vpc_public_subnet_1.id		# use fisrt public subnet id
+  depends_on = [aws_internet_gateway.levelup_igw]			# depends on internet gateway
+  tags = {								
+    Name = "${var.ENVIRONMENT}-levelup-vpc-NAT-gateway"			# tag with env prefix
+  }
+}
+
+# Route Table for public Architecture
+resource "aws_route_table" "public" {					# public route table resource
+  vpc_id = aws_vpc.levelup_vpc.id					# use vpc id
+  route {
+    cidr_block = "0.0.0.0/0"						# all ips - Classless Inter-Domain Routing (CIDR)
+    gateway_id = aws_internet_gateway.levelup_igw.id			# use internet gateway id
+  }
+
+  tags = {								
+    Name = "${var.ENVIRONMENT}-levelup-public-route-table"		# tag with sufix
+  }
+}
+
+# Route table for Private subnets
+resource "aws_route_table" "private" {					# private route table resource
+  vpc_id = aws_vpc.levelup_vpc.id					# use vpc id
+  route {
+    cidr_block = "0.0.0.0/0"						# all IPs - Classless Inter-Domain Routing (CIDR)
+    gateway_id = aws_nat_gateway.levelup_ngw.id				# use Network Address Translation (NAT) gateway
+  }
+
+  tags = {								
+    Name = "${var.ENVIRONMENT}-levelup-private-route-table"		# tag with sufix
+  }
+}
+
+# Route Table association with public subnets
+resource "aws_route_table_association" "to_public_subnet1" {		# route table association to fist public subnet
+  subnet_id      = aws_subnet.levelup_vpc_public_subnet_1.id		# first public subnet id
+  route_table_id = aws_route_table.public.id				# public ip
+}
+resource "aws_route_table_association" "to_public_subnet2" {		# route table association to second public subnet
+  subnet_id      = aws_subnet.levelup_vpc_public_subnet_2.id		# second public subnet id
+  route_table_id = aws_route_table.public.id				# public ip
+}
+
+# Route table association with private subnets
+resource "aws_route_table_association" "to_private_subnet1" {		# route table association to first private subnet
+  subnet_id      = aws_subnet.levelup_vpc_private_subnet_1.id		# first private subnet id
+  route_table_id = aws_route_table.private.id				# private ip
+}
+resource "aws_route_table_association" "to_private_subnet2" {		# route table association to second private subnet
+  subnet_id      = aws_subnet.levelup_vpc_private_subnet_2.id		# second private subnet id
+  route_table_id = aws_route_table.private.id				# private ip
+}
+
+provider "aws" {			# provider resource
+  region     = var.AWS_REGION		# provider region
+}
+
+#Output Specific to Custom VPC
+output "my_vpc_id" {
+  description = "VPC ID"
+  value       = aws_vpc.levelup_vpc.id					# print VPC ID on launch
+}
+
+output "private_subnet1_id" {
+  description = "Subnet ID"
+  value       = aws_subnet.levelup_vpc_private_subnet_1.id		# print first private subnet id on launch
+}
+
+output "private_subnet2_id" {
+  description = "Subnet ID"
+  value       = aws_subnet.levelup_vpc_private_subnet_2.id		# print second private subnet id on launch
+}
+
+output "public_subnet1_id" {
+  description = "Subnet ID"
+  value       = aws_subnet.levelup_vpc_public_subnet_1.id		# print first public subnet id on launch
+}
+
+output "public_subnet2_id" {
+  description = "Subnet ID"
+  value       = aws_subnet.levelup_vpc_private_subnet_2.id		# print second public subnet id on launch
+}
+--------------------------------------------------
+
+
+
+variable.tf
+--------------------------------------------------
+variable "AWS_REGION" {
+    type        = string
+    default     = "us-east-2"				# default aws region
+}
+
+variable "LEVELUP_VPC_CIDR_BLOC" {
+  description = "The CIDR block for the VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "LEVELUP_VPC_PUBLIC_SUBNET1_CIDR_BLOCK" {
+  description = "The CIDR block for the VPC"
+  type        = string
+  default     = "10.0.101.0/24"
+}
+
+variable "LEVELUP_VPC_PUBLIC_SUBNET2_CIDR_BLOCK" {
+  description = "The CIDR block for the VPC"
+  type        = string
+  default     = "10.0.102.0/24"
+}
+
+variable "LEVELUP_VPC_PRIVATE_SUBNET1_CIDR_BLOCK" {
+  description = "The CIDR block for the VPC"
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "LEVELUP_VPC_PRIVATE_SUBNET2_CIDR_BLOCK" {
+  description = "The CIDR block for the VPC"
+  type        = string
+  default     = "10.0.2.0/24"
+}
+
+variable "ENVIRONMENT" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = "Development"				# default nevironment
+}
+--------------------------------------------------
+
+
 
 
 
 77. Create RDS Service
 ======================
 
+WebApp
+|
+|-- module
+|   |
+|   |-- rds
+|   |    +-- rds.tf
+|   |    +-- variable.tf
+|   |
+|   |-- vpc
+|        +-- vpc.tf
+|        +-- variable.tf
+|   
+|-- webserver
+     +-- variable.tf
+     +-- webserver_alb.tf
+     +-- webserver_instance.tf
+
+
+
+We have 2 files
+---------------
+- rds.tf
+- variable.tf
+
+
+
+AWS DB SUBNET GROUP
+-------------------
+➢ search 'aws db subnet group' (under RDS Relational Database)
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group#argument-reference
+
+
+AWS DB PARAMETER GROUP
+----------------------
+➢ search 'aws db parameter group' (under RDS Relational Database) - choose the specific DB, for this example MariaDB
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_parameter_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_parameter_group#argument-reference
+
+
+AWS DB INSTANCE
+---------------
+➢ search 'aws db instance' (under RDS Relational Database) - for this example MariaDB
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance#argument-reference
+  ➢ Parameter details for MySQL - https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraMySQL.Reference.html
+  ➢ Latest engine version - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/MySQL.Concepts.VersionMgmt.html
+
+
+rds.tf
+--------------------------------------------------
+#Call VPC Module First to get the Subnet IDs			# we can use our vpc module
+# module "levelup-vpc" {
+#     source      = "../vpc"					# module source
+
+#     ENVIRONMENT = var.ENVIRONMENT				# set environment local variable.tf
+#     AWS_REGION  = var.AWS_REGION				# set region from local variable.tf
+# }
+
+#Define Subnet Group for RDS Service
+resource "aws_db_subnet_group" "levelup-rds-subnet-group" {		# database subnet group resource
+
+    name          = "${var.ENVIRONMENT}-levelup-db-snet"		# db subnet group name with env prefix
+    description   = "Allowed subnets for DB cluster instances"		# short description
+    subnet_ids    = [
+      "${var.vpc_private_subnet1}",					# take vpc private subnet 1 IP from the output
+      "${var.vpc_private_subnet2}",					# take vpc private subnet 2 IP from the output
+    ]									# only users that use private subnets can access our RDS
+    tags = {
+        Name         = "${var.ENVIRONMENT}_levelup_db_subnet"		# tag with env prefix
+    }
+}
+
+#Define Security Groups for RDS Instances
+resource "aws_security_group" "levelup-rds-sg" {			# RDS Instance Security Group resource
+
+  name = "${var.ENVIRONMENT}-levelup-rds-sg"				# name woth env prefix
+  description = "Created by LevelUp"					# short description
+  vpc_id      = var.vpc_id						# used vpc id
+
+  ingress {						# inbound traffic configs
+    from_port = 3306					# from port 3306
+    to_port = 3306					# to port 3306
+    protocol = "tcp"					# TCP only
+    cidr_blocks = ["${var.RDS_CIDR}"]			# IP ranges -  Classless Inter-Domain Routing (CIDR)
+
+  }
+
+  egress {						# outbound traffic configs
+    from_port = 0					# from port 0 - all ports
+    to_port = 0						# to port 0 - all ports
+    protocol = "-1"					# '-1' - all protocols
+    cidr_blocks = ["0.0.0.0/0"]				# all IPs
+  }
+
+    tags = {
+    Name = "${var.ENVIRONMENT}-levelup-rds-sg"		# tag with env prefix
+   }
+}
+
+resource "aws_db_instance" "levelup-rds" {			# DB Instance resource
+  identifier = "${var.ENVIRONMENT}-levelup-rds"			# name with env prefix
+  allocated_storage = var.LEVELUP_RDS_ALLOCATED_STORAGE		# allocated storage size
+  storage_type = "gp2"						# type storage - gp2 - general purpose 2
+  engine = var.LEVELUP_RDS_ENGINE				# engine type from variable.tf
+  engine_version = var.LEVELUP_RDS_ENGINE_VERSION		# engine version from variable.tf
+  instance_class = var.DB_INSTANCE_CLASS			# instance class from variable.tf
+  backup_retention_period = var.BACKUP_RETENTION_PERIOD		# backup period from variable.tf
+  publicly_accessible = var.PUBLICLY_ACCESSIBLE			# public accessability from variable.tf
+  username = var.LEVELUP_RDS_USERNAME						# access username
+  password = var.LEVELUP_RDS_PASSWORD						# access password
+  vpc_security_group_ids = [aws_security_group.levelup-rds-sg.id]		# list of vpc SG ids
+  db_subnet_group_name = aws_db_subnet_group.levelup-rds-subnet-group.name	# DB subnet group name
+  multi_az = "false"								# use single availability zone
+}	# multi_az = "true" - it will create replication db instance in different az - not available for free tier
+
+output "rds_prod_endpoint" {		
+  value = aws_db_instance.levelup-rds.endpoint					# print DB endpoint  on launch
+}
+--------------------------------------------------
+
+
+variable.tf
+--------------------------------------------------
+variable "AWS_REGION" {
+    type        = string
+    default     = "us-east-2"			# aws provider default region
+}
+
+variable "BACKUP_RETENTION_PERIOD" {
+    default = "7"
+}
+
+variable "PUBLICLY_ACCESSIBLE" {
+    default = "true"
+}
+
+variable "LEVELUP_RDS_USERNAME" {
+    default = "testdb"				# default db username
+}
+
+variable "LEVELUP_RDS_PASSWORD" {
+    default = "testdb12345"			# default db password - use only letters and digits
+}
+
+variable "LEVELUP_RDS_ALLOCATED_STORAGE" {
+    type = string
+    default = "20"				# 20 GB default storage size
+}
+
+variable "LEVELUP_RDS_ENGINE" {
+    type = string
+    default = "mysql"				# default RDS - MySQL
+}
+
+variable "LEVELUP_RDS_ENGINE_VERSION" {
+    type = string
+    default = "8.0.42"				# default engine version 
+}
+
+variable "DB_INSTANCE_CLASS" {
+    type = string
+    default = "db.t2.micro"			# t2.micro freetier db hardware 
+}
+
+variable "RDS_CIDR" {
+  description = "The CIDR block for the VPC"
+  type        = string
+  default     = "0.0.0.0/0"			# deafult all IPs
+}
+
+variable "ENVIRONMENT" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = "Development"			# default environment
+}
+
+variable "vpc_private_subnet1" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_private_subnet2" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_id" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = ""
+}
+--------------------------------------------------
+
+We can also create DB Instance on AWS/RDS/Create Instance
+
+
+
 
 
 78. Create WebServer in AWS
 ===========================
 
+WebApp
+|
+|-- module
+|   |
+|   |-- rds
+|   |    +-- rds.tf
+|   |    +-- variable.tf
+|   |
+|   |-- vpc
+|        +-- vpc.tf
+|        +-- variable.tf
+|   
+|-- webserver
+     +-- variable.tf
+     +-- webserver_alb.tf
+     +-- webserver_instance.tf
+
+
+
+We have 3 files
+---------------
+➢ webserver_alb.tf
+➢ webserver_instance.tf
+➢ variable.tf
+
+
+AWS SECURITY GROUP
+------------------
+We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+➢ search 'aws security group'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#argument-reference
+
+
+webserver_alb.tf
+--------------------------------------------------
+resource "aws_security_group" "levelup_webservers_alb" {		# SG for app - load balancer
+  tags = {
+    Name = "${var.ENVIRONMENT}-levelup-webservers-ALB"			# tag with env prefix
+  }
+  name = "${var.ENVIRONMENT}-levelup-webservers-ALB"			# name with env prefix
+  description = "Created by levelup"					# short description
+  vpc_id      = var.vpc_id 						# vpc id
+
+  ingress {				# app-lb inbiund traffic rule
+    from_port = 80			# from port 80
+    to_port = 80			# to port 80
+    protocol = "tcp"			# TCP only - this connection is for HTTP (not secure - not encrypted traffic)
+    cidr_blocks = ["0.0.0.0/0"]		# all IPs - Classless Inter-Domain Routing (CIDR)
+
+  }
+
+  ingress {				# inbiund traffic rule
+    from_port = 443			# from port 443
+    to_port = 443			# to port 443
+    protocol = "tcp"			# TCP only - this connection is for HTTPS (secure - encrypted traffic)
+    cidr_blocks = ["0.0.0.0/0"]		# all IPs - Classless Inter-Domain Routing (CIDR)
+
+  }
+
+  egress {				# outbound traffic rule
+    from_port = 0			# from port 0 - all ports
+    to_port = 0				# to port 0 - all ports
+    protocol = "-1"			# '-1' - all protocols 
+    cidr_blocks = ["0.0.0.0/0"]		# all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+}
+--------------------------------------------------
+
+
+
+AWS LAUNCH CONFIGURATION
+------------------------
+We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+➢ search 'aws launch configuration' - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_configuration
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_configuration#example-usage
+  ➢ Arguments references -https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_configuration#argument-reference
+
+
+AWS AUTOSCALING GROUP
+---------------------
+➢ search 'aws autoscaling group'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group#argument-reference
+
+
+AWS LOAD BALANCER
+-----------------
+➢ search 'aws lb' - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb#argument-reference
+
+
+AWS LOAD BALANCER TARGET GROUP
+------------------------------
+➢ search 'aws lb target group' - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group#argument-reference
+
+
+AWS LOAD BALANCER LISTENER
+--------------------------
+➢ search 'aws lb listener' - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener#argument-reference
+
+
+
+
+webserver_instance.tf
+--------------------------------------------------
+# module "levelup-vpc" {
+#     source      = "../module/vpc"
+
+#     ENVIRONMENT = var.ENVIRONMENT
+#     AWS_REGION  = var.AWS_REGION
+# }
+
+module "levelup-rds" {						# use RDS module
+    source      = "../module/rds"				# module path to location
+
+    ENVIRONMENT = var.ENVIRONMENT				# set env from local variable.tf
+    AWS_REGION  = var.AWS_REGION				# set provider region from local variable.tf
+    vpc_private_subnet1 = var.vpc_private_subnet1		# associate vpc first private subnet
+    vpc_private_subnet2 = var.vpc_private_subnet2		# associate vpc second private subnet
+    vpc_id = var.vpc_id						# vpc id
+}
+
+resource "aws_security_group" "levelup_webservers"{		# WebServer SG resource
+  tags = {
+    Name = "${var.ENVIRONMENT}-levelup-webservers"		# tag with env prefix
+  }
+  
+  name          = "${var.ENVIRONMENT}-levelup-webservers"	# name with env prefix
+  description   = "Created by Levelup"				# short description
+  vpc_id        = var.vpc_id					# vpc id
+
+  ingress {							# ssh connection inbound traffic rules 
+    from_port = 22						# from port 22
+    to_port = 22						# to port 22
+    protocol = "tcp"						# tcp only
+    cidr_blocks = ["${var.SSH_CIDR_WEB_SERVER}"]		# IPs from variable.tf - Classless Inter-Domain Routing (CIDR) 
+  }
+
+  ingress {							# HTTP inbound traffic rules for all users
+    from_port = 80						# from port 80
+    to_port = 80						# to port 80
+    protocol = "tcp"						# TCP only
+    cidr_blocks = ["0.0.0.0/0"]					# all IPs - Classless Inter-Domain Routing (CIDR) 
+  }
+  
+  ingress {							# HTTPS inbound traffic rules
+    from_port = 443						# from port 443
+    to_port = 443						# to port 443
+    protocol = "tcp"						# TCP only
+    cidr_blocks = ["0.0.0.0/0"]					# all IPs
+  }
+  
+  egress {							# outbound traffic rules
+    from_port = 0						# from port 0 - all ports
+    to_port = 0							# to port 0 - all ports
+    protocol = "-1"						# '-1' - all protocols
+    cidr_blocks = ["0.0.0.0/0"]					# all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+}
+
+#Resource key pair
+resource "aws_key_pair" "levelup_key" {				# key-pari resource
+  key_name      = "levelup_key"					# key name
+  public_key    = file(var.public_key_path)			# read key from file
+}
+
+resource "aws_launch_configuration" "launch_config_webserver" {		# launch configuration resource 
+  name   = "launch_config_webserver"					# name
+  image_id      = lookup(var.AMIS, var.AWS_REGION)			# amazon machine image and region from variable.tf
+  instance_type = var.INSTANCE_TYPE					# hardware type
+  user_data = "#!/bin/bash\napt-get update\napt-get -y install net-tools nginx\nMYIP=`ifconfig | grep -E '(inet 10)|(addr:10)' | awk '{ print $2 }' | cut -d ':' -f2`\necho 'Hello Team\nThis is my IP: '$MYIP > /var/www/html/index.html"	# user script
+  security_groups = [aws_security_group.levelup_webservers.id]							# SG groups ids
+  key_name = aws_key_pair.levelup_key.key_name									# used key name
+  
+  root_block_device {				# set DB instance 
+    volume_type = "gp2"				# type db instance
+    volume_size = "20"				# size db isntance
+  }
+}	# launch configuration is used for autoscaling group. This configuration is used as template to start new webapp isntances
+
+resource "aws_autoscaling_group" "levelup_webserver" {		# autoscaling group resource
+  name                      = "levelup_WebServers"		# name
+  max_size                  = 2					
+  min_size                  = 1
+  health_check_grace_period = 30				# 30s contiues period changing status
+  health_check_type         = "EC2"				# type instance check
+  desired_capacity          = 1					
+  force_delete              = true							# delete the isntance if unhelthy
+  launch_configuration      = aws_launch_configuration.launch_config_webserver.name		# launch configuration name
+  vpc_zone_identifier       = ["${var.vpc_public_subnet1}", "${var.vpc_public_subnet2}"]	# list of public subnets
+  target_group_arns         = [aws_lb_target_group.load-balancer-target-group.arn]	# list of load balancer target groups
+}
+
+#Application load balancer for app server
+resource "aws_lb" "levelup-load-balancer" {						# load balancer resource 
+  name               = "${var.ENVIRONMENT}-levelup-lb"					# nbame with env prefix
+  internal           = false								# public
+  load_balancer_type = "application"							# lb type
+  security_groups    = [aws_security_group.levelup_webservers_alb.id]			# list of SGs app load balancer ids
+  subnets            = ["${var.vpc_public_subnet1}", "${var.vpc_public_subnet2}"]	# list of public subnets
+
+}
+
+# Add Target Group
+resource "aws_lb_target_group" "load-balancer-target-group" {		# load balancer target group resource
+  name     = "load-balancer-target-group"				# name
+  port     = 80								# inbound port - 80 
+  protocol = "HTTP"							# HTTP only
+  vpc_id   = var.vpc_id							# vpc id
+}
+
+# Adding HTTP listener
+resource "aws_lb_listener" "webserver_listner" {			# load balancer listener resource
+  load_balancer_arn = aws_lb.levelup-load-balancer.arn			# 
+  port              = "80"						# inbound port - 80
+  protocol          = "HTTP"						# HTTP only
+
+  default_action {
+    target_group_arn = aws_lb_target_group.load-balancer-target-group.arn	# set load balancer target group
+    type             = "forward"						# type action
+  }
+}
+
+output "load_balancer_output" {					# output load balancer dns name on lauch
+  value = aws_lb.levelup-load-balancer.dns_name
+}
+--------------------------------------------------
+
+
+
+
+variable.tf
+--------------------------------------------------
+variable "SSH_CIDR_WEB_SERVER" {		# Classless Inter-Domain Routing (CIDR)
+    type = string
+    default = "0.0.0.0/0"
+}
+
+variable "INSTANCE_TYPE" {
+  default = "t2.micro"				# t2.micro - free tier hardware
+}
+
+variable "AMIS" {				# mapped Amazone Machine Images AIMs with AWS Rregions
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05692172625678b4e"
+        us-west-2 = "ami-02c8896b265d8c480"
+        eu-west-1 = "ami-0cdd3aca00188622e"
+    }
+}
+
+variable "AWS_REGION" {
+    type        = string
+    default     = "us-east-2"			# AWS default Region
+}
+
+variable "ENVIRONMENT" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = "Development"			# default environment
+}
+
+variable "public_key_path" {
+  description = "Public key path"
+  default = "~/.ssh/levelup_key.pub"		# default path to used public key
+}
+
+variable "vpc_private_subnet1" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_private_subnet2" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_id" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = ""
+}
+
+
+variable "vpc_public_subnet1" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_public_subnet2" {
+  description = "AWS VPC Environment Name"
+  type        = string
+  default     = ""
+}
+--------------------------------------------------
+
+
+
+
 
 
 79. Deploy Complete Application
 ===============================
+
+We have project structure from the last Lab.
+
+WebApp
+|
+|-- module
+|   |
+|   |-- rds
+|   |    +-- rds.tf
+|   |    +-- variable.tf
+|   |
+|   |-- vpc
+|        +-- vpc.tf
+|        +-- variable.tf
+|   
+|-- webserver
+     +-- variable.tf
+     +-- webserver_alb.tf
+     +-- webserver_instance.tf
+
+
+
+Login to the DigitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
+Navigate to root/.ssh folder
+	terminal --> cd /root/.ssh/
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+
+Navigate to the terraform working directory
+	terminal --> cd /WebApp/webserver
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+	# we can see console logs of downloaded modules
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> yes	
+
+
+Copy the public IP from the console and connect to the instance
+	terminal --> ssh instance_public_ip -l ubuntu -i ~/.ssh/levelup_key
+
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+
+
+Check created resources on AWS.
+
+
+DESTROY
+-------
+Destroy all resources
+	terminal --> terraform destroy
+	terminal --> yes			# confirm
+
+
+
+
+
 
 

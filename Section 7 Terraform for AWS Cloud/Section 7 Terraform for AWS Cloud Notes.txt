@@ -456,8 +456,8 @@ resource "aws_route_table_association" "levelup-public-3-a" {	# associate with o
 With the lelp of the Internet Gateway and NAT Gateway our instance can communicate with internet.
 We can find all NAT Gateway configurations in AWS documentation - 
 
-EXTERNAL IP
------------
+ELASTIC IP
+----------
 ➢ search 'aws eip'
   ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#example-usage
   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#argument-reference
@@ -487,12 +487,12 @@ AWS ROUTE TABLE ASSOCIATION
 nat.tf
 --------------------------------------------------
 #Define External IP 
-resource "aws_eip" "levelup-nat" {			# external ip address
+resource "aws_eip" "levelup-nat" {			# elastic ip address
   domain   = "vpc"
 }
 
 resource "aws_nat_gateway" "levelup-nat-gw" {		# nat gateway
-  allocation_id = aws_eip.levelup-nat.id		# external ip id
+  allocation_id = aws_eip.levelup-nat.id		# elastic ip id
   subnet_id     = aws_subnet.levelupvpc-public-1.id	# our first public subnet id
   depends_on    = [aws_internet_gateway.levelup-gw]	# depends on our internet gateway
 }

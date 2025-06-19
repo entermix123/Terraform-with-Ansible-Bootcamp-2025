@@ -337,8 +337,8 @@ resource "aws_security_group" "allow-mariadb" {		# mariadb security group
 
 We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
 
-AWS DB SUBNET
--------------
+AWS DB SUBNET GROUP
+-------------------
 ➢ search 'aws db subnet group' (under RDS Relational Database)
   ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group#example-usage
   ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group#argument-reference
