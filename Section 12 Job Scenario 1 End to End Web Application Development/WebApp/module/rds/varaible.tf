@@ -48,7 +48,7 @@ variable "RDS_CIDR" {
 variable "ENVIRONMENT" {
   description = "AWS VPC Environment Name"
   type        = string
-  default     = "Development"
+  default     = "development"
 }
 
 variable "vpc_private_subnet1" {
