@@ -36,6 +36,6 @@ variable "LEVELUP_VPC_PRIVATE_SUBNET2_CIDR_BLOCK" {
 variable "ENVIRONMENT" {
   description = "AWS VPC Environment Name"
   type        = string
-  default     = "Development"
+  default     = "development"
 }
 
