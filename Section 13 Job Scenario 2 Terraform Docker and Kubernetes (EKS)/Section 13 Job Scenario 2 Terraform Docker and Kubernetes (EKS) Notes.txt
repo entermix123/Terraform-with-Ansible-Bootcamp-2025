@@ -592,6 +592,18 @@ Now you would be able to access your deployment over the Load Balancer created b
 85. EKS Cluster TerraForm Configuration files
 =============================================
 
+
+We have 5 files
+---------------
+➢ eks_cluster.tf
+➢ iam.tf
+➢ provider.tf
+➢ variable.tf
+➢ vpc.tf
+
+
+
+
 ➢ 
 
 ➢ 
