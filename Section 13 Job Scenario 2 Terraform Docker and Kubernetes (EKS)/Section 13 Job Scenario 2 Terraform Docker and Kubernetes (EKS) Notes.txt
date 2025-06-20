@@ -16,30 +16,597 @@ Section 13: Job Scenario 2: Terraform Docker and Kubernetes (EKS)
 80. AWS EKS Introduction
 ========================
 
+➢ Kubernetes is quickly became the standard way to manage application containers in the production environment.
+
+➢ Kubernetes is Configurable on Cloud Machines, On-Prem machines.
+	- The issue with Kubernetes On-Prem machines is cluster management.
+	- On cloud service AWS/GCP or Azure are responsible for Kubernetes Cluster management.
+
+➢ Kubernetes administration and configuration is a bit complex.
+
+➢ Amazon Elastic Container Service for Kubernetes (Amazon EKS) makes the Kubernetes cluster set-up easy and quickly deployable.
+
+
+Benefits of AWS EKS
+-------------------
+
+➢ Amazon EKS runs the Kubernetes management infrastructure across multiple AWS Availability Zones, thereby freeing users from maintaining Kubernetes control plane.
+
+➢ Infrastructure running on Amazon EKS is secure by default by setting up a secure and encrypted communication channel between worker nodes & Kubernetes endpoint.
+
+➢ Applications managed by Amazon EKS are fully compatible with applications managed by any standard Kubernetes environment.
+	- using AWS EKS grand us security features managed by AWS
+
+
+
+How does AWS EKS Works
+----------------------
+
+
+				     |
+     step 2			     |  			step 3
+Deploy Worker Node ------------------|------------------->  Connect to EKS
+	^			     |				  |
+	|			     |				  |
+	|			     |				  |
+	|			     |				  |
+	|			     |				  |
+	|			     |				  v
+Provision AWS EKS		     |			    Run Apps on EKS
+      step 1			     |				step 4
+				     |
+
+
+
+
 
 
 81. Lab : SetUp EKS Cluster Using AWS
 =====================================
+
+We will deploy EKS Cluster on AWS and go over the parametters of the EKS.
+
+EKS Cluster will charge our account atleast $0.2/hour, so we need to delete the EKS Cluster right after the demo to prevent high costs charges.
+
+
+Craete EKS Cluster
+------------------
+
+Go to AWS/Home Console and change the region to eu-west-1 (Ireland). 
+
+To create EKS Cluster we need to create IAM role.
+
+Create a general EKS Role:
+	- Go to AWS/IAM/Roles/Create New Role
+		- Trusted entity type: AWS service
+		- Use case: EKS - Service
+		- Next
+		- Permissions policies: AmazonEKSServiceRolePolicy (the only one existing - we can use JSON code when we use CLI)
+		- Next
+		- Create Role
+
+Create a EKS Auto Cluster Role
+	- Go to AWS/IAM/Roles/Create New Role
+		- Trusted entity type: AWS service
+		- Use case: EKS - Auto Cluster
+		- Next
+		- Permissions policies: AmazonEKSServiceRolePolicy (the only one existing - we can use JSON code when we use CLI)
+		- Next
+		- Role Name: AmazonEKSAutoClusterRole
+		- Create Role
+
+Create a EKS Auto Node Role
+	- Go to AWS/IAM/Roles/Create New Role
+		- Trusted entity type: AWS service
+		- Use case: EKS - Auto Node
+		- Next
+		- Permissions policies: AmazonEKSServiceRolePolicy (the only one existing - we can use JSON code when we use CLI)
+		- Next
+		- Role Name: AmazonEKSAutoNodeRole
+		- Create Role
+
+
+Now we have EKS Roles and we can start managing EKS Clusters.
+
+Next go to AWS/EKS/Cluster/Create Cluster.
+	- Name: levelup-eks
+	- Kubernetes version: 1.32
+	- Cluster IAM role: AmazonEKSAutoClusterRole
+	- Node IAM role: AmazonEKSAutoNodeRole
+	- VPC: Default
+	- Subnets: 3 subnets (for each availability zone)
+	- Create
+
+We wait until the cluster is created. We can see Cluster details on AWS/EKS/Cluster/Details.
+
+Delete the Clusted to avoid additional costs charges.
+
 
 
 
 82. Lab : SetUp EKS Using AWS CLI
 =================================
 
+We must install we tools that we will use to manage AWS EKS Cluster with CLI.
+	- AWS CLI
+	- kubectl - Kubernetes CLI
+	- AWS IAM Authenticator
+
+Login to the DigitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Install Unzip module
+	terminal --> apt install unzip
+
+
+Install AWS CLI
+---------------
+Option 1
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+Option 2
+Download and unzip and install the AWS CLI on the machine
+	terminal --> curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+	terminal --> unzip awscliv2.zip
+	terminal --> sudo ./aws/install
+
+Confirm AWS CLI installation
+	terminal --> aws --version
+
+
+
+Install Kubectl
+---------------
+
+Download kubectl and Kustomize packeges
+	terminal --> curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+Make kubectl Executable
+	terminal --> chmod +x kubectl
+
+Move to PATH (System-wide Access)
+	terminal --> sudo mv kubectl /usr/local/bin/
+
+Verify Installation
+	terminal --> kubectl version --client 
+
+	# result:
+		Client Version: v1.33.2
+		Kustomize Version: v5.6.0
+
+
+Install AWS IAM Authenticator
+-----------------------------
+
+Download AWS Authenticator
+	terminal --> curl -Lo aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v0.6.12/aws-iam-authenticator_0.6.12_linux_amd64
+
+Make It Executable
+	terminal --> chmod +x aws-iam-authenticator
+
+Move to /usr/local/bin (System-wide Access)
+	terminal --> sudo mv aws-iam-authenticator /usr/local/bin/
+
+Verify Installation
+	terminal --> aws-iam-authenticator version
+
+	# result: {"Version":"0.6.12","Commit":"39f68f319dad5ea813dc317bfd9b767f8c962097"}
+
+
+
+
+Create EKS Cluster
+=-=-=-=-=-=-=-=-=-
+
+Create IAM EKS Roles
+--------------------
+Go to AWS/IAM/Riles and create EKS Auto Cluster Role and EKS Auto Node Role
+
+
+Create VPC  
+----------
+
+We will get charget for some of the resources in the stack, so destroy all resources after the demo.
+	- 2 NAT Gateways (one per Availability Zone)
+		- Total: ~$90-100/month for both NAT Gateways
+		- Plus data processing charges (~$0.045 per GB processed)
+	- 2 Elastic IPs (one for each NAT Gateway) - Cost: $0.005/hour (~$3.60/month) if unattached
+
+It is recommended to create different VPC for EKS to keep it separated from our regulart network.
+
+Go to AWS Home Console and change the region to us-east-2 (Ohio)
+We can use Cloud Foramtion Functionality (we have to supply JSON format configuration) to create complete VPC with all subresources.
+Search for 'CloudFormation' and open the service. Click on 'Create stack'.
+	- Prerequisite - Prepare template: Prerequisite - Prepare template
+	- Specify template: Amazon S3 URL
+		- https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml
+	- Next
+
+	- Provide a stack name: LEVELUPEKSVPC
+	# We have predefined Parameters/Worker Network Configuration
+		- VpcBlock: 192.168.0.0/16
+		- PublicSubnet01Block: 192.168.0.0/18
+		- PublicSubnet02Block: 192.168.64.0/18
+		- PrivateSubnet01Block: 192.168.128.0/18
+		- PrivateSubnet02Block: 192.168.192.0/18
+	- Next
+
+	# Configure stack options - we will leave all options as default
+	- Next
+
+	# Review and create step - we can review our cluster consfiguration
+	- Submit
+
+We must wait until the stack is created.
+
+
+Create EKS Cluster
+------------------
+
+We can see 'aws create-cluster' help commands
+	terminal --> aws eks create-cluster help
+
+
+
+Create cluster with teh predefined resources
+	terminal --> aws create-cluster --name levelup-eks --region us-east-2 --role-arn arn:aws:iam::154435161465:role/AWSEKS --resources-vpc-config subnetIds=subnet-0a472d7fc289f93d1,subnet-0a78ec2c78371a4b1,subnet-xxxxxxxxxxxxxxx,subnet-xxxxxxxxxxxxxx,securityGroupIds=sg-0b6c6ef65c5b0b89d
+
+	# aws 							- common aws command
+	# create-cluster					- action - create cluste
+	# --name levelup-eks					- cluster name
+	# --region us-east-2					- cluster region - must be same as the created VPC
+	# --role-arn arn:aws:iam::154435161465:role/AWSEKS	- role arn
+	# --resources-vpc-config subnetIds=subnet-0a472d7fc289f93d1,subnet-0a78ec2c78371a4b1,subnet-xxxxxxxxxxxxxxx,subnet-xxxxxxxxxxxxxx,securityGroupIds=sg-0b6c6ef65c5b0b89d		- all configured subnets and security groups
+	
+### How to find needed parameters ###
+-------------------------------------
+We can find role arm on AWS/IAM/Roles
+	- AWSEKS/Role ARN - arn:aws:iam::154435161465:role/AWSEKS 			# example
+We can find subnets on AWS/VPC/VPC Details/Outputs/Subnetsids
+We can find Security Group Ids on AWS/VPC/VPC Details/Outputs/SecurityGroups	# must be set as one parameter with the subnets
+
+After the command execution we will get cluster configuration in JSON format on the console.
+
+Now we wait until the cluster is created.
+
+We can check EKS Cluster creation on AWS/EKS/Clusters
+
+
 
 
 83. Lab : Access EKS Cluster and Deploy Application
 ===================================================
+
+Before we deploy application on the EKS we have to be sure that the cluster is active.
+	- option 1 - go on AWS/EKS/Clusters - we should have created and active cluster - we created one in the last lab - demo
+	- option 2 Check with aws cli
+		terminal --> aws eks --region us-east-2 describe-cluster --name levelup-eks --query cluster.status
+
+		# aws 						- common aws cli command
+		# eks						- elastic kubernetes service
+		# --region us-east-2				- region we want to check
+		# --name levelup-eks				- provide target cluster name
+		# --query cluster.status			- request cluster status
+
+		# result: "ACTIVE"
+
+
+We have to update/manage the EKS cluster
+	terminal --> aws eks --region us-east-2 update-kubeconfig --name levelup-eks
+
+		# aws 						- common aws cli command
+		# eks						- elastic kubernetes service
+		# --region us-east-2				- region we want to check
+		# update-kubeconfig				- update configuration
+		# --name levelup-eks				- provide target cluster name
+
+		# result: Added new context arn:aws:eks:us-east-2:21244234513:cluster/levelup-eks to /root/.kube/config
+
+List services
+	terminal --> kubectl get svc
+
+# result:
+NAME		TYPE		CLUSTER-IP	EXTERNAL-IP	PORT(S)		AGE
+kubernetes	ClusterIP	10.100.0.1 	<none>		443/TCP		7m.55s
+
+We have active connection with the Cluster.
+
+
+List nodes
+	terminal --> kubectl get nodes
+
+# result: No resources found in the default namespace.
+
+
+Create Nodes in the EKS with Cloud Foramtion
+--------------------------------------------
+
+Go on AWS and search for 'CloudFormation' and open the service. Click on 'Create stack'.
+	- Prerequisite - Prepare template: Prerequisite - Prepare template
+	- Specify template: Amazon S3 URL
+		- https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-nodegroup.yaml
+	- Next
+
+	- Provide a stack name: LEVELUPEKSNODE
+	- Parameters
+		- EKS Cluster
+			- ClusterName: levelup-eks
+			- ClusterControlPlaneSecurityGroup: SG of the EKS controlplane (Server SG)
+		- Worker Node Configuration
+			- NodeGroupName: levelup-eks-nodes
+			- NodeAutoScalingGroupMinSize: 1
+			- NodeAutoScalingGroupDesiredCapacity: 2
+			- NodeAutoScalingGroupMaxSize: 2
+			- NodeInstanceType: t2.small
+			- NodeImageIdSSMParam: /aws/service/eks/optimized-ami/1.17/amazon-linux-2/recommended/image_id	(default)
+			- NodeImageId: 
+			- NodeVolumeSize: 20			(default)
+			- KeyName:
+			- DisableIMDSv1: false
+		- Worker Network Configuration
+			- VpcId: set created eks vpc id
+			- Subnets: check all subnets for this vpc (2 private and 2 public)
+	- Next
+	# Configure stack options - we will leave all options as default
+	- check checkbox - 'I acknowledge that AWS CloudFormation might create IAM resources.' 
+	- Next
+
+	# Review and create step - we can review our cluster consfiguration
+	- Submit
+
+Wait until the Node is created.
+
+We can check nodes details on AWS/CloudFormation/Stacks/Stack details/Outputs
+
+We can check created node instances on AWS/EC2/Instances.
+	- 2 node instance should be created 
+Notes:
+# Kubernetes node creation is fully independant of the existing EKS Cluster.
+# We can configure each Node with different resources that are separated from the EKS cluster. They will be created as EC2 instances. We can customize all resources in the worker nodes: what harware we want to use, size, network, SGs, VPC, IAM, KeyPair etc.
+# AWS EKS will only manage the kubernetes master node. AWS EKS do not have any dependacy for the users. All administrative acitivies and reminding configurations for the worker nodes are responsibility of the user.
+
+If we have created nodes mannually EC2 node instances are not attached to the EKS Cluster. We have to attach them to the cluster.
+
+In this example we have used Worker Nodes template that set the created worker nodes instaces to the existing cluster.
+
+
+Set aws cli authentication for worker nodes
+-------------------------------------------
+
+Download aws auth template file
+	terminal --> curl -o aws-auth-cm.yaml https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/aws-auth-cm.yaml
+
+Edit the dowloaded file and set rolearn
+	terminal --> vi aws-auth-cm.yaml
+
+We can find rolearn on AWS/CloudDoramtion/Stacks/levelupnodes/Outputs/NodeInstanceRoel - arn:aws:iam:164435161465:role/levelupnodes-NodeIsntanceRole-16XVZHD2QRMX4
+
+aws-auth-cm.yaml
+--------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam:164435161465:role/levelupnodes-NodeIsntanceRole-16XVZHD2QRMX4
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+Verify the changes
+	terminal --> cat aws-auth-cm.yaml
+
+
+We have to apply this configuration on EKS cluster
+	terminal --> kubectl apply -f aws-auth-cm.yaml
+
+	# configmap/aws-auth updated
+
+
+Now we should be able to see the nodes.
+
+List nodes on EKS Cluster
+	terminal --> kubectl get nodes
+
+# result:
+NAME						STATUS 	ROLES		AGE		VESRION
+ip-xxx-xxx-xxx-xxx.us-east-2.compute.internal	Ready	<none>		16m		vx.xx.xxx-eks-xxxxxx
+ip-xxx-xxx-xxx-xxx.us-east-2.compute.internal	Ready	<none>		16m		vx.xx.xxx-eks-xxxxxx
+
+
+Create deployment on the cluster
+	terminal --> kubectl create deployment --image=nginx nginx-app
+
+		# kubectl				- common kubernetes command
+		# create				- action
+		# deployment				- target object
+		# --image=nginx				- used image
+		# nginx-app				- deployment name
+
+
+List deployments to verify the deplyment creation
+	terminal --> kubectl get deployments
+
+# result:
+NAME			READY		UP=TO-DATE		AVAILABILITY		AGE
+nginx-app		1/1		1			1			13s
+
+
+To request the nginx we need to create service that serve nginx container
+	terminal --> kubectl expose deployment nginx-app --port=80 --name=nginx-http --type LoadBalancer
+
+		# kubectl				- common kubernetes command
+		# expose				- action
+		# deployment				- target object type
+		# nginx-app				- target object name
+		# --port=80				- set communication port
+		# --name=nginx-http			- set service name
+		# --type LoadBalancer			- set service type
+
+		# result: service/nginx-http exposed
+
+Verify service creation
+	terminal --> kubectl get services
+
+# result:
+NAME		TYPE		CLUSTER-IP	EXTERNAL-IP					PORT(S)		AGE
+kubernetes	ClusterIP	10.100.0.1	<none>						443/TCP		59m
+nginx-http	LoadBalancer	10.100.54.11	32ff-322...3432.us-east-2.elb.amazon.com	80:30113/TCP 	5m
+
+
+Copy the EXTERNAL_IP of the nginx-http service and brows it from the local machine. We should receive home page of the NGINX service.
+
+
+Delete all resources on AWS/CloudForamtion
+	- select levelupnodes/Delete
+	- select LEVELUPEKSVPC/Delete
+
+
+
 
 
 
 84. Text Direction : SetUp EKS using AWS CLI
 ============================================
 
+Text Direction : SetUp EKS using AWS CLI
+
+This document will explain all steps to Create EKS cluster and Worker Nodes using AWS CLI. Also, execute the application on Kubernetes in AWS.
+
+
+Pre-requisites:
+
+      AWSCLI
+      Install kubectl
+      Install aws-iam-authenticator
+
+
+Step 1:  AWS CLI needed to interact with AWS cloud resources. A profile with administrative access should be configured.
+
+    terminal --> aws --version
+    terminal --> curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    terminal --> unzip awscliv2.zip
+    terminal --> sudo ./aws/install
+    terminal --> aws --version
+
+
+Step 2: Install kubectl configuration
+
+    terminal --> curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.18.9/2020-11-02/bin/linux/amd64/kubectl
+    terminal --> chmod +x ./kubectl
+    terminal --> sudo mv ./kubectl /usr/local/bin
+    terminal --> kubectl version --short --client
+
+
+Step 3: Install aws-iam-authenticator on the machine.
+
+    terminal --> curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.18.9/2020-11-02/bin/linux/amd64/aws-iam-authenticator
+    terminal --> chmod +x ./aws-iam-authenticator
+    terminal --> sudo mv ./aws-iam-authenticator /usr/local/bin
+    terminal --> aws-iam-authenticator help
+
+
+Step 4: Create Role (for accessing EKS cluster create a role with AmazonEKSClusterPolicy and AmazonEKSServicePolicy policies)
+
+
+Step 5: Create VPC by using Cloudformation template
+
+https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml
+
+
+Step 6: Create an EKS Cluster using AWS CLI (Replace VPC, Subnets, Security Group IDs as we discussed in Video Lecture.)
+
+    terminal --> aws eks create-cluster \
+      --name eks-cluster \
+      --region ap-south-1 \
+      --role-arn arn:aws:iam::164435161465:role/AWSEKS \
+      --resources-vpc-config subnetIds=subnet-0e9262808d9590cd1,subnet-0334a7efa5f08d8ec,subnet-0a887939bf2e8e5b3,subnet-03bdcfb2e971600f9,securityGroupIds=sg-047618421cb9aebbe
+
+
+Status check for EKS cluster -
+
+	terminal --> aws eks --region us-east-2 describe-cluster --name eks-cluster --query cluster.status
+
+
+Step 7:  Update Cluster in Kube Config for KubeCtl
+
+   	terminal --> aws eks --region us-east-1 update-kubeconfig --name eks-cluster
+   	terminal -->  kubectl get svc
+
+Identify the nodes attached with EKS Cluster.
+
+	terminal --> kubectl get nodes
+
+
+Step 8: Create nodes for the EKS cluster using the Cloudformation template
+
+https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-nodegroup.yaml
+
+
+Step 9: Map Nodes to EKS Master Node
+
+	terminal --> curl -o aws-auth-cm.yaml https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/aws-auth-cm.yaml
+
+
+Update Node Role ARN in the file and apply that config using the below command.
+
+	terminal --> kubectl apply -f aws-auth-cm.yaml
+
+
+Step 10: Check nodes of the cluster
+
+	terminal --> kubectl get nodes --watch
+
+
+Step 11: Deploy Nginx image
+
+	terminal --> kubectl create deployment --image=nginx nginx-app
+
+	terminal --> kubectl get deployments
+
+
+Step 12: Create Service in Kubernetes to connect with Deloyment
+
+	terminal --> kubectl expose deployment nginx-app --port=80 --name=nginx-http --type LoadBalancer	
+
+	terminal --> kubectl get svc nginx-http
+
+Now you would be able to access your deployment over the Load Balancer created by EKS Service.
+
+
+
 
 
 85. EKS Cluster TerraForm Configuration files
 =============================================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 
