@@ -919,7 +919,7 @@ Verify key creation
 	terminal --> ls
 
 Navigate to the terraform working directory
-	terminal --> cd /WebApp/webserver
+	terminal --> cd ~/WebApp/webserver
 
 
 INIT
@@ -952,13 +952,44 @@ Copy the public IP from the console and connect to the instance
 	# -i levelup_key			- use terraform public key
 
 
+Wait until all resources are created. If we check the resources in AWS earlier, we may not find all resources. Some of them can be still in creation process.
 
 Check created resources on AWS.
+Check VPC on AWS/VPC.
+Check subnets on AWS/VPC/Subnets.
+	- we should have 2 private and two public subnets.
+Check route tables on AWS/VPC/Raute Tables.
+	- we should have 1 private and 1 public route tables.
+Check Internet Gateway on AWS/VPC/Iternet Gateway.
+	- we should have 1 internet gateway
+Check Elastic IP on AWS/VPC/Elastic IP.
+	-we should have 1 elastic IP
+Check NAT Gateway on AWS/VPC/NAT Gateway.
+	- we should have 1 NAT Gateway
+Check Security Groups on AWS/VPC/Security Groupps.
+	- we should have 3 SG - ALB SG, webserver SG and RDS SG
+Check Instances on AWS/EC2. Set the correct region - us-east-2
+	- we should have 1 instance
+Check Load Balancer on AWS/EC2/Load Balancer
+	- we should have 1 LB
+		- we can check load balancer listeners - AWS/EC2/Load Balancer/Listeners
+Check RDS service and its details on AWS/RDS.
+
+
+When the resources are created we should have load balancer endpoint printed on the console. We have installed nginx on the webserver instance. 
+
+We can browse the webserver instance with the endopint and check if nginx is accessable. If we receive a message 'Hello Team\nThis is my IP: xxxxxxxx', then we successfuly accessed our webserver. 
+
+We can compare the messaged IP with the private IP of our instance on AWS/EC2/Instance Details. 
+
 
 
 DESTROY
 -------
-Destroy all resources
+
+We must destroy RDS service mannually from AWS/RDS, because Terraform will ask for snapshot and the deletion of the RDS from terraform will fail. When deleting the RDS service disable automated backups, snapshots and recovery.
+
+On the working machine destroy all resources with terraform
 	terminal --> terraform destroy
 	terminal --> yes			# confirm
 
