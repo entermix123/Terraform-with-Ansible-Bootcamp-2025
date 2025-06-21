@@ -595,7 +595,7 @@ Now you would be able to access your deployment over the Load Balancer created b
 
 We have 5 files
 ---------------
-➢ eks_cluster.tf
+➢ ekscluster.tf
 ➢ iam.tf
 ➢ provider.tf
 ➢ variable.tf
@@ -604,26 +604,226 @@ We have 5 files
 
 
 
-➢ 
+AWS EKS CLUSTER
+---------------
+➢ search 'aws eks cluster'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_cluster#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_cluster#argument-reference
 
-➢ 
+AWS EKS NODE GROUP
+------------------
+➢ search 'aws eks node group'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_node_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_node_group#argument-reference
 
-➢ 
 
-➢ 
+ekscluster.tf
+--------------------------------------------------
+resource "aws_eks_cluster" "aws_eks" {			# aws cluster resource
+  name     = "eks_cluster_levelup"			# cluster name
+  role_arn = aws_iam_role.eks_cluster.arn		# cluster role arm
 
-➢ 
+  vpc_config {
+    subnet_ids = module.vpc.public_subnets		# set vpc public subnets ids for vpc config
+  }
 
-➢ 
+  depends_on = [						
+    aws_iam_role_policy_attachment.AmazonEKSClusterPolicy,  	# depending on iam user policy - EKS Cluster Policy
+    aws_iam_role_policy_attachment.AmazonEKSServicePolicy,	# depending on iam user policy - EKS Service Policy
+  ]
 
-➢ 
+  tags = {
+    Name = "EKS_Cluster_LevelUp"				# tag
+  }
+}
 
-➢ 
+resource "aws_eks_node_group" "node" {				# EKS Node Group resource
+  cluster_name    = aws_eks_cluster.aws_eks.name		# cluster name
+  node_group_name = "node_levelup"				# node group name
+  node_role_arn   = aws_iam_role.eks_nodes.arn			# nodes role
+  subnet_ids      = module.vpc.public_subnets			# vpc public subnets ips
+
+  scaling_config {			# scaling section
+    desired_size = 1			# no scaling fo lower consts for the demo			
+    max_size     = 1
+    min_size     = 1
+  }
+
+  # Ensure that IAM Role permissions are created before and deleted after EKS Node Group handling.
+  # Otherwise, EKS will not be able to properly delete EC2 Instances and Elastic Network Interfaces.
+  depends_on = [
+    aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy,
+    aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy,
+    aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly,
+  ]
+}
+--------------------------------------------------
+
+
+
+
+AWS IAM ROLE
+------------
+➢ search 'aws iam role' - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role#argument-reference
+
+
+AWS IAM ROLE POLICY ATTACHEMENT
+-------------------------------
+➢ search 'aws iam role policy attachment'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment#argument-reference
+
+
+
+iam.tf
+--------------------------------------------------
+resource "aws_iam_role" "eks_cluster" {			# iam role for eks cluster
+  name = "eks-cluster"					# role name
+
+  assume_role_policy = <<POLICY				# policy for the eks cluster role
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "eks.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+POLICY
+}
+
+# binding cluster policy and service policy with the role created above
+resource "aws_iam_role_policy_attachment" "AmazonEKSClusterPolicy" {	# iam role policy attachment for cluster policy
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"		# policy arm
+  role       = aws_iam_role.eks_cluster.name				# role name
+}
+
+resource "aws_iam_role_policy_attachment" "AmazonEKSServicePolicy" {	# iam role policy attachment for service policy 
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"		# policy arm
+  role       = aws_iam_role.eks_cluster.name				# cluster name
+}
+
+
+resource "aws_iam_role" "eks_nodes" {					# iam role for nodes
+  name = "eks-node-group-levelup"					# name of the role
+
+  assume_role_policy = <<POLICY						# policy for the nodes role
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+POLICY
+}
+
+# binding node policy cni policy and registry policy to the role above
+resource "aws_iam_role_policy_attachment" "AmazonEKSWorkerNodePolicy" {		# iam role policy attachment for nodes policy
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"		# policy arm
+  role       = aws_iam_role.eks_nodes.name					# nodes name
+}
+
+resource "aws_iam_role_policy_attachment" "AmazonEKS_CNI_Policy" {		# iam role policy attachment for CNI policy
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"			# policy arm
+  role       = aws_iam_role.eks_nodes.name					# nodes name
+}
+
+resource "aws_iam_role_policy_attachment" "AmazonEC2ContainerRegistryReadOnly" {  # iam role policy attachment for container reg
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"	  # policy name
+  role       = aws_iam_role.eks_nodes.name					  # nodes name
+}
+--------------------------------------------------
+
+
+provider.tf
+--------------------------------------------------
+provider "aws" {
+  region = var.AWS_REGION				# set default region from variable.tf
+}
+
+data "aws_region" "current" {				# name the default aws region - current
+}
+
+data "aws_availability_zones" "available" {		# name azs - available
+}
+
+provider "http" {
+}
+--------------------------------------------------
+
+
+variable.tf
+--------------------------------------------------
+variable "cluster-name" {
+  default = "levelup-tf-eks-demo"			# cluster name
+  type    = string
+}
+
+variable "AWS_REGION" {
+  default = "eu-west-1"					# default provider region
+}
+--------------------------------------------------
+
+
+
+
+
+vpc.tf
+--------------------------------------------------
+module "vpc" {						# use module
+  source  = "terraform-aws-modules/vpc/aws"		# module source
+  version = "6.0.1"					# module version
+  # latest version here - https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest
+
+  name = "vpc-module-demo"				# vpc name
+  cidr = "10.0.0.0/16"					# IP ranges - Classless Inter-Domain Routing (CIDR)
+							
+  azs             = slice(data.aws_availability_zones.available.names, 0, 2)	# availability zones - take 3 azs(idx 0, 2)
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]		# list of private subents to be created
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]		# list of public subnets to be created
+
+  enable_nat_gateway = false
+  enable_vpn_gateway = false
+
+  tags = {
+    Name = "${var.cluster-name}-vpc"						# tag with cluster name prefix
+  }
+}
+--------------------------------------------------
+
+
+
+
 
 
 
 86. Lab : Deploy EKS Cluster using Terraform
 ============================================
+
+We have project structure 
+
+casestudy#eks
+ +-- ekscluster.tf
+ +-- iam.tf
+ +-- provider.tf
+ +-- variable.tf
+ +-- vpc.tf
+
+
+
+
 
 
 
