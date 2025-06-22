@@ -435,6 +435,7 @@ Create deployment on the cluster
 		# --image=nginx				- used image
 		# nginx-app				- deployment name
 
+		# result: deployment.app/nginx-app created
 
 List deployments to verify the deplyment creation
 	terminal --> kubectl get deployments
@@ -813,13 +814,216 @@ module "vpc" {						# use module
 ============================================
 
 We have project structure 
-
+-------------------------
 casestudy#eks
  +-- ekscluster.tf
  +-- iam.tf
  +-- provider.tf
  +-- variable.tf
  +-- vpc.tf
+
+The files are explained in the previous section in details
+
+
+
+Deploy EKS with Terraform
+=-=-=-=-=-=-=-=-=-=-=-=-=
+
+Login to the DigitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+
+We must install we tools that we will use to manage AWS EKS Cluster with CLI.
+	- AWS CLI
+	- kubectl - Kubernetes CLI
+	- AWS IAM Authenticator
+
+
+Install AWS CLI
+---------------
+Option 1
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+Option 2
+Download and unzip and install the AWS CLI on the machine
+	terminal --> curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+	terminal --> unzip awscliv2.zip
+	terminal --> sudo ./aws/install
+
+Confirm AWS CLI installation
+	terminal --> aws --version
+
+
+Install Kubectl
+---------------
+
+Download kubectl and Kustomize packeges
+	terminal --> curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+Make kubectl Executable
+	terminal --> chmod +x kubectl
+
+Move to PATH (System-wide Access)
+	terminal --> sudo mv kubectl /usr/local/bin/
+
+Verify Installation
+	terminal --> kubectl version --client 
+
+	# result:
+		Client Version: v1.33.2
+		Kustomize Version: v5.6.0
+
+
+Install AWS IAM Authenticator
+-----------------------------
+
+Download AWS Authenticator
+	terminal --> curl -Lo aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v0.6.12/aws-iam-authenticator_0.6.12_linux_amd64
+
+Make It Executable
+	terminal --> chmod +x aws-iam-authenticator
+
+Move to /usr/local/bin (System-wide Access)
+	terminal --> sudo mv aws-iam-authenticator /usr/local/bin/
+
+Verify Installation
+	terminal --> aws-iam-authenticator version
+
+	# result: {"Version":"0.6.12","Commit":"39f68f319dad5ea813dc317bfd9b767f8c962097"}
+
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+Navigate to project directory
+	terminal --> cd path/to/working/dir/casestudy#eks
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+	# we can see console logs of downloaded modules
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 31 to add, 0 to change, 0 to destroy.
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> yes		# confirm
+
+If we want to monitor the progress we can go on AWS and set region eu-west-1 where we create the resources. The creation process may take from 15 to 20 minutes so we may not see all resources creation started at the beggining. After cluster creation we will see EC2 instance (worker node - By default Node hardware is set to d3.medium) will be created.  We can see logs on the working PC console as well.
+
+We can monitor the different resources as foolow:
+	- VPC on AWS/VPC
+		- Subnets on AWS/VPC/Subnets
+	- IAM on AWS/IAM/Roles
+	- EKS cluster on AWS/EKS/Clusters
+	- Instances on AWS/EC2
+
+
+After the creation of all resources we can manage the cluster from the working PC.
+
+
+Update kubeconfig to manage the cluster
+	terminal --> aws eks --region eu-west-1 update-kubeconfig --name levelup-tf-eks-demo
+
+		# aws 						- common aws cli command
+		# eks						- elastic kubernetes service
+		# --region eu-west-1				- region we want to check
+		# update-kubeconfig				- update configuration
+		# --name levelup-tf-eks-demo			- provide target cluster name
+
+		# result: Added new context arn:aws:eks:us-east-2:21244234513:cluster/eks_cluster_levelup in /root/.kube/config
+
+List nodes
+	terminal --> kubecl get nodes
+	# we should be able to get the worker node details
+
+
+Create deployment on the cluster
+	terminal --> kubectl create deployment --image=nginx nginx-app
+
+		# kubectl				- common kubernetes command
+		# create				- action
+		# deployment				- target object
+		# --image=nginx				- used image
+		# nginx-app				- deployment name
+
+		# result: deployment.app/nginx-app created
+
+
+List deployments to verify the deplyment creation
+	terminal --> kubectl get deployments
+
+# result:
+NAME			READY		UP=TO-DATE		AVAILABILITY		AGE
+nginx-app		1/1		1			1			13s
+
+
+To request the nginx we need to create service that serve nginx container
+	terminal --> kubectl expose deployment nginx-app --port=80 --name=nginx-http --type LoadBalancer
+
+		# kubectl				- common kubernetes command
+		# expose				- action
+		# deployment				- target object type
+		# nginx-app				- target object name
+		# --port=80				- set communication port
+		# --name=nginx-http			- set service name
+		# --type LoadBalancer			- set service type
+
+		# result: service/nginx-http exposed
+
+Verify service creation
+	terminal --> kubectl get services
+
+# result:
+NAME		TYPE		CLUSTER-IP	EXTERNAL-IP					PORT(S)		AGE
+kubernetes	ClusterIP	172.20.0.1	<none>						443/TCP		59m
+nginx-http	LoadBalancer	172.20.250.180	32ff-322...3432.us-east-2.elb.amazon.com	80:31320/TCP 	5m
+
+
+Describe the service to take the DNS name to request the nginx-app
+	terminal --> kubectl describe svc nignx-app
+
+We can copy the DNS name from line 'LoadBalncer Ingress' and broawse it from our local PC or any browser.
+We can find the address also in AWS/EC2/Load Balancers/Details/DNS name
+
+We should receive the home page of the nginx.
+
+
+
+DESTROY
+-------
+
+Destroy all resources to stop the consts generation on AWS.
+
+On the working machine destroy all resources with terraform
+	terminal --> terraform destroy
+	terminal --> yes			# confirm
+
+
+
+
+
+
+
 
 
 

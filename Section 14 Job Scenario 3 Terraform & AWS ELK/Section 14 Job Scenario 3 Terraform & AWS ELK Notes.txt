@@ -12,15 +12,320 @@ Section 14: Job Scenario 3: Terraform & AWS ELK
 87. ELK Basics and Application
 ==============================
 
+➢ How to Debug Issue in production?
+
+➢ ELK stands for Elasticsearch, Logstash, and Kibana.
+
+➢ Each of these tools are Open-Source and can be used Independently.
+
+➢ Together providing a solution to the common problem, ie. efficiently store, search and visualize large text files or logs.
+
+
+Elastisearch:
+-------------
+
+➢ ES is central component of the ELK stack. Elasticsearch offers multi-node (scalable) distributed search and analytics engine.
+
+➢ Stores and indexes data centrally and provides REST API access to it. Can be taken as a database for text files.
+
+
+Logstash:
+---------
+
+➢ Input for ES. Logstash can receive logs or text files from different sources, transform it, and send it Elasticsearch.
+
+
+Kibana:
+-------
+
+➢ Kibana gives a UI to Elasticsearch, using which you can visualize and navigate the data stored in Elasticsearch.
+
+
+
+Visual Schematic of ELK
+-----------------------
+
+						ELK
+		-----------------------------------------------------------------
+		|								|
+    Data	|  --------------			-----------------	|
+  from Node	|  |		|			|		|    	|
+----------------|->|  Logstash  |			|   Elastic	|	|
+		|  |		|---------------------->|   Search	|	|
+		|  |  Gather    |			|		|	|
+		|  | Data from	|			|   Store Data	|	|
+		|  |	Nodes	|			| Indexing Data	|	|
+		|  --------------   			-----------------	|
+		|					  | ^			|
+		|					  v |			|
+		|		---------------------------------		|
+		|		|		Kibana		|		|
+		|		|	UI for vizualization	|		|
+		|		---------------------------------		|
+		-----------------------------------------------------------------
+
+
 
 
 88. Lab : Deploy ELK and Execute ELK
 ====================================
 
+We have project Structure
+-------------------------
+
+casestudy#ELK
+  |
+  |-- Demo-1
+  |   +-- createInstance.tf
+  |   +-- variable.tf
+  |
+  |-- Demo-2
+      +-- apache-01.conf
+      +-- createInstance.tf
+      +-- elasticsearch.yaml
+      +-- installELK.sh
+      +-- kibana.yaml
+      +-- varaible.tf
+
+
+
+
+
+
+Demo-1
+------
+
+We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+
+AWS SECURITY GROUP
+------------------
+➢ search 'aws security group'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#argument-reference
+
+
+AWS INSTANCE
+------------
+➢ search 'aws instance'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance#argument-reference
+
+
+AWS ELASTIC IP - EIP
+--------------------
+➢ search 'aws eip'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#argument-reference
+
+
+createInstance.tf
+--------------------------------------------------
+
+resource "aws_key_pair" "levelup_key" {			# KeyPari resource
+    key_name = "levelup_key"				# key name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)		# path to key location
+}
+
+resource "aws_security_group" "allow_elk" {		# security group resource
+  name        = "allow_elk"				# SG name
+  description = "All all elasticsearch traffic"		# short description
+
+  # elasticsearch port
+  ingress {						# elastic ip inbound traffic for elastic search
+    from_port   = 9200					# from port 9200
+    to_port     = 9200					# to port 9200
+    protocol    = "tcp"					# TCP only
+    cidr_blocks = ["0.0.0.0/0"]				# IP ranges - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  # logstash port
+  ingress {						# logstash inbound traffic for 
+    from_port   = 5043					# from port 5043 - read traffic port
+    to_port     = 5044					# to port 5044 - send traffic port
+    protocol    = "tcp"					# TCP only
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  # kibana ports
+  ingress {						# kibana inbound traffic for kibana
+    from_port   = 5601					# from port 5601
+    to_port     = 5601					# to port 5601
+    protocol    = "tcp"					# TCP only
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  # ssh
+  ingress {						# ssh connection traffic to instance
+    from_port   = 22					# from por 22
+    to_port     = 22					# to port 22
+    protocol    = "tcp"					# TCP only
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  # outbound
+  egress {						# outbound traffic from instance
+    from_port   = 0					# from port 0
+    to_port     = 0					# to port 0 - all ports
+    protocol    = "-1"					# '-1' - all protocols
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+}
+
+#Create AWS Instance
+resource "aws_instance" "MyFirstInstnace" {		# aws instance resource
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# amazon machine image by region from variable.tf file
+  instance_type = "m4.large"				# harware type - m4.large machine because we deploy 3 systems - paid
+  availability_zone = "ap-south-1a"			# first availability zone
+  key_name      = aws_key_pair.levelup_key.key_name	# use key name
+
+  vpc_security_group_ids = [
+    aws_security_group.allow_elk.id,			# vpc security group id
+  ]
+
+  depends_on = [aws_security_group.allow_elk]		# depends on security group
+  
+  tags = {
+    Name = "custom_instance"				# tag
+  }
+}
+
+resource "aws_eip" "ip" {				# elastic IP resource
+  instance = aws_instance.MyFirstInstnace.id		# use instance id
+}
+
+output "public_ip" {					# print instance public IP on launch
+  value = aws_instance.MyFirstInstnace.public_ip 
+}
+--------------------------------------------------
+
+
+
+
+variable.tf
+--------------------------------------------------
+variable "AWS_REGION" {
+default = "ap-south-1"			# provider default region
+}
+
+provider "aws" {
+  region     = "ap-south-1"		# set region
+}
+
+variable "AMIS" {					# map amazon machine images by region
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05edbb8e25e281608"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+        ap-south-1 = "ami-0fd48e51ec5606ac1"
+    }
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  description = "Public key path"
+  default = "~/.ssh/levelup_key.pub"			# path to key
+}
+--------------------------------------------------
+
+
+Login to the DigitalOcean ubuntu and pull the files from github.
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
+Navigate to root/.ssh folder
+	terminal --> cd /root/.ssh/
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+
+Navigate to the terraform working directory
+	terminal --> cd ~/casestudy#ELK/Demo-1
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+	# we can see console logs of downloaded modules
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> yes	
+
+
+Copy the public IP from the console and connect to the instance
+	terminal --> ssh instance_public_ip -l ubuntu -i ~/.ssh/levelup_key
+
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+
+
+
+
+
+
+
 
 
 89. Text Direction : Lab - Deploy ELK and Execute ELK
 =====================================================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 
