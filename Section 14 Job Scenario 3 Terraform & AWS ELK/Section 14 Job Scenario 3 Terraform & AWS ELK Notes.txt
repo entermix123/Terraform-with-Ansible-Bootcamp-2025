@@ -281,7 +281,7 @@ Plan terraform resources
 
 	# the plan should be successful and we can review the logs
 	# result: 	
-		
+		Plan: 4 to add, 0 to change, 0 to destroy.
 
 APPLY
 -----
@@ -290,17 +290,273 @@ Apply the plan made on the DigitalOcean Ubuntu machine
 	terminal --> yes	
 
 
-Copy the public IP from the console and connect to the instance
+Wait until the resources are created.
+
+We can check the created resources on AWS.
+Login to AWS and cheange the region to ap-south-1 (Mumbai).
+Check Instances on AWS/EC2/Instances/Running Instances.
+	- copy the public IPv4 from the instance details
+
+
+Connect to the instance from working PC
 	terminal --> ssh instance_public_ip -l ubuntu -i ~/.ssh/levelup_key
+	terminal --> yes							# confirm
 
 	# ssh instance_public_ip		- connect to the instance
 	# -l ubuntu				- login as ubuntu user
 	# -i levelup_key			- use terraform public key
 
+Switch to root user
+	instance terminal --> sudo -s
+	or
+	instance terminal --> sudo su
+
+
+Pre-requisite installations
+---------------------------
+
+Min hardware requirements - AWS m4.large
+	- 8 GB RAM
+	- 20 GB storage
+	- 2 cpu
+
+Update package manager
+	instance terminal --> suco apt-get update
+
+Upgrade pckages in the package manager
+	instance terminal --> sudo apt-get upgrade -y
+
+We will use tool Fish for better view on the console. It is NOT required but recommended.
+Download console visualization tool Fish
+	instance terminal --> sudo install fish -y
+
+Start fish service
+	instance terminal --> fish
+	# result: Welcome to fish, the friendly interactive shell
+
+We need to install Java for ELK installation.
+	instance terminal --> sudo apt-get install default-jre -y
+
+Verify Java successful installation
+	instance terminal --> java --version
+
+
+We need to install ELK on the instance.
+To install ELK we need to execute a set of commands
+
+Install Elastic Search
+----------------------
+Download Elastic Search key
+	instance terminal --> wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -e
+
+Add elastic search package in the init.d source package
+	instance terminal --> echo "deb https://artifacts.elastic.co/packages/9.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+
+Install Apache package
+	instance terminal --> echo "deb https://artifacts.elastic.co/packages/oss-9.x/apt stable main" | sudo tee -a /etc/apt/source.list.d/elastic-9.x.list
+
+Update the package manager
+	instance terminal --> sudo apt-get update
+
+Install Elastic Search
+	instance terminal --> sudo apt-get install elasticsearch -y
+
+Modify network elasticsearch configurations
+	instance terminal --> vim /etc/elasticsearch/elasticsearch.yaml
+
+/etc/elasticsearch/elasticsearch.yaml
+--------------------------------------------------
+...
+network.host: "localhost"
+
+http.port: 9200
+...
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+Start the elasticsearch service
+	instance terminal --> sudo service elasticsearch start
+	# wait intil the command exits
+
+Check elasticsearch service status
+	instance terminal --> sudo elasticsearch status
+	# We should receive message "Active: active (running)" in green color
+
+Send request to the elasticsearch port from our local machine
+	local PC browser (example IP and port) --> 65.1.31.45:5601
+
+	# we should be able to access Elasticearch Homepage
 
 
 
+Install Logstash
+----------------
 
+Download and install Logstash
+	instance terminal --> sudo apt-get install logstash
+
+We do NOT start Logstash yet.
+
+
+Install Kibana
+--------------
+
+Download and install Kibana
+	instance terminal --> sudo apt-get install kibana
+
+Modify kibana configuration
+	instance terminal --> vim /etc/kibana/kibana.yaml
+
+/etc/kibana/kibana.yaml
+--------------------------------------------------
+...
+server.port: 5601
+
+server.host: "0.0.0.0"
+...
+elasticsearch.hosts: ["http://localhost:9200"]		# here we can set multiple machines with coma separated hosts
+...
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+Start kibana service
+	instance terminal --> sudo service kibana start
+
+Verify kibana service status
+	instance terminal --> sudo service kibana status
+	# We should receive message "Active: active (running)" in green color
+
+
+Try to access elasticsearch with browser. 
+	- Copy the elastic IP of the AWS instance on AWS/EC2/Instances/Instance Details.
+	- open browser and access the instance on port 5601 - Example - 65.1.31.45:5601
+
+
+We need to install BEATS tool for Logstash support. 
+Beats will collect data from multiple treaths and supply it to logstash. Logstash will work efficiantly, process and aggregatie the data and send it foreward to Elasticsearch.
+Dowload and install BEATS
+	instance terminal --> sudo apt-get install metricbeat
+
+
+Modify Logstash configuration. We need to configure the index.
+	instance terminal --> sudo vim /etc/logstash/conf.d/apache-01.conf
+
+/etc/logstash/conf.d/apache-01.conf
+--------------------------------------------------
+input {
+
+file {
+
+path => "/home/ubuntu/apache-daily-access.log"		# create log file
+
+start_position => "beggining"
+
+sincedb_path => "/dev/null"
+
+}
+
+}
+
+filter {
+
+grok {
+
+match => { "message" => "%{COMBINEDAPACHELOG}" }
+
+}
+
+date {
+
+match => [ "timestamp" , "dd/MMM/yyyy:HH:mm:ss Z" ]
+
+}
+
+geoip {
+
+source => "clientip"
+
+}
+
+}
+
+output {
+
+elasticsearch {
+
+hosts =? ["localhost:9200"]		# add more addresses for mutiple treaths
+
+}
+
+}
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+Start Logstash service
+	instance terminal --> sudo service logstash start
+	# wait until the command exits
+
+Verify the Logstash service
+	instance terminal --> sudo service logstash status
+	# We should receive message "Active: active (running)" in green color
+
+Start beats service
+	instance terminal --> sudo service metricbeat start
+
+Verify beat service
+	instance terminal --> sudo service metricbeat status
+	# We should receive message "Active: active (running)" in green color
+
+
+We can verify how many Java processes are running on my PC
+	instance terminal --> ps -ef | grep java
+
+Exit instance machine
+	instance terminal --> exit
+
+
+
+Now we are on our local machine PC
+
+Send request to the elasticsearch port from our local machine
+	local PC browser (example IP and port) --> 65.1.31.45:5601
+
+	# we should be able to access Elasticearch Homepage
+
+
+
+Manage Elasticsearch
+--------------------
+
+Create Dashboard - go to Menu/Management/Stack Management/Index Management
+	- We should get index from metricbeat
+
+
+Create Elasticsearch Index Pattern - go to Elasticsearch menu/Discovery/Create index pattern
+	- in the 'Index pattern name' field we enter 'metricbeat-*'
+	- next step
+	- in the 'Time field' choose '@timestamp'
+	- Create index pattern
+
+Now on Menu/Discovery we should have graph with the data.
+
+
+Exit the AWS instance
+	terminal --> exit
+
+Now we are on the working PC. We need to destroy AWS resources to prevent furder consts.	
+
+
+DESTROY
+-------
+
+Destroy all resources to stop the consts generation on AWS.
+
+On the working machine destroy all resources with terraform
+	terminal --> terraform destroy
+	terminal --> yes			# confirm
 
 
 
@@ -309,28 +565,641 @@ Copy the public IP from the console and connect to the instance
 89. Text Direction : Lab - Deploy ELK and Execute ELK
 =====================================================
 
-➢ 
+Update Unix Machine Package Manager
 
-➢ 
+	terminal --> sudo apt-get update
 
-➢ 
+	terminal --> sudo apt-get upgrade -y
 
-➢ 
 
-➢ 
+Install JAVA on Machine:
 
-➢ 
+	terminal --> sudo apt-get install default-jre -y
 
-➢ 
 
-➢ 
+Elasticsearch Installation
 
-➢ 
+	terminal --> wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+
+	terminal --> echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+
+	terminal --> echo "deb https://artifacts.elastic.co/packages/oss-7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+
+
+Install ES:
+
+	terminal --> sudo apt-get update
+
+	terminal --> sudo apt-get install elasticsearch -y
+
+
+Update ES Network Config:
+
+	terminal --> sudo vim /etc/elasticsearch/elasticsearch.yml
+-----------------------------------
+    network.host: "localhost"
+    http.port:9200
+-----------------------------------
+save changes: escape, :wq!, enter
+
+Start EC Service:
+
+	terminal --> sudo service elasticsearch start
+
+
+Verify ES Service Status:
+
+	terminal --> sudo curl http://localhost:9200
+
+
+Logstash Installation
+
+	terminal --> sudo apt-get install logstash
+
+
+Installing Kibana
+
+	terminal --> sudo apt-get install kibana
+
+
+Update Kibana Network Setting:
+
+	terminal --> vim /etc/kibana/kibana.yml
+-----------------------------------
+    server.port: 5601
+    server.host: "0.0.0.0"
+    elasticsearch.hosts: ["http://localhost:9200"]
+-----------------------------------
+save changes: escape, :wq!, enter
+
+Start Kibana Service:
+
+	terminal --> sudo service kibana start
+
+
+Installing Beats
+
+	terminal --> sudo apt-get install metricbeat
+
+	terminal --> sudo service metricbeat start
+
+
+Shipping some data:
+
+	terminal --> sudo vim /etc/logstash/conf.d/apache-01.conf
+
+-----------------------------------
+    input {
+    file {
+    path => "/home/ubuntu/apache-daily-access.log"
+    start_position => "beginning"
+    sincedb_path => "/dev/null"
+    }
+    }
+     
+    filter {
+    grok {
+    match => { "message" => "%{COMBINEDAPACHELOG}" }
+    }
+     
+    date {
+    match => [ "timestamp" , "dd/MMM/yyyy:HH:mm:ss Z" ]
+    }
+     
+    geoip {
+    source => "clientip"
+    }
+    }
+     
+    output {
+    elasticsearch {
+    hosts => ["localhost:9200"]
+    }
+    }
+-----------------------------------
+save changes: escape, :wq!, enter
+
+Start LogStash Service:
+	terminal --> sudo service logstash start 
+
+
+
 
 
 
 90. Lab : Install ELK using Terraform
 =====================================
+
+We have project Structure
+-------------------------
+
+casestudy#ELK
+  |
+  |-- Demo-1
+  |   +-- createInstance.tf
+  |   +-- variable.tf
+  |
+  |-- Demo-2
+      +-- apache-01.conf
+      +-- createInstance.tf
+      +-- elasticsearch.yaml
+      +-- installELK.sh
+      +-- kibana.yaml
+      +-- varaible.tf
+
+
+
+Demo-2
+------
+
+We can see all parameters and syntax for the VPC - https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+
+AWS SECURITY GROUP
+------------------
+➢ search 'aws security group'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#argument-reference
+
+
+AWS INSTANCE
+------------
+➢ search 'aws instance'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance#argument-reference
+
+
+AWS ELASTIC IP - EIP
+--------------------
+➢ search 'aws eip'
+  ➢ Example syntax - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#example-usage
+  ➢ Arguments references - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip#argument-reference
+
+
+createInstance.tf
+-----------------------------------
+
+resource "aws_key_pair" "levelup_key" {			# KeyPair resource
+    key_name = "levelup_key"				# key name
+    public_key = file(var.PATH_TO_PUBLIC_KEY)		# path to key location
+}
+
+resource "aws_security_group" "allow_elk" {		# ELK security group resource
+  name        = "allow_elk"				# SG name
+  description = "All all elasticsearch traffic"		# short description
+
+  # elasticsearch port
+  ingress {						# Elasticsearch inbound traffic rules
+    from_port   = 9200					# from port 9200
+    to_port     = 9200					# to port 9200
+    protocol    = "tcp"					# TCP only
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  # logstash port
+  ingress {						# Logstash inbound traffic rules
+    from_port   = 5043					# from port 5043 - receiving traffic
+    to_port     = 5044					# to port 5044 - sending traffic
+    protocol    = "tcp"					# TCP only
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  # kibana ports
+  ingress {						# Kibana inbound traffic rules
+    from_port   = 5601					# from port 5601
+    to_port     = 5601					# to port 5601
+    protocol    = "tcp"					# TCP only
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  # ssh
+  ingress {						# ssh connection rules
+    from_port   = 22					# from port 22
+    to_port     = 22					# to port 22
+    protocol    = "tcp"					# TCP only
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+
+  # outbound
+  egress {						# outbound traffic rules fo instance
+    from_port   = 0					# from port 0
+    to_port     = 0					# to port 0 - all ports
+    protocol    = "-1"					# '-1' all protocls
+    cidr_blocks = ["0.0.0.0/0"]				# IP range - all IPs - Classless Inter-Domain Routing (CIDR)
+  }
+}
+
+#Create AWS Instance
+resource "aws_instance" "MyFirstInstnace" {		# aws instance resource
+  ami           = lookup(var.AMIS, var.AWS_REGION)	# amazon machine image from variable.tf by region
+  instance_type = "m4.large"				# hardware type - m4.large - paid
+  availability_zone = "ap-south-1a"			# first availability zone 
+  key_name      = aws_key_pair.levelup_key.key_name	# used key name
+
+  vpc_security_group_ids = [
+    aws_security_group.allow_elk.id,			# vpc id
+  ]
+
+  depends_on = [aws_security_group.allow_elk]		# depends on elk SG
+  
+  tags = {
+    Name = "custom_instance"				# tag
+  }
+
+  provisioner "file" {
+      source = "elasticsearch.yml"			# elasticsearch configs
+      destination = "/tmp/elasticsearch.yml"		# elasticsearch configs location
+  }
+
+  provisioner "file" {
+      source = "kibana.yml"				# kibana configs
+      destination = "/tmp/kibana.yml"			# kibana configs location
+  }
+
+  provisioner "file" {
+      source = "apache-01.conf"				# apache configs
+      destination = "/tmp/apache-01.conf"		# apache configs location
+  }
+
+    provisioner "file" {
+      source = "installELK.sh"				# install ELK stack script
+      destination = "/tmp/installELK.sh"		# install ELK stack script location
+  }
+
+  provisioner "remote-exec" {				# set file permission and execute scripts in linux
+    inline = [
+      "chmod +x    /tmp/installELK.sh",
+      "sudo sed -i -e 's/\r$//' /tmp/installELK.sh",  # Remove the spurious CR characters.
+      "sudo /tmp/installELK.sh",
+    ]
+  }
+
+  connection {							# set connection configs
+    host        = coalesce(self.public_ip, self.private_ip)	# used IP
+    type        = "ssh"						# typr connection
+    user        = var.INSTANCE_USERNAME				# username
+    private_key = file(var.PATH_TO_PRIVATE_KEY)			# used private key location
+  }
+}
+
+resource "aws_eip" "ip" {				# aws elastic IP resource
+  instance = aws_instance.MyFirstInstnace.id		# instance id
+}
+
+output "public_ip" {					# print instance public IP on launch
+  value = aws_instance.MyFirstInstnace.public_ip 
+}
+-----------------------------------
+
+
+
+apache-01.conf
+-----------------------------------
+input {
+    file {
+        path => "/home/ubuntu/apache-daily-access.log"		# create logs file
+        start_position => "beginning"				# set start point
+        sincedb_path => "/dev/null"				# 
+    }   
+}
+
+filter {
+    grok {
+        match => { "message" => "%{COMBINEDAPACHELOG}" }
+    }
+ 
+    date {
+        match => [ "timestamp" , "dd/MMM/yyyy:HH:mm:ss Z" ]
+    }
+ 
+    geoip {
+        source => "clientip"
+}   
+}
+ 
+output {
+    elasticsearch {
+        hosts => ["localhost:9200"]
+    }
+}
+-----------------------------------
+
+
+
+elasticsearch.yaml
+-----------------------------------
+# ======================== Elasticsearch Configuration =========================
+#
+# NOTE: Elasticsearch comes with reasonable defaults for most settings.
+#       Before you set out to tweak and tune the configuration, make sure you
+#       understand what are you trying to accomplish and the consequences.
+#
+# The primary way of configuring a node is via this file. This template lists
+# the most important settings you may want to configure for a production cluster.
+#
+# Please consult the documentation for further information on configuration options:
+# https://www.elastic.co/guide/en/elasticsearch/reference/index.html
+#
+# ---------------------------------- Cluster -----------------------------------
+#
+# Use a descriptive name for your cluster:
+#
+#cluster.name: my-application
+#
+# ------------------------------------ Node ------------------------------------
+#
+# Use a descriptive name for the node:
+#
+#node.name: node-1
+#
+# Add custom attributes to the node:
+#
+#node.attr.rack: r1
+#
+# ----------------------------------- Paths ------------------------------------
+#
+# Path to directory where to store the data (separate multiple locations by comma):
+#
+path.data: /var/lib/elasticsearch
+#
+# Path to log files:
+#
+path.logs: /var/log/elasticsearch
+#
+# ----------------------------------- Memory -----------------------------------
+#
+# Lock the memory on startup:
+#
+#bootstrap.memory_lock: true
+#
+# Make sure that the heap size is set to about half the memory available
+# on the system and that the owner of the process is allowed to use this
+# limit.
+#
+# Elasticsearch performs poorly when the system is swapping the memory.
+#
+# ---------------------------------- Network -----------------------------------
+#
+# Set the bind address to a specific IP (IPv4 or IPv6):
+#
+network.host: "localhost"
+#
+# Set a custom port for HTTP:
+#
+http.port: 9200
+#
+# For more information, consult the network module documentation.
+#
+# --------------------------------- Discovery ----------------------------------
+#
+# Pass an initial list of hosts to perform discovery when this node is started:
+# The default list of hosts is ["127.0.0.1", "[::1]"]
+#
+#discovery.seed_hosts: ["host1", "host2"]
+#
+# Bootstrap the cluster using an initial set of master-eligible nodes:
+#
+#cluster.initial_master_nodes: ["node-1", "node-2"]
+#
+# For more information, consult the discovery and cluster formation module documentation.
+#
+# ---------------------------------- Gateway -----------------------------------
+#
+# Block initial recovery after a full cluster restart until N nodes are started:
+#
+#gateway.recover_after_nodes: 3
+#
+# For more information, consult the gateway module documentation.
+#
+# ---------------------------------- Various -----------------------------------
+#
+# Require explicit names when deleting indices:
+#
+#action.destructive_requires_name: true
+-----------------------------------
+
+
+
+
+installELK.sh
+-----------------------------------
+#!/bin/bash
+
+sudo apt update					# update package manager
+sudo apt-get upgrade -y				# upgrade package manager
+sudo apt-get install default-jre -y		# install java
+sudo java -version				# confirm java installation
+
+# install elasticsearch
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+# download elasticsearch gpg key
+echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+# move key in directory
+echo "deb https://artifacts.elastic.co/packages/oss-7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+# set apache permission
+
+sudo apt-get update							# update package manager after keys setting
+sudo apt-get install elasticsearch -y					# install elasticsearch
+sleep 10								# wait 10s
+sudo mv /tmp/elasticsearch.yml /etc/elasticsearch/elasticsearch.yml	# move elasticsearch configs to linux config location 
+
+sudo service elasticsearch start					# start elasticsearch service
+sudo curl http://localhost:9200						# check elasticsearch service availability
+
+# install logstash
+sudo apt-get install logstash						# install Logstash
+sleep 10								# wait 10s
+
+# install kibana
+sudo apt-get install kibana						# install kibana
+sleep 10								# wait 10s
+
+sudo mv /tmp/kibana.yml /etc/kibana/kibana.yml				# move kibana configs to linux config location
+sudo service kibana start						# start kibana service
+
+# install filebeats
+sudo apt-get install metricbeat						# install metricbeat
+sleep 10								# wait 10s
+sudo service metricbeat start						# start metricbeat service
+
+# Start LogStash
+sudo mv /tmp/apache-01.conf /etc/logstash/conf.d/apache-01.conf		# move apache configs in linux config location
+sleep 10								# wait 10s
+sudo service logstash start						# start Logstash service
+-----------------------------------
+
+
+
+
+kibana.yaml
+-----------------------------------
+# Kibana is served by a back end server. This setting specifies the port to use.
+server.port: 5601
+
+# Specifies the address to which the Kibana server will bind. IP addresses and host names are both valid values.
+# The default is 'localhost', which usually means remote machines will not be able to connect.
+# To allow connections from remote users, set this parameter to a non-loopback address.
+server.host: "0.0.0.0"
+
+# Enables you to specify a path to mount Kibana at if you are running behind a proxy.
+# Use the `server.rewriteBasePath` setting to tell Kibana if it should remove the basePath
+# from requests it receives, and to prevent a deprecation warning at startup.
+# This setting cannot end in a slash.
+#server.basePath: ""
+
+# Specifies whether Kibana should rewrite requests that are prefixed with
+# `server.basePath` or require that they are rewritten by your reverse proxy.
+# This setting was effectively always `false` before Kibana 6.3 and will
+# default to `true` starting in Kibana 7.0.
+#server.rewriteBasePath: false
+
+# The maximum payload size in bytes for incoming server requests.
+#server.maxPayloadBytes: 1048576
+
+# The Kibana server's name.  This is used for display purposes.
+#server.name: "your-hostname"
+
+# The URLs of the Elasticsearch instances to use for all your queries.
+elasticsearch.hosts: ["http://localhost:9200"]
+
+# Kibana uses an index in Elasticsearch to store saved searches, visualizations and
+# dashboards. Kibana creates a new index if the index doesn't already exist.
+#kibana.index: ".kibana"
+
+# The default application to load.
+#kibana.defaultAppId: "home"
+
+# If your Elasticsearch is protected with basic authentication, these settings provide
+# the username and password that the Kibana server uses to perform maintenance on the Kibana
+# index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
+# is proxied through the Kibana server.
+#elasticsearch.username: "kibana_system"
+#elasticsearch.password: "pass"
+
+# Enables SSL and paths to the PEM-format SSL certificate and SSL key files, respectively.
+# These settings enable SSL for outgoing requests from the Kibana server to the browser.
+#server.ssl.enabled: false
+#server.ssl.certificate: /path/to/your/server.crt
+#server.ssl.key: /path/to/your/server.key
+
+# Optional settings that provide the paths to the PEM-format SSL certificate and key files.
+# These files are used to verify the identity of Kibana to Elasticsearch and are required when
+# xpack.security.http.ssl.client_authentication in Elasticsearch is set to required.
+#elasticsearch.ssl.certificate: /path/to/your/client.crt
+#elasticsearch.ssl.key: /path/to/your/client.key
+
+# Optional setting that enables you to specify a path to the PEM file for the certificate
+# authority for your Elasticsearch instance.
+#elasticsearch.ssl.certificateAuthorities: [ "/path/to/your/CA.pem" ]
+
+# To disregard the validity of SSL certificates, change this setting's value to 'none'.
+#elasticsearch.ssl.verificationMode: full
+
+# Time in milliseconds to wait for Elasticsearch to respond to pings. Defaults to the value of
+# the elasticsearch.requestTimeout setting.
+#elasticsearch.pingTimeout: 1500
+
+# Time in milliseconds to wait for responses from the back end or Elasticsearch. This value
+# must be a positive integer.
+#elasticsearch.requestTimeout: 30000
+
+# List of Kibana client-side headers to send to Elasticsearch. To send *no* client-side
+# headers, set this value to [] (an empty list).
+#elasticsearch.requestHeadersWhitelist: [ authorization ]
+
+# Header names and values that are sent to Elasticsearch. Any custom headers cannot be overwritten
+# by client-side headers, regardless of the elasticsearch.requestHeadersWhitelist configuration.
+#elasticsearch.customHeaders: {}
+
+# Time in milliseconds for Elasticsearch to wait for responses from shards. Set to 0 to disable.
+#elasticsearch.shardTimeout: 30000
+
+# Logs queries sent to Elasticsearch. Requires logging.verbose set to true.
+#elasticsearch.logQueries: false
+
+# Specifies the path where Kibana creates the process ID file.
+#pid.file: /var/run/kibana.pid
+
+# Enables you to specify a file where Kibana stores log output.
+#logging.dest: stdout
+
+# Set the value of this setting to true to suppress all logging output.
+#logging.silent: false
+
+# Set the value of this setting to true to suppress all logging output other than error messages.
+#logging.quiet: false
+
+# Set the value of this setting to true to log all events, including system usage information
+# and all requests.
+#logging.verbose: false
+
+# Set the interval in milliseconds to sample system and process performance
+# metrics. Minimum is 100ms. Defaults to 5000.
+#ops.interval: 5000
+
+# Specifies locale to be used for all localizable strings, dates and number formats.
+# Supported languages are the following: English - en , by default , Chinese - zh-CN .
+#i18n.locale: "en"
+-----------------------------------
+
+
+
+
+varaible.tf
+-----------------------------------
+variable "AWS_REGION" {
+default = "ap-south-1"			# set default region
+}
+
+provider "aws" {			# provider 
+  region     = "ap-south-1"		# provider region
+}
+
+variable "AMIS" {				# map amazon machine images for some regions
+    type = map
+    default = {
+        us-east-1 = "ami-0f40c8f97004632f9"
+        us-east-2 = "ami-05edbb8e25e281608"
+        us-west-2 = "ami-0352d5a37fb4f603f"
+        us-west-1 = "ami-0f40c8f97004632f9"
+        ap-south-1 = "ami-0fd48e51ec5606ac1"	# used region AMI
+    }
+}
+
+variable "PATH_TO_PUBLIC_KEY" {
+  description = "Public key path"
+  default = "~/.ssh/levelup_key.pub"		# path to public key location
+}
+
+variable "PATH_TO_PRIVATE_KEY" {
+  default = "~/.ssh/levelup_key"		# path to private key location
+}
+
+variable "INSTANCE_USERNAME" {			# username
+  default = "ubuntu"
+}
+-----------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
