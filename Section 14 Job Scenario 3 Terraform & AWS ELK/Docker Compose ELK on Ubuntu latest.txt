@@ -1,0 +1,94 @@
+
+1. Install Docker & Docker Compose
+# Install Docker
+	terminal --> curl -fsSL https://get.docker.com | sh
+
+# Install Docker Compose
+	terminal --> sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+
+
+2. Create docker-compose.yml
+	terminal --> vim docker-compose.yml
+
+docker-compose.yml
+--------------------------------------------------
+version: '3'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.2
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+      - xpack.security.enabled=false  # Disable for testing
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - elk
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.0.2
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - elk
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:9.0.2
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - "5044:5044"
+    networks:
+      - elk
+
+volumes:
+  es-data:
+    driver: local
+
+networks:
+  elk:
+    driver: bridge
+--------------------------------------------------
+
+How to set monitoring of external app?
+
+
+
+
+3. Create logstash.conf (Example)
+	terminal --> vim logstash.conf
+
+--------------------------------------------------
+input {
+  beats {
+    port => 5044
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["http://elasticsearch:9200"]
+    index => "logs-%{+YYYY.MM.dd}"
+  }
+}
+--------------------------------------------------
+
+In what directory I have to set the logstash.conf file ro be read by Docker compose?
+
+
+
+4. Start ELK Stack
+	terminal --> docker-compose up -d
+
+
+
+
+
