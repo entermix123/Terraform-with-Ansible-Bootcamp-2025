@@ -1,0 +1,330 @@
+Test ELK on local PC with Docker
+1. Install Docker
+2. Start Ubuntu container
+3. Manage Ubuntu container
+4. Install prerequisites
+5. Install Elasticsearch, Logstash, Kibana and Metricbeat
+6. Edit configs and start services
+7. Manage Elasticsearch and Kibana UI
+
+Option 1 - specific resources allocated - ubuntu will work only with allocated resources
+Start Ubuntu container with allocated resources
+	terminal--> docker run -it --name elk-test --memory=8g --cpus=2 -v elk-data:/var/lib/elasticsearch -p 80:80 -p 9200:9200 -p 5601:5601 -p 5044:5044 ubuntu:22.04 /bin/bash
+
+	# docker 				- common docker command
+	# run					- start container
+	# -it					- interactive mode (background service)
+	# --name elk-test			- name of the container
+	# --memory=8g				- allocate 4gb of ram
+	# --cpus=2				- allocate 2 cpu
+	# -v elk-data:/var/lib/elasticsearch	- set volume to save data of the container
+	# -p 80:80				- set podrt for apache
+	# -p 9200:9200				- set port 9200 for elasticsearch
+	# -p 5601:5601				- set port 5601 for kibana
+	# -p 5044:5044				- set port 5043 for egress of logstash
+	# ubuntu:22.04				- version of ubuntu image
+	# /bin/bash				- where the container will be saved on the PC
+
+
+
+Option 2 - no resources allocated, ubuntu will use all pc resources if needed
+Start Ubuntu container with no allocated resources (Ubuntu ill use all resourcess from your PC if needed)
+	terminal--> docker run -it --name elk-test -p 80:80 -p 9200:9200 -p 5601:5601 -p 5044:5044 -v elk-data:/var/lib/elasticsearch -v /host/logs:/var/log/apache2 ubuntu:22.04 /bin/bash
+
+	# docker 				- common docker command
+	# run					- start container
+	# -it					- interactive mode (background service)
+	# --name elk-test			- name of the container
+	# -v elk-data:/var/lib/elasticsearch	- set volume to save data of the container
+	# -v /host/logs:/var/log/apache2	- set volume for apache
+	# -p 80:80				- set port for apache
+	# -p 9200:9200				- set port 9200 for elasticsearch
+	# -p 5601:5601				- set port 5601 for kibana
+	# -p 5044:5044				- set port 5043 for egress of logstash
+	# ubuntu:22.04				- version of ubuntu image
+	# /bin/bash				- where the container will be saved on the PC
+
+
+3. Manage Ubuntu container
+--------------------------
+Check if the conatiner is started
+	terminal --> docker ps -f name=elk-test
+	# STATUS should be 'up' if started
+
+If the container is stopped we want to start it
+	terminal --> docker start elk-test
+
+Login to Ubuntu, start new session
+	terminal --> docker exec -it elk-test /bin/bash
+
+
+Optional if we deploy on AWS
+---------------------------------------------------------------------------------------------
+Install open ssh
+	terminal --> apt install -y openssh-server
+	terminal --> apt install -y openssh-client
+
+We need to install AWS CLI on the machine
+	terminal --> apt-get install awscli
+	terminal --> y					# confirm
+	terminal --> enter continent
+	terminal --> enter timezone
+
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_ACCESS_KEY
+	terminal --> echo $AWS_SECRET_KEY
+
+
+Navigate to root/.ssh folder
+	terminal --> cd etc/ssh
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+	# we should have 2 additional files: levelup_key and levelup_key.pub
+
+Navigate to root directory
+	terminal --> cd ../..
+---------------------------------------------------------------------------------------------
+
+
+
+4. Install prerequisites
+------------------------
+
+Update and upgrade package manager
+	terminal --> apt-get update && apt-get upgrade -y
+
+Install JAVA, vim, wget, curl, gnupg2
+	terminal --> apt-get install -y curl wget vim gnupg2 net-tools sudo openjdk-17-jdk apache2
+
+
+
+
+To install ELK we need to execute a set of commands
+
+5. Install Elasticsearch, Logstash, Kibana and Metricbeat
+---------------------------------------------------------
+Add Elastic GPG key & repository
+	terminal --> wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | gpg --dearmor -o /usr/share/keyrings/elastic.gpg
+	terminal --> echo "deb [signed-by=/usr/share/keyrings/elastic.gpg] https://artifacts.elastic.co/packages/9.x/apt stable main" | tee /etc/apt/sources.list.d/elastic-9.x.list
+
+Install ELK + Metricbeat
+	instance terminal --> apt-get update && apt-get install -y elasticsearch kibana logstash metricbeat
+
+
+
+
+6. EDIT CONFIGS ADN START SERVICES
+----------------------------------
+
+Edit elasticsearch configs
+--------------------------
+Modify network elasticsearch configurations
+	instance terminal --> vim /etc/elasticsearch/elasticsearch.yml
+
+/etc/elasticsearch/elasticsearch.yaml
+--------------------------------------------------
+...
+network.host: "localhost"
+
+http.port: 9200
+
+xpack.security.enabled: false
+...
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+Start the elasticsearch service
+	instance terminal --> sudo -u elasticsearch /usr/share/elasticsearch/bin/elasticsearch -d
+	# wait intil the command exits
+
+Check elasticsearch service status
+	instance terminal --> curl -X GET "http://localhost:9200/_cat/health?v"
+	# We should see status green
+
+
+
+Edit Kibana configs
+-------------------
+Generate kibana key
+	terminal --> echo "xpack.encryptedSavedObjects.encryptionKey: '$(openssl rand -hex 16)'" | sudo tee -a /etc/kibana/kibana.yml
+
+Modify kibana configuration
+	instance terminal --> vim /etc/kibana/kibana.yml
+
+/etc/kibana/kibana.yaml
+--------------------------------------------------
+...
+server.port: 5601
+
+server.host: "0.0.0.0"
+xpack.encryptedSavedObjects.encryptionKey: 'generated key'
+...
+elasticsearch.hosts: ["http://localhost:9200"]		# here we can set multiple machines with coma separated hosts
+...
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+Start kibana service
+	instance terminal --> sudo -u kibana /usr/share/kibana/bin/kibana --allow-root &
+
+Verify kibana service status
+	instance terminal --> curl -I "http://localhost:5601"
+
+Access elasticsearch
+	browser --> http://localhost:5601
+
+	# we should be able to access Elasticearch Homepage
+
+
+Edit Logstash configs
+---------------------
+Modify Logstash configuration. We need to configure the index.
+	instance terminal --> sudo vim /etc/logstash/conf.d/apache-01.conf
+
+/etc/logstash/conf.d/apache-01.conf
+--------------------------------------------------
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  grok {
+    match => { "message" => "%{COMBINEDAPACHELOG}" }
+  }
+  date {
+    match => [ "timestamp", "dd/MMM/yyyy:HH:mm:ss Z" ]
+    target => "@timestamp"  # Standardize timestamp
+  }
+  geoip {
+    source => "clientip"
+    target => "geoip"       # Stores geo data under "geoip" field
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["http://localhost:9200"]
+    index => "apache-%{+YYYY.MM.dd}"
+  }
+}
+--------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+
+
+Edit metricbeat configs
+-----------------------
+
+Edit metricbeat config
+	terminal --> sudo vim /etc/metricbeat/metricbeat.yml
+
+/etc/filebeat/metricbeat.yml
+--------------------------------------------------
+metricbeat.modules:
+- module: system
+  metricsets: 
+    - cpu
+    - memory
+    - network
+  enabled: true
+  period: 10s
+
+- module: apache
+  metricsets: ["status"]
+  enabled: false  # Disabled by default - enable only after configuring Apache
+  period: 10s
+  hosts: ["http://localhost/server-status"]
+
+output.elasticsearch:
+  hosts: ["http://localhost:9200"]
+  # If security is enabled, add:
+  # username: "elastic"
+  # password: "yourpassword"
+
+processors:
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+--------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+Start metricbeat service
+	terminal --> metricbeat -c /etc/metricbeat/metricbeat.yml &
+
+Check metricbeat service
+	terminnal --> ps aux | grep metricbeat
+
+Restart Logstash
+	terminal --> sudo -u logstash /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/apache-01.conf --path.settings /etc/logstash &
+	# wait until the command exits
+
+
+Enable Apache mod_status
+	terminal --> a2enmod status
+echo "ExtendedStatus On" >> /etc/apache2/apache2.conf
+echo "<Location /server-status>
+  SetHandler server-status
+  Require local
+</Location>" >> /etc/apache2/sites-available/000-default.conf
+service apache2 restart
+
+enable Apache module in Metricbeat
+	terminal --> sed -i 's/enabled: false/enabled: true/' /etc/metricbeat/metricbeat.yml
+
+Access elasticsearch 
+	browser --> localhost:5601
+
+	# we should be able to access Elasticearch Homepage
+
+
+
+
+
+7. MANAGE ELASTICSEARCH AND KIBANA UI
+-------------------------------------
+
+Manage Elasticsearch and Kibana
+-------------------------------
+
+Create Dashboard - go to Menu/Management/Stack Management/Index Management
+	- We should get index from metricbeat
+
+Create Kibana Data View - go to Elasticsearch menu/Stack Management/Kibana/Create Data View
+	- in the 'name' field set 'custom data view'
+	- in the 'Index pattern' field set 'metricbeat-*'
+	- in the 'Timestamp field' field set '@timestamp'
+	- Save  data view to Kibana
+
+Craete Dashboard on Menu/Dashboard/Create a dashboard/Create a visualization
+	- on the right menu in 'Data view' section we can select our 'custom data view'
+	- on the right side menu we can expand 'available fields' and drag and drop '@timestamp' or every other parameter
+	- save and return
+	- now we can see the timestamp of the our custom view
+
+
+Now on Menu/Discovery we should have graph with the data.
+
+	
+
+
+
+
+
+
+
+
