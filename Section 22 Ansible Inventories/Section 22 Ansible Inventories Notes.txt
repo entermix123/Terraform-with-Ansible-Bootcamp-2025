@@ -9,22 +9,578 @@ Section 22: Ansible Inventories
 
 
 
+
+
 132. Work with Dynamic Inventory Script AWS I
 =============================================
+
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]					
+ec2-user@142.93.116.93				# AWS instance 1
+ec2-user@157.230.211.126			# AWS instance 2
+-------------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Test the connection with the clients
+	terminal --> ansible all -m ping
+
+
+
+
+➢ Collection of Hosts is called Inventory.
+	- in the invetory hte clients are represented with public IP or FQDN - (fully qualified domain name)
+
+➢ Types of Inventory:
+	○ Static Inventory
+		- We already managed static inventory
+	○ Dynamic Inventory
+		- We can read the servers frm the clod directly
+
+➢ Dynamic Inventory is a Script like shell/python for dynamic environment.
+	- in the latest versions we manage dynamic inventories with plugins
+
+➢ Dynamic inventory is preferable over Static Inventory.
+	- When some instance restart or is recreated, the IP or FQDN is changed and the static inventory is not working
+	- We don't need to manage it in the ansible invetory
+
+➢ Ansible have the Dynamic Inventory Script for public clouds:
+	○ AWS
+	○ OpenStack
+	○ GCP
+	○ Azure
+	○ Space Walk ...etc
+
+➢ Define Inventory to Ansible Command Dynamically.
+
+➢ In earlier Ansible Version, files was present in GitHub. Latest version have plugins for inventory file formation.
+
+➢ List all Dynamic Inventory Plugin List.
+	terminal --> ansible-doc -t inventory -l
+
+# result: List of the plugins. We can see that the first 2 plugins are for AWS. We are goin to use - amazon.aws.aws_ec2 plugin
+------------------------------------------------------------------------------------------------
+amazon.aws.aws_ec2                                    EC2 inventory source                                       
+amazon.aws.aws_rds                                    RDS instance inventory source                              
+ansible.builtin.advanced_host_list                    Parses a 'host list' with ranges                           
+ansible.builtin.auto                                  Loads and executes an inventory plugin specified in a YAML ...
+ansible.builtin.constructed                           Uses Jinja2 to construct vars and groups based on existing ...
+ansible.builtin.generator                             Uses Jinja2 to construct hosts and groups from patterns    
+ansible.builtin.host_list                             Parses a 'host list' string                                
+ansible.builtin.ini                                   Uses an Ansible INI file as inventory source               
+ansible.builtin.script                                Executes an inventory script that returns JSON             
+ansible.builtin.toml                                  Uses a specific TOML file as an inventory source           
+ansible.builtin.yaml                                  Uses a specific YAML file as an inventory source           
+awx.awx.controller                                    Ansible dynamic inventory plugin for the Automation Platfor...
+azure.azcollection.azure_rm                           Azure Resource Manager inventory plugin                    
+cisco.meraki.meraki                                   Ansible dynamic inventory plugin for Cisco Meraki devices  
+cloudscale_ch.cloud.inventory                         cloudscale.ch inventory source                             
+community.aws.aws_mq                                  MQ broker inventory source                                 
+community.digitalocean.digitalocean                   DigitalOcean Inventory Plugin                              
+community.dns.hetzner_dns_records                     Create inventory from Hetzner DNS records                  
+community.dns.hosttech_dns_records                    Create inventory from Hosttech DNS records                 
+community.docker.docker_containers                    Ansible dynamic inventory plugin for Docker containers     
+community.docker.docker_machine                       Docker Machine inventory source                            
+community.docker.docker_swarm                         Ansible dynamic inventory plugin for Docker swarm nodes    
+community.general.cobbler                             Cobbler inventory source                                   
+community.general.gitlab_runners                      Ansible dynamic inventory plugin for GitLab runners        
+community.general.icinga2                             Icinga2 inventory source                                   
+community.general.iocage                              iocage inventory source                                    
+community.general.linode                              Ansible dynamic inventory plugin for Linode                
+community.general.lxd                                 Returns Ansible inventory from lxd host                    
+community.general.nmap                                Uses nmap to find hosts to target                          
+community.general.online                              Scaleway (previously Online SAS or Online.net) inventory so...
+community.general.opennebula                          OpenNebula inventory source    
+------------------------------------------------------------------------------------------------
+
+We can see all ansible plugins here - https://docs.ansible.com/ansible/latest/collections/index_inventory.html
+
+
+
+
+
+
 
 
 
 133. Work with Dynamic Inventory Script AWS II
 ==============================================
 
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]					
+ec2-user@142.93.116.93				# AWS instance 1
+ec2-user@157.230.211.126			# AWS instance 2
+-------------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Test the connection with the clients
+	terminal --> ansible all -m ping
+
+Save all Dynamic Inventory Plugin List use them later
+	terminal --> ansible-doc -t inventory -l >> ansible_plugins.txt
+
+
+➢ Add Enable Plugin Syntax in Ansible cgf file.
+	○ [inventory]
+	enable_plugins = host_list, script, auto, yaml, ini, toml
+
+Add the cionfiguration:
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory/
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+save changes - escape, :wq!, enter
+
+
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific apckage)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific apckage)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+
+➢ Create YML file for AWS Plugin.
+	○ plugin: amazon.aws.aws_ec2
+
+Create dynamic inventory yaml file with configured aws plugin
+	terminal --> vi demo.aws_ec2.yml
+
+demo.aws_ec2.yml
+--------------------------------------
+plugin: amazon.aws.aws_ec2			# set plugin for aws ec2
+filters:
+    instance-state-name: running		# filter the running instances
+--------------------------------------
+save changes: escape, :wq!, enter
+
+
+Verify file creation
+	terminal --> cat demo.aws_ec2.yml
+
+
+TEST AWS DYNAMIC INVENOTRY
+--------------------------
+➢ Show details for our running aws instances
+	terminal --> ansible-inventory -i demo.aws_ec2.yml --list
+
+	# ansible-inventory					- test ansible dynamic inventory
+	# -i demo.aws_ec2.yml					- use dynamic inventory file
+	# --list						- list details for inventory
+
+	# result: we should receive all our instances' details on aws in JSON format
+
+➢ Show details for our running aws instances in graph
+	terminal --> ansible-inventory -i demo.aws_ec2.yml --graph
+
+	# ansible-inventory					- test ansible dynamic inventory
+	# -i demo.aws_ec2.yml					- use dynamic inventory file
+	# --graph						- graph details for inventory
+
+	# result: we should receive graph of all our aws instances
+-----------------------------
+@all:
+  |--@ungrouped:
+  |  |--ec2-18-217-144-136.us-east-2.compute.amazonaws.com
+  |  |--ec2-3-129-206-38.us-east-2.compute.amazonaws.com
+  |--@aws_ec2:
+-----------------------------
+
+
+We can create another instance on aws and execute graph command again
+	terminal --> ansible-inventory -i demo.aws_ec2.yml --graph
+
+# result:
+-----------------------------
+@all:
+  |--@ungrouped:
+  |  |--ec2-18-119-110-86.us-east-2.compute.amazonaws.com		# newly created aws instance
+  |  |--ec2-18-217-144-136.us-east-2.compute.amazonaws.com
+  |  |--ec2-3-129-206-38.us-east-2.compute.amazonaws.com
+  |--@aws_ec2:
+-----------------------------
+
+
+
+USE ANSIBLE MODULE WITH DYNAMIC INVENTORY
+-----------------------------------------
+➢ Test some Ansible Module on aws instances
+	terminal --> ansible all -i <AWS PLUGIN FILE NAME> -u ec2-user -m ping
+	terminal --> ansible all -i demo.aws_ec2.yml -u ec2-user -m ping
+
+	# ansible 						- common ansible command
+	# all							- target all groups
+	# -i demo.aws_ec2.yml					- use dynamic inventory file
+	# -u ec2-user						- use user ec2-user
+	# -m ping						- use module ping
+
+	# result: we should be able to ping all running aws instances
+
+
+
+
+
 
 
 134. Work with Dynamic Inventory Script Google Cloud
 ====================================================
 
+➢ Create 2 GCP Instances named ansible-client1 and ansible-client2 in zone: us-central1-a and c
+------------------------------------------------------------------------------------------------
+
+Option 1: Create instances with template (optional)
+	- Craete VM Instance Template - GCP/Compute Engine/VM Instances/Create Instance Template
+		- Choose Machine Type/OS/Storage/Network etc.
+		- Create the template
+	- Created Instance Template/Menu/Create VM/ x2
+
+Option 2: Go to GCP/Compute Engine/VM Instances/Create Instance
+		- Name: ansible-client1, ansible-client2
+		- Region: us-central1 (Iowa), zone: us-central1-b
+		- Machine Configuration				# on right section we can see the monthly consts estimate
+			- Series: E2
+			- Machine Type: f1-micro (1 cpu, 0.614 GB memory)	# appr. $5/month
+			- Boot Disk: Ubuntu
+			- Version: 22.04 LTS
+			- Boot Disk Type: Balanced persistent disk, size: 10GB
+			- Data protection: No backups
+			- Networking: 
+				- check allow HTTP traffic
+				- check allow HTTPS traffic
+			- Network Interfaces: default default
+			- Observability: unchek 'Install Ops Agent for Monitoring and Logging'
+			- Security: SSH key 1: set the key from the working machine
+			- Create
+
+		- Wait until the machine is running and go to its details
+			- copy the External IPs from GCP/Instance/Network Interfaces section
+
+
+We have configured clients as follow:
+
+root/ansible/inventory/dev/dev_hosts
+-------------------------------
+[all]					
+root@34.171.124.22				# GCP instance 1
+root@34.171.26.21				# GCP instance 2
+-------------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Test the connection with the clients
+	terminal --> ansible all -m ping
+
+
+➢ Check our Project ID on GCP/Cloud Hub/Home
+	- The default Project name: My First Project
+	- ID: focal-acronym-xxxxxx-xx
+
+➢ Create Service Account in GCP, which have Compute Engine Access Permission.
+	- go on GCP/IAM & Admin/Service Accounts/Create Service Account
+		- Service Account Name: ansible-admin
+		- Service Account Description: Used in Ansible Engine
+		- Create and constinue
+		- Role: Basic/Owner
+		- Continue
+		- Done
+	- Create Key-Pair for the created Service Account
+		- ansible-admin-Service-Account/Menu/Manage Keys/Add key/Create New/JSON
+		- save the key to local PC
+		- copy the content of the service account key
+
+Create service account file on the ansible engine and paste the key from GCP
+	terminal --> vi ansible-gcp-service-account.json
+
+ansible-gcp-service-account.json
+--------------------------------------------------------------
+GCP Service account key
+--------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+Verify the sa-key creation
+	terminal --> ls
+
+
+➢ Find the path of gcp plugin
+	terminal --> ansible-doc -t inventory -l | grep gcp
+	
+	# result: google.cloud.gcp_compute
+
+
+
+➢ Create Sample YML file for GCP Nodes dynamic inventory.
+➢ File Extension must be ----.gcp.yml
+	terminal --> vi demo.gcp.yml				
+
+demo.gcp.yml	
+--------------------------------------------------------------
+plugin: google.cloud.gcp_compute						# plugin
+projects:
+  - focal-acronym-464118-e7							# GCP project ID
+auth_kind: serviceaccount							# auth method
+service_account_file: /root/ansible/ansible-gcp-service-account.json		# auth details
+
+filters:
+  - status = RUNNING      # Filter to include only running instances
+
+keyed_groups:									# filter by props for the graph present
+  - key: labels		# filter by label
+    prefix: label
+  - key: zone		# filetr by zone
+    prefix: zone
+--------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+➢ Install google-auth and python requests package.
+	terminal --> pip3 install requests google-auth
+
+	Verify installation
+		terminal --> pip3 list | grep google-auth
+		terminal --> pip3 list | grep requests
+
+
+➢ List Inventory dynamically.
+	terminal --> ansible-inventory -i demo.gcp.yml --list
+
+	# ansible-invetory 					- use ansible-inventory
+	# -i demo.gcp.yml					- use inventory file demo.gcp.yml
+	# --list						- list details for inventory
+
+	# result: we should receive
+
+
+
+➢ Test graph representation of the dynamic GCP invetory
+	terminal --> ansible-inventory -i demo.gcp.yml --graph
+
+# result:
+@all:
+  |--@ungrouped:
+  |--@zone_us_central1_a:
+  |  |--34.171.124.22
+  |--@zone_us_central1_c:
+  |  |--34.171.26.21
+
+
+➢ Test connection with ping module with the GCP instances
+	terminal --> ansible all -m demo.gcp.yml -m ping
+
+	# both instances should be available
+
+
+We can add tags to each GCP Instance
+	- got to GCP/Compute Engine/VM Instances/ansible-client1/Edit/Manage Labels/Add label
+		- type: db
+		- save
+		- save
+	- got to GCP/Compute Engine/VM Instances/ansible-client2/Edit/Manage Labels/Add label
+		- type: webapp
+		- save
+		- save
+
+➢ Test graph representation of the dynamic GCP invetory
+	terminal --> ansible-inventory -i demo.gcp.yml --graph
+
+# result:
+@all:
+  |--@ungrouped:
+  |--@label_type_db:			# filtered by type
+  |  |--34.171.124.22
+  |--@zone_us_central1_a:		# filtered by zone
+  |  |--34.171.124.22
+  |--@label_type_webapp:		# filtered by type
+  |  |--34.171.26.21
+  |--@zone_us_central1_c:		# filtered by zone
+  |  |--34.171.26.21
+
+
+➢ Now we can make actions based on labels or zones
+	terminal --> ansible label_type_db -i demo.gcp.yml -m ping
+
+	# result this will ping only instances filtered in 'label_type_db' group
+
+	terminal --> ansible zone_us_central1_c -i demo.gcp.yml -m ping
+
+	# result this will ping only instances filtered in 'zone_us_central1_c' group
+
+
+
+
+
+
+
+
 
 
 135. Work with Dynamic Inventory | Digital Ocean
 ================================================
+
+We have configured clients as follow:
+
+root/ansible/inventory/dev/dev_hosts
+-------------------------------
+[all]					
+root@157.230.211.126				# DO instance 1
+root@142.93.116.93				# DO instance 2
+-------------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Test the connection with the clients
+	terminal --> ansible all -m ping
+
+
+➢ To manage DigitalOcean infrastructure dynamically using Ansible, ypu can use community.digitalocean collection.
+
+➢ Install DigitalOcean Collection:
+	terminal --> ansible-galaxy collection install community.digitalocean
+
+➢ Create DigitalOcean API Token
+	- go to DigitalOcean/API/Generate New Token
+		- Token Name: Ansible-Token
+		- Expiration: choose on of 30/60/90 days/1 year/No expire
+		- Scopes: Full Access
+		- Generate Token
+			- Copy the Token
+
+➢ Configure DigitalOcean Creadentials:
+	➢ Using Environment Variable
+		terminal --> export DO_API_TOKEN="dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+		- Verify variable creation
+			terminal --> printenv DO_API_TOKEN
+
+
+
+
+	➢ Using Configuration file
+		- Create a file named digitalocean_creadentials.yml
+			terminal --> vi digitalocean_creadentials.yml
+
+digitalocean_creadentials.yml
+--------------------------------------------------------------
+plugin: community.digitalocean.digitalocean
+api_token: "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+--------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+		- Verify the file creation
+			terminal --> cat digitalocean_creadentials.yml
+
+
+➢ Configure the digitalocean inventory Plugin:
+	➢ Create an inventory configuration file for the digitalocean plugin named digitalocean_inventory.yml
+		terminal --> vi digitalocean_inventory.yml
+
+digital_ocean.yml
+--------------------------------------------------------------
+plugin: community.digitalocean.digitalocean
+api_token: "{{ lookup('env', 'DO_API_TOKEN') }}"  
+			# if we use config file digitalocean_creadentials.yml, we can skip this line
+			# or we can set the Token directly here api_token: "token_xxxxxxxxxxxxxxxxxx"
+compose:
+   ansible_host: public_ip
+--------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+	- Verify invetory file creation
+		terminal --> cat digital_ocean.yml
+
+
+➢ Read the dynamic inventory from DigitalOcean
+	terminal --> ansible-inventory -i digital_ocean.yml --graph -vv
+
+	# ansible-inventory					- ansible inventory common command
+	# -i digitalocean_inventory.yml				- use inventory file
+	# --graph						- present data as graph
+
+# result:
+@all:
+  |--@ungrouped:
+  |  |--ansible-engine
+  |  |--ansible-client1
+  |  |--ansible-client2
+
+
+
 
 

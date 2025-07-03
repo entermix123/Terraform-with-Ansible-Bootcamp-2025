@@ -1,0 +1,14 @@
+plugin: google.cloud.gcp_compute						                            # plugin
+projects:
+  - focal-acronym-464118-e7							                                # GCP project ID
+auth_kind: serviceaccount							                                  # auth method
+service_account_file: /root/ansible/ansible-gcp-service-account.json		# auth details
+
+filters:
+  - status = RUNNING                                                    # Filter to include only running instances
+
+keyed_groups:                                                           # filter by props for the graph present
+  - key: labels       # filter by label
+    prefix: label     
+  - key: zone         # filetr by zone
+    prefix: zone
