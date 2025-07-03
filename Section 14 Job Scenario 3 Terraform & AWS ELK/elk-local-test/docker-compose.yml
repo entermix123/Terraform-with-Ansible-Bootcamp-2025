@@ -1,0 +1,119 @@
+version: '3.8'
+services:
+  # Permission fixer service - runs first to fix all permissions
+  elk-permissions:
+    image: ubuntu:22.04
+    container_name: elk-permissions
+    user: "0"  # Run as root to fix permissions
+    volumes:
+      - ./data:/data
+      - ./config:/config
+      - ./certs:/certs
+      - ./logs:/logs
+    command: >
+      bash -c "
+        echo 'Setting up ELK permissions and directories...' &&
+        
+        # Create all necessary directories
+        mkdir -p /data/elasticsearch /data/kibana /data/logstash &&
+        mkdir -p /config /certs /logs &&
+        
+        # Set permissive permissions for Docker-in-Docker compatibility
+        chmod -R 777 /data/ &&
+        chmod -R 755 /config/ /certs/ /logs/ &&
+        
+        # Ensure config files have proper permissions if they exist
+        find /config -type f -exec chmod 644 {} + 2>/dev/null || true &&
+        find /certs -type f -exec chmod 644 {} + 2>/dev/null || true &&
+        
+        echo 'Directory structure:' &&
+        ls -la /data/ &&
+        ls -la /config/ &&
+        ls -la /certs/ &&
+        echo 'Permissions setup complete!'
+      "
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false  # Disabled for initial testing
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+      - ./logs:/usr/share/elasticsearch/logs
+    ports:
+      - "9200:9200"
+    networks:
+      - elk
+    depends_on:
+      elk-permissions:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - LOGGING_ROOT_LEVEL=info
+    volumes:
+      - ./data/kibana:/usr/share/kibana/data
+      - ./logs:/usr/share/kibana/logs
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.0
+    container_name: filebeat
+    user: root
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    volumes:
+      - ./config:/usr/share/filebeat
+      - ./data/filebeat:/usr/share/filebeat/data
+      - ./logs:/usr/share/filebeat/logs
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.12.0
+    container_name: metricbeat
+    user: root
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    volumes:
+      - ./config:/usr/share/metricbeat
+      - ./data/metricbeat:/usr/share/metricbeat/data
+      - ./logs:/usr/share/metricbeat/logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      - /:/hostfs:ro
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+networks:
+  elk:
+    driver: bridge

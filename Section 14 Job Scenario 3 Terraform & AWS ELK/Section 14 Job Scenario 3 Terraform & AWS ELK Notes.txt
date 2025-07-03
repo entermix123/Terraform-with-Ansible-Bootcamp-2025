@@ -527,26 +527,26 @@ Send request to the elasticsearch port from our local machine
 
 
 
-Manage Elasticsearch
---------------------
+Manage Elasticsearch and Kibana
+-------------------------------
 
 Create Dashboard - go to Menu/Management/Stack Management/Index Management
 	- We should get index from metricbeat
 
+Create Kibana Data View - go to Elasticsearch menu/Stack Management/Kibana/Create Data View
+	- in the 'name' field set 'custom data view'
+	- in the 'Index pattern' field set 'metricbeat-*'
+	- in the 'Timestamp field' field set '@timestamp'
+	- Save  data view to Kibana
 
-Create Elasticsearch Index Pattern - go to Elasticsearch menu/Discovery/Create index pattern
-	- in the 'Index pattern name' field we enter 'metricbeat-*'
-	- next step
-	- in the 'Time field' choose '@timestamp'
-	- Create index pattern
-
-Now on Menu/Discovery we should have graph with the data.
+Craete Dashboard on Menu/Dashboard/Create a dashboard/Create a visualization
+	- on the right menu in 'Data view' section we can select our 'custom data view'
+	- on the right side menu we can expand 'available fields' and drag and drop '@timestamp' or every other parameter
+	- save and return
+	- now we can see the timestamp of the our custom view
 
 
-Exit the AWS instance
-	terminal --> exit
-
-Now we are on the working PC. We need to destroy AWS resources to prevent furder consts.	
+Now on Menu/Discovery we should have graph with the data.	
 
 
 DESTROY
@@ -993,9 +993,9 @@ sudo java -version				# confirm java installation
 wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
 # download elasticsearch gpg key
 echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
-# move key in directory
+# set stable package of elasticsearch
 echo "deb https://artifacts.elastic.co/packages/oss-7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
-# set apache permission
+# set stable version of oss package
 
 sudo apt-get update							# update package manager after keys setting
 sudo apt-get install elasticsearch -y					# install elasticsearch
@@ -1181,6 +1181,143 @@ variable "INSTANCE_USERNAME" {			# username
 
 
 
+Login to the linux working machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+
+Install AWS CLI
+---------------
+Option 1
+We need to install AWS CLI on the machine
+	terminal --> sudo apt-get install awscli
+	terminal --> y					# confirm
+
+Option 2
+Download and unzip and install the AWS CLI on the machine
+	terminal --> curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+	terminal --> unzip awscliv2.zip
+	terminal --> sudo ./aws/install
+
+Confirm AWS CLI installation
+	terminal --> aws --version
+
+Set Secret Access Key and Aceess Key as environemnt variable
+	terminal --> export AWS_ACCESS_KEY="AKIAY65Y5OPLU3XH5T6O"
+	terminal --> export AWS_SECRET_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+Check if the secret access key and access key are successfully set as environment variable
+	terminal --> echo $AWS_SECRET_KEY
+	terminal --> echo $AWS_ACCESS_KEY
+
+Navigate to root/.ssh folder
+	terminal --> cd /root/.ssh/
+
+Generate private and public key
+	terminal --> ssh-keygen -f levelup_key
+	terminal --> enter
+	terminal --> enter
+
+Verify key creation
+	terminal --> ls
+
+Navigate to the terraform working directory
+	terminal --> cd 'Terraform-with-Ansible-Bootcamp-2025/Section 14 Job Scenario 3 Terraform & AWS ELK/90. Lab - Insstall ELK using Terraform/casestudy#ELK/Demo-2'
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+	# we can see console logs of downloaded modules
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 4 to add, 0 to change, 0 to destroy.
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply
+	terminal --> yes			# confirm
+
+We can see the logs on the console.
+
+Wait until all resources are created. 
+
+Go on AWS/EC2 and see the created instance and copy the public IPv4 address.
+
+
+
+Copy the public IP from the console and connect to the instance
+	terminal --> ssh instance_public_ip -l ubuntu -i ~/.ssh/levelup_key
+
+	# ssh instance_public_ip		- connect to the instance
+	# -l ubuntu				- login as ubuntu user
+	# -i levelup_key			- use terraform public key
+
+list all files in tmp directory
+	instance terminal --> ls /tmp/
+
+	We can see that all configuration files are available in the current directory
+
+
+Exit the instance
+	instance terminal --> exit
+
+Now we are on our working PC
+
+Browse aws instance public IP on port 5601
+	browser --> intance_ip:5601
+
+	# we should have access to elasticsearch 
+
+
+
+Manage Elasticsearch and Kibana
+-------------------------------
+
+Create Dashboard - go to Menu/Management/Stack Management/Index Management
+	- We should get index from metricbeat
+
+Create Kibana Data View - go to Elasticsearch menu/Stack Management/Kibana/Create Data View
+	- in the 'name' field set 'custom data view'
+	- in the 'Index pattern' field set 'metricbeat-*'
+	- in the 'Timestamp field' field set '@timestamp'
+	- Save  data view to Kibana
+
+Craete Dashboard on Menu/Dashboard/Create a dashboard/Create a visualization
+	- on the right menu in 'Data view' section we can select our 'custom data view'
+	- on the right side menu we can expand 'available fields' and drag and drop '@timestamp' or every other parameter
+	- save and return
+	- now we can see the timestamp of the our custom view
+
+
+Now on Menu/Discovery we should have graph with the data.
+
+
+
+DESTROY
+-------
+
+Destroy all resources to stop the consts generation on AWS.
+
+On the working machine destroy all resources with terraform
+	terminal --> terraform destroy
+	terminal --> yes			# confirm
 
 
 

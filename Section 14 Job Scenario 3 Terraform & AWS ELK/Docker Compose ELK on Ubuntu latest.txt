@@ -1,92 +1,1090 @@
-
-1. Install Docker & Docker Compose
-# Install Docker
-	terminal --> curl -fsSL https://get.docker.com | sh
-
-# Install Docker Compose
-	terminal --> sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+This instruction focus on creating Ubuntu OS with ELK stack for local PC test environment and production purposes. Both scenarions are executed with Docker & Docker Compose.
 
 
+LOCAL ENVIRONEMNT SETUP
+=======================
 
-2. Create docker-compose.yml
-	terminal --> vim docker-compose.yml
+Configuring a Dockerfile for Local ELK Stack Testing on Ubuntu
+
+1. Building and Running the Local Test Environment
+--------------------------------------------------
+1.1. Create the directory structure:
+	terminal --> mkdir -p elk-local-test
+cd elk-local-test
+mkdir config
+mkdir certs
+mkdir data
+
+1.2. Add the configuration files:
+Create the Dockerfile, entrypoint.sh, and docker-compose.yml as shown below
+
+1.3. Create Dockerfile for Local Testing
+	terminal --> > touch Dockerfile
+
+Dockerfile
+----------------------------------------------------------------------
+# Use official Ubuntu base image
+FROM ubuntu:22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install prerequisites
+RUN apt-get update && apt-get install -y \
+    curl \
+    docker.io \
+    docker-compose \
+    openjdk-17-jdk \
+    openssl \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+
+# Create required directory structure for Elasticsearch
+RUN mkdir -p /usr/share/elasticsearch/config
+
+# Create working directory
+WORKDIR /elk-stack
+
+# Copy configuration files
+COPY . .
+
+# Set proper permissions (for Linux hosts)
+RUN chmod 644 config/* && \
+    chmod +x entrypoint.sh
+
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+1.4. Entrypoint Script (entrypoint.sh)
+	terminal --> vim entrypoint.sh
+
+entrypoint.sh
+----------------------------------------------------------------------
+#!/bin/bash
+
+# Set up system requirements for Elasticsearch
+echo "Setting system parameters for Elasticsearch..."
+sysctl -w vm.max_map_count=262144 || echo "Warning: Could not set vm.max_map_count"
+
+# Generate certificates if they don't exist
+if [ ! -f "certs/ca.crt" ]; then
+    echo "Generating SSL certificates..."
+    mkdir -p certs
+    
+    # CA
+    openssl genrsa -out certs/ca.key 4096
+    openssl req -x509 -new -nodes -key certs/ca.key -sha256 -days 3650 -out certs/ca.crt -subj "/CN=elk-ca"
+    
+    # Elasticsearch cert
+    openssl genrsa -out certs/elasticsearch.key 4096
+    openssl req -new -key certs/elasticsearch.key -out certs/elasticsearch.csr -subj "/CN=elasticsearch"
+    openssl x509 -req -days 3650 -in certs/elasticsearch.csr -CA certs/ca.crt -CAkey certs/ca.key -CAcreateserial -out certs/elasticsearch.crt -sha256
+    
+    # Set permissions
+    chmod 440 certs/*
+    chown 1000:0 certs/* || echo "Warning: Could not change cert permissions"
+fi
+
+echo "Setting configuration file permissions..."
+chmod 644 /elk-stack/config/* || echo "Warning: Could not set config file permissions"
+
+# Start ELK stack
+echo "Starting ELK stack with Docker Compose..."
+docker-compose -f /elk-stack/docker-compose.yml up -d
+
+# Wait for Elasticsearch to be ready
+echo "Waiting for Elasticsearch to start..."
+until curl -s --cacert /elk-stack/certs/ca.crt https://localhost:9200 | grep -q "missing authentication credentials"; do
+    sleep 5
+done
+
+# Set elastic user password
+echo "Setting Elasticsearch password..."
+docker exec -it elasticsearch /bin/bash -c "bin/elasticsearch-reset-password -u elastic -b --url https://localhost:9200 <<<'yourpassword'"
+
+echo ""
+echo "=============================================="
+echo "ELK stack is ready for local testing!"
+echo ""
+echo "Access Kibana at: https://localhost:5601"
+echo "Elasticsearch API: https://localhost:9200"
+echo ""
+echo "Credentials:"
+echo "Username: elastic"
+echo "Password: yourpassword"
+echo "=============================================="
+echo ""
+
+# Keep container running
+tail -f /dev/null
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+1.5. Create configs for elasticserach - config/elasticsearch.yml
+	
+elasticsearch.yml
+----------------------------------------------------------------------
+cluster.name: "es-docker-cluster"
+network.host: 0.0.0.0
+xpack.security.enabled: true
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.key: /usr/share/elasticsearch/config/certs/elasticsearch.key
+xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/certs/elasticsearch.crt
+xpack.security.http.ssl.certificate_authorities: /usr/share/elasticsearch/config/certs/ca.crt
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/certs/elasticsearch.key
+xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/certs/elasticsearch.crt
+xpack.security.transport.ssl.certificate_authorities: /usr/share/elasticsearch/config/certs/ca.crt
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+1.6. Create config file for kibana - config/kibana.yml
+
+kibana.yml
+----------------------------------------------------------------------
+server.host: "0.0.0.0"
+server.shutdownTimeout: "5s"
+elasticsearch.hosts: ["https://elasticsearch:9200"]
+elasticsearch.ssl.certificateAuthorities: ["/usr/share/kibana/config/certs/ca.crt"]
+elasticsearch.ssl.verificationMode: "certificate"
+elasticsearch.username: "elastic"
+elasticsearch.password: "yourpassword"
+xpack.security.enabled: true
+xpack.encryptedSavedObjects.encryptionKey: "something_at_least_32_characters_long"
+xpack.reporting.capture.browser.chromium.disableSandbox: false
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+1.7. Create configs for logstash - config/logstash.conf
+
+logstash.conf
+----------------------------------------------------------------------
+input {
+  beats {
+    port => 5044
+    ssl => true
+    ssl_certificate_authorities => ["/usr/share/logstash/config/certs/ca.crt"]
+    ssl_certificate => "/usr/share/logstash/config/certs/elasticsearch.crt"
+    ssl_key => "/usr/share/logstash/config/certs/elasticsearch.key"
+    ssl_verify_mode => "force_peer"
+  }
+}
+
+filter {
+  # Add your filters here if needed
+}
+
+output {
+  elasticsearch {
+    hosts => ["https://elasticsearch:9200"]
+    index => "%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}"
+    ssl => true
+    ssl_certificate_verification => true
+    cacert => "/usr/share/logstash/config/certs/ca.crt"
+    user => "elastic"
+    password => "yourpassword"
+  }
+}
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+1.8. Craete configs for metricbeats - config/metricbeat.yml
+
+metricbeat.yml
+----------------------------------------------------------------------
+metricbeat.modules:
+- module: system
+  metricsets:
+    - "cpu"
+    - "load"
+    - "memory"
+    - "network"
+    - "process"
+    - "process_summary"
+  enabled: true
+  period: 10s
+  processes: ['.*']
+
+- module: docker
+  metricsets:
+    - "container"
+    - "cpu"
+    - "diskio"
+    - "healthcheck"
+    - "info"
+    - "memory"
+    - "network"
+  hosts: ["unix:///var/run/docker.sock"]
+  enabled: true
+  period: 10s
+
+output.elasticsearch:
+  hosts: ["https://elasticsearch:9200"]
+  ssl.certificate_authorities: ["/usr/share/metricbeat/config/certs/ca.crt"]
+  ssl.certificate: "/usr/share/metricbeat/config/certs/elasticsearch.crt"
+  ssl.key: "/usr/share/metricbeat/config/certs/elasticsearch.key"
+  username: "elastic"
+  password: "yourpassword"
+
+setup.ilm.enabled: false
+setup.template.enabled: false
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+1.9. Create a filebeat configuration file - config/filebeat.yml
+	terminal --> vim config/filebeat.yml
+
+filebeat.yml
+----------------------------------------------------------------------
+filebeat.inputs:
+- type: container
+  paths: 
+    - '/var/lib/docker/containers/*/*.log'
+
+output.elasticsearch:
+  hosts: ["https://elasticsearch:9200"]
+  username: "elastic"
+  password: "yourpassword"
+  ssl.verification_mode: "none"
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+2. Create custom Docker Image
+	terminal --> docker build -t ubuntu-local-elk-workspace .
+
+	# docker 						- common Docker command
+	# build							- build image
+	# -t ubuntu-local-elk-workspace				- name the image
+	# .							- associate current directory for the build
+
+
+3. Start Docker container with the created custom image
+	terminal --> docker run -it --rm --name elk-workspace -v /var/run/docker.sock:/var/run/docker.sock -v ${PWD}/data:/elk-stack/data -v ${PWD}/config:/elk-stack/config -v ${PWD}/certs:/elk-stack/certs -p 8000:8000 ubuntu-local-elk-workspace
+
+	# docker						- common Docker command
+	# run							- start container 
+	# -it							- interactive mode - background service
+	# --rm							- delete container if eixted
+	# --name elk-workspace					- name the container
+	# -v $(pwd)/var/run/docker.sock:/var/run/docker.sock	- set volume for docker sock
+	# -v $(pwd)/data:/elk-stack/data			- set volume for elk stash
+	# -v $(pwd)/config:/elk-stack/config			- set volume for configs
+	# -v $(pwd)/certs:/elk-stack/certs			- set volumes for certificates
+	# -p 8000:8000						- set port for env machine connection
+	# ubuntu-elk-workspace					- used image
+
+
+
+2. Manage Ubuntu environment container
+--------------------------------------
+Check if the conatiner is started
+	terminal --> docker ps -f name=ubuntu-elk-workspace
+	# STATUS should be 'up' if started
+
+If the container is stopped we want to start it
+	terminal --> docker start ubuntu-elk-workspace
+
+Login to Ubuntu, start new session
+	terminal --> docker exec -it ubuntu-elk-workspace /bin/bash
+
+
+
+3. Start docker-compose containers
+----------------------------------
+
+3.1. Check docker-compose.yml
+	terminal --> cat docker-compose.yml
 
 docker-compose.yml
---------------------------------------------------
-version: '3'
+----------------------------------------------------------------------
+version: '3.8'
+
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
     environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
       - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms2g -Xmx2g
-      - xpack.security.enabled=false  # Disable for testing
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certs/elasticsearch.key
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certs/elasticsearch.crt
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./certs:/usr/share/elasticsearch/config/certs
     ports:
       - "9200:9200"
     networks:
       - elk
+    restart: unless-stopped
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:9.0.2
-    depends_on:
-      - elasticsearch
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=yourpassword
+      - ELASTICSEARCH_SSL_VERIFICATIONMODE=certificate
+    volumes:
+      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - ./certs:/usr/share/kibana/config/certs
     ports:
       - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     networks:
       - elk
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
 
-  logstash:
-    image: docker.elastic.co/logstash/logstash:9.0.2
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.0
+    container_name: filebeat
+    user: root
     volumes:
-      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
-    ports:
-      - "5044:5044"
+      - ./config/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./certs:/usr/share/filebeat/config/certs
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - elasticsearch
     networks:
       - elk
-
-volumes:
-  es-data:
-    driver: local
+    restart: unless-stopped
 
 networks:
   elk:
     driver: bridge
---------------------------------------------------
-
-How to set monitoring of external app?
-
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
 
 
+3.2. Start containers with docker-compose.yml file
+	terminal --> docker-compose up -d
 
-3. Create logstash.conf (Example)
-	terminal --> vim logstash.conf
+3.3. Show logs of the elasticsearch
+	terminal --> docker-compose logs -f elasticsearch
 
---------------------------------------------------
+
+
+4. Accessing the Local ELK Stack
+--------------------------------
+
+4.1.Kibana: Open http://localhost:5601 in your browser
+    Username: elastic
+    Password: yourpassword
+
+4.2.Elasticsearch API: Access via https://localhost:9200
+	terminal --> curl -k -u elastic:yourpassword https://localhost:9200
+
+
+
+
+
+
+
+
+
+5. Local Testing Considerations
+
+Resource Allocation:
+	Reduce JVM heap sizes for local testing (1GB instead of 4GB)
+        Disable some features to save resources
+
+Security Simplifications:
+        Disable SSL verification for local testing (ssl.verification_mode: "none")
+        Use simpler passwords (not for production!)
+
+Data Persistence:
+        The data directory will persist between container restarts
+        To start fresh, simply delete the data directory
+
+Cleanup:
+Stop and remove containers
+	terminal --> docker compose down
+
+Remove volumes (including data)
+	terminal --> docker compose down -v
+
+
+6. Tips for Effective Local Testing
+6.1. Monitor Resource Usage:
+	terminal --> watch -n 1 'docker stats --no-stream'
+
+6.2. View Logs
+	terminal --> docker compose logs -f
+
+6.3. Test with Sample Data:
+    In Kibana, go to "Home" → "Add sample data"
+    Add "Sample web logs" or other sample datasets
+
+6.4. Adjust Filebeat Configuration:
+    To monitor specific log files on your host, add volumes to the filebeat service:
+----------------------------------------------------------------------
+volumes:
+  - /path/to/your/logs:/path/in/container
+----------------------------------------------------------------------
+
+
+
+
+
+
+
+PRODUCTION ENVIRONMENT SETUP
+============================
+
+1. Prerequisites and Ubuntu Setup
+
+1.1. Hardware Requirements
+
+    Minimum 4 cores CPU (8+ recommended for production)
+
+    8GB RAM (16GB+ recommended)
+
+    50GB+ storage (SSD recommended)
+
+    Ubuntu Server 22.04 LTS (recommended for production)
+
+1.2. Install Ubuntu OS
+
+    Download Ubuntu Server ISO from ubuntu.com - https://ubuntu.com/download/server
+
+    Create bootable USB and install with these options:
+
+        Filesystem: ext4
+
+        Partitioning: LVM (for easier disk management)
+
+        Selected additional packages: OpenSSH server
+
+
+
+1.3. Post-Installation Setup
+----------------------------
+
+Update system
+	terminal --> sudo apt update && sudo apt upgrade -y
+
+Install essential tools
+	terminal --> sudo apt install -y apt-transport-https ca-certificates curl gnupg software-properties-common jq htop net-tools git unzip python3-pip
+
+Install Docker
+	terminal --> curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+Update package manager after Docker keys configuration and install Docker & Docker Compose
+	terminal --> sudo apt update
+	terminal --> sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+Add current user to docker group
+	terminal --> sudo usermod -aG docker $USER
+newgrp docker
+
+Verify Docker installation
+	terminal --> docker run hello-world
+
+Install Docker Compose v2 (included with Docker CE now)
+	terminal --> docker compose version
+
+
+
+
+1.4. System Tuning for ELK
+--------------------------
+
+Increase virtual memory limits for Elasticsearch
+	terminal --> sudo sysctl -w vm.max_map_count=262144
+	terminal --> echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+
+Increase file descriptors limit
+	terminal --> echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
+	terminal --> echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
+
+Disable swap
+	terminal --> sudo swapoff -a
+	terminal --> sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+
+2. Creating Custom ELK Stack with Docker Compose
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+2.1. Directory Structure
+	terminal --> mkdir -p ~/elk-docker/{config,data,certs,logs}
+	terminal --> cd ~/elk-docker
+
+
+2.2. Create docker-compose.yml
+	terminal --> vi docker-compose.yml
+
+docker-compose.yml
+----------------------------------------------------------------------
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certs/elasticsearch.key
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certs/elasticsearch.crt
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certs/elasticsearch.key
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certs/elasticsearch.crt
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./certs:/usr/share/elasticsearch/config/certs
+    ports:
+      - "9200:9200"
+    networks:
+      - elk
+    restart: unless-stopped
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.0
+    container_name: logstash
+    environment:
+      - LS_JAVA_OPTS=-Xms2g -Xmx2g
+    volumes:
+      - ./config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./certs:/usr/share/logstash/config/certs
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    volumes:
+      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - ./certs:/usr/share/kibana/config/certs
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./config/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs:/usr/share/filebeat/config/certs
+    depends_on:
+      - elasticsearch
+      - logstash
+    networks:
+      - elk
+    restart: unless-stopped
+
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.12.0
+    container_name: metricbeat
+    user: root
+    volumes:
+      - ./config/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      - /:/hostfs:ro
+      - ./certs:/usr/share/metricbeat/config/certs
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
+    restart: unless-stopped
+
+networks:
+  elk:
+    driver: bridge
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+
+2.3. Generate SSL Certificates
+------------------------------
+
+Create CA
+	terminal --> openssl genrsa -out ./certs/ca.key 4096
+openssl req -x509 -new -nodes -key ./certs/ca.key -sha256 -days 3650 -out ./certs/ca.crt -subj "/CN=elk-ca"
+
+
+Create Elasticsearch certificate
+	terminal --> openssl genrsa -out ./certs/elasticsearch.key 4096
+openssl req -new -key ./certs/elasticsearch.key -out ./certs/elasticsearch.csr -subj "/CN=elasticsearch"
+openssl x509 -req -days 3650 -in ./certs/elasticsearch.csr -CA ./certs/ca.crt -CAkey ./certs/ca.key -CAcreateserial -out ./certs/elasticsearch.crt -sha256
+
+
+Set proper permissions
+	terminal --> sudo chmod 440 ./certs/*
+sudo chown 1000:0 ./certs/*
+
+
+
+
+
+2.4. Configuration Files
+------------------------
+
+Set configs for Elasticsearch
+	terminal --> vim ./config/elasticsearch.yml
+
+elasticsearch.yml
+----------------------------------------------------------------------
+cluster.name: "es-docker-cluster"
+network.host: 0.0.0.0
+xpack.security.enabled: true
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.key: /usr/share/elasticsearch/config/certs/elasticsearch.key
+xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/certs/elasticsearch.crt
+xpack.security.http.ssl.certificate_authorities: /usr/share/elasticsearch/config/certs/ca.crt
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/certs/elasticsearch.key
+xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/certs/elasticsearch.crt
+xpack.security.transport.ssl.certificate_authorities: /usr/share/elasticsearch/config/certs/ca.crt
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+Set configs for kibana
+	terminal --> ./config/kibana.yml
+
+kibana.yml
+----------------------------------------------------------------------
+server.host: "0.0.0.0"
+server.shutdownTimeout: "5s"
+elasticsearch.hosts: ["https://elasticsearch:9200"]
+elasticsearch.ssl.certificateAuthorities: ["/usr/share/kibana/config/certs/ca.crt"]
+elasticsearch.ssl.verificationMode: "certificate"
+xpack.security.enabled: true
+xpack.encryptedSavedObjects.encryptionKey: "something_at_least_32_characters_long"
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+Set configs for Logstash
+	terminal --> vim ./config/logstash.conf
+
+logstash.conf
+----------------------------------------------------------------------
 input {
   beats {
     port => 5044
+    ssl => true
+    ssl_certificate_authorities => ["/usr/share/logstash/config/certs/ca.crt"]
+    ssl_certificate => "/usr/share/logstash/config/certs/elasticsearch.crt"
+    ssl_key => "/usr/share/logstash/config/certs/elasticsearch.key"
+    ssl_verify_mode => "force_peer"
   }
 }
 
 output {
   elasticsearch {
-    hosts => ["http://elasticsearch:9200"]
-    index => "logs-%{+YYYY.MM.dd}"
+    hosts => ["https://elasticsearch:9200"]
+    index => "%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}"
+    ssl => true
+    ssl_certificate_verification => true
+    cacert => "/usr/share/logstash/config/certs/ca.crt"
+    user => "elastic"
+    password => "changeme"
   }
 }
---------------------------------------------------
-
-In what directory I have to set the logstash.conf file ro be read by Docker compose?
-
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
 
 
-4. Start ELK Stack
-	terminal --> docker-compose up -d
+Set configs for filebeat
+	terminal --> vim ./config/filebeat.yml
+
+filebeat.yml
+----------------------------------------------------------------------
+filebeat.inputs:
+- type: container
+  paths: 
+    - '/var/lib/docker/containers/*/*.log'
+  processors:
+    - add_docker_metadata: ~
+
+output.logstash:
+  hosts: ["logstash:5044"]
+  ssl.certificate_authorities: ["/usr/share/filebeat/config/certs/ca.crt"]
+  ssl.certificate: "/usr/share/filebeat/config/certs/elasticsearch.crt"
+  ssl.key: "/usr/share/filebeat/config/certs/elasticsearch.key"
+
+setup.ilm.enabled: false
+setup.template.enabled: false
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+Set configs for metricbeat
+	terminal --> vim ./config/metricbeat.yml
+
+metricbeat.yml
+----------------------------------------------------------------------
+metricbeat.modules:
+- module: docker
+  metricsets:
+    - "container"
+    - "cpu"
+    - "diskio"
+    - "healthcheck"
+    - "info"
+    - "memory"
+    - "network"
+  hosts: ["unix:///var/run/docker.sock"]
+  period: 10s
+  enabled: true
+
+- module: system
+  metricsets:
+    - "cpu"
+    - "load"
+    - "memory"
+    - "network"
+    - "process"
+    - "process_summary"
+    - "socket_summary"
+  enabled: true
+  period: 10s
+  processes: ['.*']
+
+output.elasticsearch:
+  hosts: ["https://elasticsearch:9200"]
+  ssl.certificate_authorities: ["/usr/share/metricbeat/config/certs/ca.crt"]
+  ssl.certificate: "/usr/share/metricbeat/config/certs/elasticsearch.crt"
+  ssl.key: "/usr/share/metricbeat/config/certs/elasticsearch.key"
+  username: "elastic"
+  password: "changeme"
+
+setup.ilm.enabled: false
+setup.template.enabled: false
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+
+2.5. Start the ELK Stack
+------------------------
+
+Start container using the created Docker Compose file
+	terminal --> docker compose up -d
+
+
+
+
+2.6. Setup Elasticsearch Password
+---------------------------------
+
+Get the auto-generated password
+	terminal --> docker exec -it elasticsearch /bin/bash -c "bin/elasticsearch-reset-password -u elastic -a -b"
+
+Or set a custom password
+	terminal --> docker exec -it elasticsearch /bin/bash -c "bin/elasticsearch-reset-password -u elastic -i"
+
+
+
+
+
+3. Connecting External Applications
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+3.1. For Applications Using Filebeat
+------------------------------------
+
+    1. On the application server, install Filebeat:
+----------------------------------------------------------------------
+terminal --> curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.12.0-linux-x86_64.tar.gz
+tar xzvf filebeat-8.12.0-linux-x86_64.tar.gz
+cd filebeat-8.12.0-linux-x86_64
+----------------------------------------------------------------------
+
+
+   2. Configure filebeat.yml:
+	terminal --> vim filebeat.yml
+
+filebeat.yml
+----------------------------------------------------------------------
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /path/to/your/application/logs/*.log
+
+output.logstash:
+  hosts: ["your-elk-server-ip:5044"]
+  ssl.certificate_authorities: ["/path/to/ca.crt"]
+  ssl.certificate: "/path/to/client.crt"
+  ssl.key: "/path/to/client.key"
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+
+3.2. For Applications Using Metricbeat
+--------------------------------------
+
+     1. Install Metricbeat on the application server:
+----------------------------------------------------------------------
+	terminal --> curl -L -O https://artifacts.elastic.co/downloads/beats/metricbeat/metricbeat-8.12.0-linux-x86_64.tar.gz
+tar xzvf metricbeat-8.12.0-linux-x86_64.tar.gz
+cd metricbeat-8.12.0-linux-x86_64
+----------------------------------------------------------------------
+
+    2. Configure metricbeat.yml:
+	terminal --> vim metricbeat.yml
+
+metricbeat.yml
+----------------------------------------------------------------------
+metricbeat.modules:
+- module: system
+  metricsets: ["cpu", "load", "memory", "network", "process", "process_summary"]
+  enabled: true
+  period: 10s
+  processes: [".*"]
+
+output.elasticsearch:
+  hosts: ["https://your-elk-server-ip:9200"]
+  ssl.certificate_authorities: ["/path/to/ca.crt"]
+  ssl.certificate: "/path/to/client.crt"
+  ssl.key: "/path/to/client.key"
+  username: "elastic"
+  password: "your-password"
+----------------------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+3.3. For Direct API Integration
+-------------------------------
+
+Applications can send data directly to Elasticsearch or Logstash using their APIs:
+
+
+
+# Python example using Elasticsearch client
+----------------------------------------------------------------------
+from elasticsearch import Elasticsearch
+
+es = Elasticsearch(
+    ['https://your-elk-server-ip:9200'],
+    http_auth=('elastic', 'your-password'),
+    verify_certs=True,
+    ca_certs='/path/to/ca.crt',
+    client_cert='/path/to/client.crt',
+    client_key='/path/to/client.key'
+)
+
+doc = {
+    'author': 'application',
+    'text': 'Sample log entry',
+    'timestamp': datetime.now(),
+}
+res = es.index(index="application-logs", document=doc)
+----------------------------------------------------------------------
+
+
+
+
+4. Cloud Deployment Recommendations
+4.1. AWS Deployment Best Practices
+
+    EC2 Instance Selection:
+
+        Use memory-optimized instances (r6g.2xlarge or larger for production)
+
+        Consider EBS gp3 volumes with provisioned IOPS for Elasticsearch data
+
+    Security:
+
+        Place ELK stack in private subnets
+
+        Use AWS Security Groups to restrict access
+
+        Consider AWS Certificate Manager for SSL certificates
+
+    Scalability:
+
+        Use AWS Auto Scaling for Elasticsearch data nodes
+
+        Consider Amazon Elasticsearch Service for managed solution
+
+    Backup:
+
+        Implement snapshot repository to S3:
+bash
+----------------------------------------------------------------------
+    PUT _snapshot/my_s3_repository
+    {
+      "type": "s3",
+      "settings": {
+        "bucket": "my-elasticsearch-snapshots",
+        "region": "us-west-2"
+      }
+    }
+----------------------------------------------------------------------
+
+
+4.2. Azure Deployment Best Practices
+
+    VM Selection:
+
+        Use E-series VMs (E8s_v3 or larger)
+
+        Premium SSDs or Ultra Disks for storage
+
+    Networking:
+
+        Deploy in Azure Virtual Network with NSGs
+
+        Use Azure Application Gateway for Kibana with WAF
+
+    Integration:
+
+        Use Azure Monitor to collect additional metrics
+
+        Consider Azure Log Analytics integration
+
+    Backup:
+
+        Use Azure Blob Storage for snapshots:
+
+bash
+----------------------------------------------------------------------
+    PUT _snapshot/my_azure_repository
+    {
+      "type": "azure",
+      "settings": {
+        "container": "elasticsearch-snapshots",
+        "base_path": "backups",
+        "chunk_size": "64MB"
+      }
+    }
+----------------------------------------------------------------------
+
+4.3. General Cloud Recommendations
+
+    High Availability:
+
+        Deploy across multiple availability zones
+
+        Use cloud load balancers for Kibana and Logstash
+
+    Monitoring:
+
+        Set up cloud-native monitoring for host metrics
+
+        Configure alerts for disk space, CPU, and memory
+
+    Cost Optimization:
+
+        Use reserved instances for long-term deployments
+
+        Implement index lifecycle management (ILM) to manage data retention
+
+    Security:
+
+        Enable encryption at rest using cloud provider options
+
+        Integrate with cloud IAM for access control
+
+        Regularly rotate certificates and passwords
+
+5. Maintenance and Operations
+
+    Upgrading:
+
+        Test upgrades in staging first
+
+        Follow Elastic's upgrade path recommendations
+
+        Use Docker image tags for version pinning
+
+    Backup Strategy:
+
+        Daily snapshots of critical indices
+
+        Test restore procedures regularly
+
+    Performance Tuning:
+
+        Monitor JVM heap usage
+
+        Adjust shard sizes based on data volume
+
+        Regularly review and optimize queries
+
+    Security Hardening:
+
+        Regularly audit user permissions
+
+        Enable audit logging in Elasticsearch
+
+        Keep Docker images updated with security patches
+
+
+
 
 
 

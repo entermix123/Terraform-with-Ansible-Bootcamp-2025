@@ -1,0 +1,17 @@
+# server.host: "0.0.0.0"
+# server.shutdownTimeout: "5s"
+# elasticsearch.hosts: ["https://elasticsearch:9200"]
+# elasticsearch.ssl.certificateAuthorities: ["/usr/share/kibana/config/certs/ca.crt"]
+# elasticsearch.ssl.verificationMode: "certificate"
+# elasticsearch.username: "elastic"
+# elasticsearch.password: "yourpassword"
+# xpack.security.enabled: true
+# xpack.encryptedSavedObjects.encryptionKey: "something_at_least_32_characters_long"
+# xpack.reporting.capture.browser.chromium.disableSandbox: false
+
+server.name: kibana
+server.host: "0.0.0.0"
+elasticsearch.hosts: ["https://elasticsearch:9200"]
+elasticsearch.username: "elastic"
+elasticsearch.password: "yourpassword"
+elasticsearch.ssl.verificationMode: certificate
