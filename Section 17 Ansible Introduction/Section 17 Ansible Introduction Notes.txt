@@ -12,19 +12,177 @@ Section 17: Ansible Introduction
 106. Ansible Introduction : As a Tool
 =====================================
 
+➢ Ansible is a configuration management tool.
+
+➢ Let’s assume Infra without configuration Management tools like Ansible.
+
+➢ Use Case:
+	○ Running 200 Servers on Production.
+	○ Need to Install Some package on all Servers like - unzip, openssl
+	○ Install Package on Single Server:
+		■ SSH/Login Server
+		■ Check if list packages are already installed
+		■ If Missing Install required packages
+	○ Assume it took 5 Min to execute process for one server.
+	○ For 200 Servers - 200*5 = 1000Min , ~17 Hrs Job.
+	○ Chance of Missing Server and Manual Error also be there.
+
+➢ Automate the Use Case - Either Using Python or Shell
+
+➢ Let’s connect the Proming Flow:
+	○ Script One:
+		■ Login, Check Package, Install Package
+	○ Script Two
+		■ Accept List of Server in file and execute Script One for all Listed Servers
+
+➢ Assumption, above process is taking 2Min for each server
+	○ 200*2 = 400 Min, ~7 Hrs Job
+
+➢ Is above Approach Feasible or Best solution for our problem?
+
+➢ Configuration Management tool will solve your problem and can execute same set of Script on all Servers in parallel and execution time will be as minimum as possible.
+	○ Chef	
+	○ Ansible
+	○ Puppet
+	○ Salt
+
+➢ We will start with Ansible, which is most popular, open source and easy to use tool.
+
+➢ Parallel execution is one of the simplest solution and advantage of Configuration management tool.
+
+➢ Writing Shell is tough and lengthy compare to Playbooks, Ansible Playbooks are very short in code length.
+
+➢ Configuration version management is easy with Ansible Playbooks.
+
+➢ Ansible is Open Source Configuration management tool.
+
+➢ Ansible is very easy to install, setup and very powerful at the same time.
+
+➢ Ansible will be helpful to perform:
+	○ Configuration Management	
+	○ Application Deployment
+	○ Task Automation
+	○ Infra Orchestration
+
+
+
 
 
 107. Ansible : Used Code Files Location
 =======================================
+
+Please find the GIT Project Code Location.
+
+GIT Project Code Location
+
+Please click the above link to get the Maven Project Code.
+
+
+
+The process to get the Code -
+
+1. Check if Git is installed on your machine.
+
+git --version
+
+2. If GIT is not Installed, Install the GIT. Follow the official Installation Guide.
+Install GIT Procedure Document
+
+3. Download the Code Repository
+git clone -b main https://github.com/anshulc55/ansible_automation.git 
+
+
 
 
 
 108. Ansible Architecture Overview
 ==================================
 
+					Block Scheme Architecture
+					-------------------------
+
+									---------------------
+		------------------------------------------------------->| Public/Private    |		-----------------
+		|			      				|	Cloud	    |		|     HOST 1	|
+		|			|     USERS	|		---------------------		|		|
+		|			V		V			^			-----------------
+		|		---------------------------------		|
+----------------V---------------|				|---------------|----------		-----------------
+|	-----------------	|				|	  ----------------|-	-->	|     HOST 2	|
+|	|    Host	|	|	    ANSIBLE 		|	  |   Connection  ||	-->	|		|
+|	|  Inventory	|	|				|	  |    Plugins	  ||	-->	-----------------
+|	-----------------	|	    			|	  ----------------|-	-->
+|				|				|		       	  |		-----------------
+|	-----------------	|				|	----------------- |		|    HOST 3	|
+|	|              	|	---------------------------------	|    Plugins	| |		|		|
+|	|   Playbooks   |						|Email, Logging,| |		-----------------
+|	|		|						|     other	| |			.
+|	|		|						|		| |			.
+|	-----------------	----------	----------		----------------- |			.
+|			       |   Core	  |    |  Custom  |			       	  |			.
+|			       |  Modules |    | Modules  |				  |		-----------------
+|			       |	  |    |          |				  |		|    HOST N	|
+|				----------	----------				  |		|		|
+|											  |		-----------------
+-------------------------------------------------------------------------------------------
+
+
+
+
+					Connection Scheme Architecture
+					------------------------------
+
+				-----------------	-----------------
+				|   Inventory 	|	|  Ansible.cfg	|
+				|     File	|	|		|			Cnsible Clients
+	-----------------	-----------------	-----------------
+	|  PlayBooks	|		^			^
+	|    AdHoc	|		|			|		-----		-----------------
+	|  Commands	|		|			|		|   |		|		|
+	-----------------		|			|	|-------| S |---------->|   Server 1	|
+		^			-----		---------	|	| S |		|		|
+		|			    |		|		|	| H |		-----------------
+		|			    |		|		|	|   |
+		|			-------------------------	|	| C |
+		|			|			|--------	| O |		-----------------
+		|-----------------------|    Ansible Server	|---------------| N |---------->|		|
+					|			|--------	| E |		|   Server 2	|
+					-------------------------	|	| C |		|		|
+								 	|	| T |		-----------------
+				     Ansible Engine/Collector/Master	|	| I |		
+									|	| O |
+									|	| N |		-----------------
+									|	|   |		|		|
+									--------|   |---------->|   Server 3	|
+										-----		|		|
+												-----------------
+
+Inventory file contain - FQD - Fully Qualified Domain Name (IPs of the Ansible Clients)
+Ansible.cfg - must containe the location of Inventory File
+PlayBooks - containes AdHoc Commands & AdHoc Script for execution on the servers.
+
+➢ Configuration management tool woll solve your problem and can execute same set of Script on all Servers in parallel and execution time will be as minimum as possible.
+
+
+
 
 
 109. Why Ansible
 ================
+
+➢ Ansible is Open Source configuration management tool.
+
+➢ Using existing OpenSSH to Connect with Nodes.
+
+➢ Ansible is Agent-Less. No need to install any Agent on Ansible Client Nodes.
+
+➢ Python / YAML base Syntax.
+
+➢ Highly flexible Configuration Management Tool.
+
+➢ Large Number of Handy Modules.
+
+➢ Custom Modules can be added as needed.
+
 
 
