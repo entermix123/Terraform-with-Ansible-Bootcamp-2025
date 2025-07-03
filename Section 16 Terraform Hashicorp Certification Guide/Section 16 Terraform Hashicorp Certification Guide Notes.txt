@@ -16,58 +16,972 @@ Section 16: Terraform Hashicorp Certification Guide
 
 
 
+
+
 95. Introduction HashiCorp Certification
 ========================================
 
+On the official Hasicorp website - https://www.hashicorp.com/en
+- Developers/Certification - https://www.hashicorp.com/en/certification
+- We can go true associate exam preps - https://developer.hashicorp.com/terraform/tutorials/certification-003
+- Terraform Authoring and Operations Professional Certification Exam - https://developer.hashicorp.com/terraform/tutorials/pro-cert
+- We can create our certification account here - https://cp.certmetrics.com/hashicorp/en/home/requirements
 
 
 96. Understand Infrastructure as Code (IaC) Concepts
 ====================================================
+
+➢ Section 1 : Understand Infrastructure as Code (IaC) Concepts
+
+	➢ Explain what IaC is
+
+	➢ Describe advantages of IaC patterns
+
+
+
+What is IaC:
+------------
+
+Challanges: management of the hardware and software infrastructure tools must be handled manually.
+
+When the cloud provides become available a lot of tools for infrastructure became available as well.
+
+
+
+What is IaC:
+------------
+
+➢ “Infrastructure as code is the process of managing and provisioning computer data centers through machine-readable definition files, rather than physical hardware configuration or interactive configuration tools.”
+
+➢ In my words - “Infrastructure as code (IaC) means to manage your IT infrastructure using configuration files.”
+
+➢ What Problem Does IaC Solve?
+	- manual work setting up the hardware and OS configurations and tooling - high time consumption
+	- hiring many proffesionals to perform different layers (hardware, networking, configuration) tasks for days - high costs 
+	- scilability and availability
+	- inconsistancy - downtime (missconfiguration between servers)
+
+➢ Infrastructure as Code: The Missing Piece - solution
+	- “Infrastructure as code (IaC) means to manage your IT infrastructure using configuration files.”
+
+
+What is IaC:
+------------
+
+➢ Instead of going through UI, write code to create resource.
+
+➢ Manage Code using VCS.
+
+➢ Ability of review Process.
+	- Versioning of the process
+	- Able to add Cloud Update Features
+
+➢ Code reusability.
+	- use the same code in multiple production environments
+
+➢ Automation of DataCenter Provisioning.
+	- automate the complete infrastructure of out DataCeters
+
+
+
+Infrastructure as Code Benefits:
+--------------------------------
+
+➢ Speed
+	- fast deployment true setting up the scripts of IaC
+	- reusing files in the different environments (development, staging, production) with differences set in variables.tf
+
+➢ Consistency
+	- eliminate or mitigate grately the rizsk of human error factor in manual configuration activities
+	- single centralized source of infrastructure configuration code of the face of IaC (same configuration used every time)
+
+➢ Accountability
+	- full traceability of the changes of the IaC configurations via versioning and releasing
+
+➢ Lower Cost
+	- IaC can drammaticaly reduce business consts
+		- avoid counts of engineers to configure infrastructure manually
+		- few DevOps and SRA engingeers are enough to manage and provision the complete infrastructure
+
+
 
 
 
 97. Understand Terraform's Purpose
 ==================================
 
+➢ Section 2 : Understand Terraform's Purpose
+
+	➢ Explain multi-cloud and provider-agnostic benefits		
+
+	➢ Explain the benefits of state
+
+
+Cloud Agnostic Infrastructure:
+------------------------------
+
+➢ Cloud Agnostic means Spread/execute Infrastructure on multiple clouds.
+	- we can create resources on multiple cloud providers
+	- Scenarion 1: On one project we can use services on AWS, GCP on our own Hardware (on-prem) or Azure
+	- Scenarion 2: We are running our infrastructure on one Cloud provider (AWS) and second (redundant system) on Azure/GCP
+
+➢ Flexibility is one of the greatest benefit of Cloud Agnostic Infra.
+	- we are not restricted of the single cloud provider features capabilities
+	- we can mix services in different cloud providers (DB on AWS, Logging on GCP, Kubernetis on Azure etc.)
+
+➢ Being cloud agnostic means that you’re capable of switching tracks to a different public cloud provider, with minimal disruption to your business.
+	- if smon some of the cloud providers the region/availability zones services are down we can migrade in shrot time on other cloud provider (Primary on AWS, secondary on Azure or GCP)
+
+➢ Another reason that companies want to embrace this strategy is to avoid vendor lock-in.
+	- We are not completely dependant on a single vendor
+
+➢ Terraform is cloud-agnostic and allows a single configuration to be used to manage multiple providers, and to even handle cross-cloud dependencies.
+	- we can set single configuration file for multiple providers
+	- terraform will take care of cross-cloud dependancies
+		example: service on Azure depend on service on AWS. Terraform will manage this for us.
+
+
+
+Purpose and Benefits of State:
+------------------------------
+
+➢ State is a necessary requirement for Terraform to function.
+
+➢ State files are some sort of database to map Terraform config to the real world.
+	- terraform statefiles can determine what resources are running on which cloud and what is the configuration of this resource
+	- saves changees on terrafomr resource configuration
+
+➢ Alongside the mappings between resources and remote objects, Terraform must also track metadata such as resource dependencies.
+	- there is no mechanism to recreate deleted terraform/tfstate files
+	- if we loose our terraform.tfstate file we are forced to terminate our resources manually on the provider UI
+
+➢ For every plan and apply, Terraform will sync all resources in your state.
+
+
+
+
 
 
 98. Understand Terraform Basics I
 =================================
+
+➢ Section 3 : Understand Terraform Basics
+
+	➢ Handle Terraform and Provider Installation and Versioning
+
+	➢ Describe Plugin based Architecture
+
+	➢ Demonstrate using Multiple Providers
+
+
+
+Handle Terraform and Provider Installation and Versioning:
+----------------------------------------------------------
+
+➢ Terraform configurations must declare which providers they require.
+
+➢ Provider configurations belong in the root module of a Terraform configuration.
+	- if we don't set the provider, terrafomr will not be able to initialize
+
+-----------------------------------
+provider "google" {			# provider
+ project = "acme-app"			# google project
+ region = "us-central1"			# google region - similar to AWS and Azure region configs
+}
+-----------------------------------
+
+
+
+Handle Terraform and Provider Installation and Versioning:
+----------------------------------------------------------
+
+➢ alias: Multiple Provider Configurations
+
+➢ Multiple configurations can be defined for the same provider.
+
+➢ Primary reason of alias is to support multiple regions for a cloud platform.
+
+-----------------------------------
+# it as the default, and it can be referenced as `aws`.
+provider "aws" {		# if we use region aws, we will deploy the resources on aws default regions - "us-east-1"
+ region = "us-east-1"
+}
+
+# reference this as `aws.west`.
+provider "aws" {		# if we use region aws.west, we will deploy the resources on aws "us-west-2" regions
+ alias = "west"			
+ region = "us-west-2"
+}
+-----------------------------------
+
+
+
+Handle Terraform and Provider Installation and Versioning:
+----------------------------------------------------------
+
+➢ Selecting Alternate Provider Configurations
+
+-----------------------------------
+resource "aws_instance" "foo" {
+ provider = aws.west			# example fot using alias for aws region in resource
+ # ...
+}
+-----------------------------------
+
+-----------------------------------
+module "aws_vpc" {
+ source = "./aws_vpc"
+ providers = {
+  aws = aws.west			# example fot using alias for aws region in module
+ }
+}
+-----------------------------------
+
+
+
+Describe plug-in based architecture:
+------------------------------------
+
+➢ Terraform uses a plugin-based architecture to support hundreds of infrastructure and service providers.
+
+➢ Initializing a configuration directory downloads and installs providers used in the configuration.
+	termirminal --> terraform init
+
+➢ Format your configuration.
+	termirminal --> terraform fmt
+
+➢ Validate your configuration.
+	termirminal --> terraform validate
+	result: Success! The configuration is valid.
+
+
 
 
 
 99. Understand Terraform Basics II
 ==================================
 
+➢ Section 3 : Understand Terraform Basics
+
+	➢ Describe how Terraform finds and fetches Providers.
+
+	➢ Explain when to use and not use Provisioners and when to use local-exec or remote-exec.
+
+
+Provisioners:
+-------------
+
+➢ Provisioners can be used to event specific actions in order to prepare servers for service.
+
+➢ Passing data into virtual machines. Terraform have multiple Provisioners to pass data to public Cloud.
+		- if we want to craete ssh connection to the machine
+		- we awant to pass some key to the machine
+		- we want to pass some service account/creadentials to the machine
+
+	➢ user_data : AWS, Alibaba Cloud
+
+	➢ metadata : Google Cloud Platform
+
+	➢ custom_data : Microsoft Azure
+
+
+
+local-exec:
+-----------
+
+➢ local-exec provisioner is used to run the CLI for your target system in order to create, update, or interact with remote objects in that system.
+
+➢ If you are trying to use a new feature of the remote system that isn't yet supported in its Terraform provider, local-exec might be the only option.
+
+-----------------------------------
+resource "aws_instance" “server" {
+ # ...
+
+ provisioner "local-exec" {
+  command = "echo The server's IP address is ${self.private_ip}"		# example for local-exec
+ }
+}
+-----------------------------------
+
+
+local-exec:
+-----------
+
+➢ Expressions in provisioner blocks cannot refer to their parent resource by name. Instead, they can use the special self object.
+
+➢ All log output from the provisioner is automatically suppressed to prevent the sensitive values from being displayed.
+	- all exeuted commands will not print information on the console (prevent sensitive information leakage)
+
+
+remote-exec Provisioner:
+------------------------
+
+➢ remote-exec provisioner invokes a script on a remote resource after it is created.
+	- this execution will print the result on the console
+
+➢ inline - This is a list of command strings. They are executed in the order they are provided.
+
+➢ script - This is a path to a local script that will be copied to the remote resource and then executed.
+
+➢ scripts - This is a list of paths to local scripts that will be copied to the remote resource and then executed. They are
+executed in the order they are provided.
+
+
+remote-exec Provisioner:
+------------------------
+
+➢ How to execute Script with Arguments?
+
+➢ User cannot pass any arguments to scripts using the script or scripts arguments to this provisioner. If you want to specify arguments, upload the script with the file provisioner and then use inline to call it.
+
+-----------------------------------
+resource "aws_instance" "server" {
+
+ provisioner "file" {			# define the file for the provisioner
+  source = “test_script.sh"		# define file name
+  destination = "/tmp/test_script.sh"	# define file location
+ }
+
+provisioner "remote-exec" {		# define remote exec prvisioner
+ inline = [				# define inline provisioner type - list of 
+  "chmod +x /tmp/test_script.sh",	# provide command - set file exeution permisions
+  "/tmp/test_script.sh args",		# prvide file location and arguments for script execution
+ ]
+}
+-----------------------------------
+
+
+
+Creation-Time Provisioners: - executed during creation only
+---------------------------
+
+➢ By Default, provisioner run after the resource creation.
+
+➢ Creation-time provisioners are only run during creation, not during updating or any other lifecycle.
+
+➢ Creation-time provisioner fails, the resource is marked as tainted. A tainted resource will be planned for destruction and recreation upon the next terraform apply.
+
+
+
+Provisioners Failure Behaviour: - executed on failure only
+-------------------------------
+
+➢ By default, provisioners that fail will also cause the Terraform apply itself to fail. The on_failure setting can be used to change this.
+
+➢ continue - Ignore the error and continue with creation or destruction.
+
+➢ fail - Raise an error and stop applying. If this is a creation provisioner, taint the resource.
+
+-----------------------------------
+resource "aws_instance" "server" {
+
+ provisioner "local-exec" {
+  command = "echo The server's IP address is ${self.private_ip}"	# example for on failure provisioner
+  on_failure = continue							# if script fails the message will be printed
+ }
+}
+-----------------------------------
+
+
+
+Provisioner Destroy Behavior - executed only on destroy
+----------------------------
+
+➢ We have to mention parameter 'when = destroy' to set this provisioner
+
+-----------------------------------
+resource "aws_instance" "server" {
+
+ provisioner "local-exec" {
+  command = "echo The server will be destroyed}"
+  when = destroy				 	# example for destroy script provisioner
+  on_failure = continue			# important: if destroy script fails on destroy phase, the destroy will continue
+ }									
+}
+-----------------------------------
+
+
+
+
+
 
 
 100. Use the Terraform CLI
 ==========================
+
+➢ Section 4 : Use the Terraform CLI
+
+	➢ Use terraform fmt to format code
+
+	➢ Use terraform taint
+
+	➢ Use terraform import
+
+	➢ Use terraform workspace
+
+	➢ Use terraform state
+
+	➢ Enable verbose logging
+
+
+Use terraform fmt:
+------------------
+
+➢ 'terraform fmt' command is used to rewrite Terraform configuration files to a canonical format and style.
+
+
+
+Use terraform taint:
+--------------------
+
+➢ The 'terraform taint' command manually marks a Terraform-managed resource as tainted, forcing it to be destroyed and recreated on the next apply.
+
+➢ This command will not modify infrastructure, but does modify the state file in order to mark a resource as tainted.
+
+➢ Usage: terraform taint address
+
+
+
+Use terraform import:
+---------------------
+
+➢ 'terraform import' command is used to import existing resources into Terraform.
+
+Example :
+	terminal --> terraform import aws_instance.test_ins i-1234
+
+
+
+Terraform Workspace:
+--------------------
+
+➢ Terraform persistent data stored in backend which belongs to Workspace.
+
+➢ Initially Backend have only one workspace “default”.
+
+➢ Create New WorkSpace.
+	terminal --> terraform workspace new test
+	# result: Created and switched to workspace “test"!
+
+➢ Named workspaces allow conveniently switching between multiple instances of a single configuration.
+
+➢ A common use for multiple workspaces is to create a parallel, distinct copy of a set of infrastructure in order to test a set of changes before modifying the main production infrastructure.
+
+
+
+Debugging Terraform:
+--------------------
+
+➢ Terraform has detailed logs which can be enabled by setting the TF_LOG environment variable to any value.
+
+➢ User can set TF_LOG to one of the log levels TRACE, DEBUG, INFO, WARN or ERROR to change the verbosity of the logs.
+
+➢ TRACE is the most verbose and it is the default if TF_LOG is set to something other than a log level name.
+
+➢ To persist logged output you can set TF_LOG_PATH in order to force the log to always be appended to a specific file when
+logging is enabled.
+	- set environment variable 'TF_LOG_PATH' to save logs in file in the location
+
+
+Set Terraform Logs:
+-------------------
+
+➢ export TF_LOG=TRACE				# enabled without logfile
+
+➢ To disable, either unset it or set it to empty.
+
+➢ export TF_LOG=				# logging disabled
+
+➢ Set TF log path
+
+➢ export TF_LOG_PATH=./terraform.log		# logging enabled with log file
+
+
+
 
 
 
 101. Interact with Terraform modules
 ====================================
 
+➢ Section 5 : Interact with Terraform modules
+
+	➢ Contrast Module Source Options
+
+	➢ Interact with Module Inputs and Outputs
+
+	➢ Describe Variable Scope within Modules
+
+	➢ Discover Modules from the Public Terraform Module Registry
+
+	➢ Defining module version
+
+
+Contrast Module Source Options:
+-------------------------------
+
+➢ Modules are used to Organise Configuration in Terraform.
+
+➢ Modules make it easier to navigate, understand, and update your configuration by keeping related parts of your configuration together.
+
+➢ Another benefit of using modules is to encapsulate configuration into distinct logical components.
+
+➢ Code reusability is the Sole feature of modules in Terraform.
+
+
+
+Interact with Module Inputs and Outputs:
+----------------------------------------
+
+➢ Pattern to define Input variable for module is similar to define input for terraform configuration file.
+
+-----------------------------------
+variable "vpc_name" {
+ description = "Name of VPC"
+ type = string
+ default = "example-vpc"
+}
+-----------------------------------
+
+
+➢ Modules also have output values, which are defined within the module with the output keyword.
+
+➢ User can access them by referring to module.<MODULE NAME>.<OUTPUT NAME>.
+
+-----------------------------------
+output "vpc_public_subnets" {
+ description = "IDs of the VPC's public subnets"
+ value = module.vpc.public_subnets
+}
+-----------------------------------
+
+
+
+Describe Variable Scope within Modules:
+---------------------------------------
+
+➢ Input variables serve as parameters for a Terraform module, allowing aspects of the module to be customized without altering the module's own source code, and allowing modules to be shared between different configurations.
+
+➢ Root Module - Every Terraform configuration has at least one module, known as its root module.
+
+➢ Child Module - A Terraform module can call other modules to include their resources into the configuration. A module that has been called by another module is often referred to as a child module.
+
+
+
 
 
 102. Navigate Terraform workflow
 ================================
+
+➢ Section 6 : Navigate Terraform workflow
+
+	➢ Describe Terraform workflow
+
+	➢ Initialize a Terraform working directory
+
+	➢ Validate a Terraform configuration
+
+	➢ Generate and Review an execution plan for Terraform
+
+	➢ Execute changes to Infrastructure with Terraform
+
+	➢ Destroy Terraform managed Infrastructure
+
+
+
+Describe Terraform workflow:
+----------------------------
+
+➢ Terraform workflow have 3 Steps:
+
+	➢ Write
+
+	➢ Plan
+
+	➢ Apply
+
+➢ Write - Write Terraform configuration just like you write code.
+
+➢ Plan - Preview changes before applying.
+
+➢ Apply - Provision reproducible infrastructure.
+
+
+
+Initialize a Terraform working directory:
+-----------------------------------------
+
+➢ terraform init command is used to initialize a working directory containing Terraform configuration files.
+
+➢ This is the first command that should be run after writing a new Terraform configuration or cloning an existing configuration.
+
+➢ Terraform init initialize the backend.
+
+➢ Initialisation search for modules in configuration files, and install child modules.
+
+➢ Download the Plugins.
+
+
+
+Validate a Terraform configuration:
+-----------------------------------
+
+➢ terraform validate command validates the configuration files in a directory.
+
+➢ Validate runs checks that verify whether a configuration is syntactically valid and internally consistent.
+
+➢ terraform validate -json : Produce output in a machine - readable JSON format.
+	- we can pass this validation report to another module fot further analysis and hold our terraform execution
+	- we can manually check the json format and if there is any missmatches we can 
+
+
+
+Generate and Review an execution plan for Terraform:
+----------------------------------------------------
+
+➢ terraform plan command is used to create an execution plan.
+
+➢ This command is a convenient way to check whether the execution plan for a set of changes matches your expectations without making any changes to real resources or to the state.
+	- this is the last step of validation befor changing of the deployed resources
+
+➢ The optional -out argument can be used to save the generated plan to a file for later execution with terraform apply.
+	- generate plan report to be discused
+
+
+
+Execute changes to infrastructure with Terraform:
+-------------------------------------------------
+
+➢ terraform apply command is used to apply the changes required to reach the desired state of the configuration, or the pre-determined set of actions generated by a terraform plan execution plan.
+
+
+
+Destroy Terraform managed Infrastructure:
+-----------------------------------------
+
+➢ The terraform destroy command is used to destroy the Terraform-managed infrastructure.
+
+➢ terraform destroy -auto-approve : Destroy confirmation will not be shown.
+	- read the terraform.tfstate file and destroy all resources in it
+
+
+
 
 
 
 103. Implement and Maintain State
 =================================
 
+➢ Section 7 : Implement and Maintain State
+
+	➢ Describe default local backend
+
+	➢ Outline state locking
+
+	➢ Handle Backend Authentication Methods
+
+	➢ Describe Remote State
+
+	➢ Describe effect of Terraform Refresh on State
+
+	➢ Understand secret management in state files
+
+
+
+Describe default local backend:
+-------------------------------
+
+➢ “Backend” in Terraform determines how state is loaded and how an operation such as apply is executed.
+
+➢ By default, Terraform uses the "local" backend.
+
+➢ Backends can store their state remotely and protect that state with locks to prevent corruption.
+	- we can create backend on a remote location
+	- this exclude the risk of local machine failure
+
+➢ State is retrieved from backends on demand and only stored in memory.
+
+➢ User can successfully use Terraform without ever having to learn or use backends.
+
+
+
+Outline state locking:
+----------------------
+
+➢ State locking happens automatically on all operations that could write state.
+	- when multiple people are executing actions on remote backend, the state will lock
+	- only single person will be able to execute actions that write state
+
+➢ User can disable state locking for most commands with the -lock flag. - not recommended
+	- the default behavior is that only one operation can write the state file
+	- with this flag this behavior is changed and multiple operations can write the state that can corrupt the state file
+
+➢ User can execute force unlock to unlock the state.
+	- if for some reason the lock state is stuck we can unlock the state file
+	- we need to know the reason/operation that perform the lock
+
+
+
+Describe effect of Terraform Refresh on State:
+----------------------------------------------
+
+➢ Terraform refresh is used to refresh the Terraform State files.
+	- recommended when we make changes on Cloud Provider platform
+
+➢ This does not modify infrastructure, but does modify the state file.
+
+
+
+Sensitive Data in State:
+------------------------
+
+➢ Terraform state can contain sensitive data, depending on the resources in use.
+
+➢ State in local machine, stored in plain-text JSON files.
+
+➢ Storing state remotely can provide better security.
+
+
+
+
+
 
 
 104. Read, Generate, and Modify Configuration
 =============================================
 
+➢ Section 8 : Read, Generate, and Modify Configuration
+
+	➢ Demonstrate use of Variables and Outputs
+
+	➢ Describe Secure Secret Injection best practice
+
+	➢ Understand the use of Collection and Structural types
+
+	➢ Create and differentiate resource and data configuration
+
+
+
+Demonstrate use of Variables and Outputs:
+-----------------------------------------
+
+➢ User can create the variable Specific terraform Configuration File.
+
+-----------------------------------
+variable "region" {
+ default = "us-west-2"
+}
+-----------------------------------
+
+
+➢ User can define Default value in variable or can pass explicit value as well.
+
+➢ Assign Value from command line.
+	terminal --> terraform apply -var 'region=us-east-2'
+
+
+
+Demonstrate use of Variables and Outputs:
+-----------------------------------------
+
+➢ Mention Secrets in variable files are not recommend. As it will commit the secrets in VCS.
+
+➢ User can create a local file with a name like secret.tfvars and use -var-file flag to load it.
+
+➢ User can use multiple -var-file arguments in a single command.
+
+-----------------------------------
+terraform apply \
+ -var-file="secret.tfvars" \
+ -var-file="production.tfvars"
+-----------------------------------
+
+
+
+Describe Secure Secret Injection Best Practice:
+-----------------------------------------------
+
+➢ Multiple way to manage the secrets in Terraform. Few possible ways are -
+
+	➢ AWS Secret Manager
+
+	➢ GCP Secret Manager
+
+	➢ Azure Creds
+
+	➢ HashiCorp Vault
+
+➢ Mention Secrets are in Terraform Config, Statefiles & Env Variables are not recommended.
+
+
+
+Understand the use of Collection and Structural types:
+------------------------------------------------------
+
+➢ Collection type allows multiple values of one other type to be grouped together as a single value.
+
+
+Terraform have 3 Collection Types
+---------------------------------
+
+	➢ list() - A sequence of values.
+
+	➢ map() - A collection of key-value pair.
+
+	➢ set() - A collection of unique values
+
+
+
+Understand the use of Collection and Structural types:
+------------------------------------------------------
+
+➢ Structural Type allows multiple values of several distinct types to be grouped together as a single value.
+
+
+Terraform have 2 Structural Types
+---------------------------------
+
+➢ object() - A pair of curly braces containing a comma-separated series of <KEY> = <TYPE> pairs.
+
+-----------------------------------
+{
+ name = "John"
+ age = 52
+}
+-----------------------------------
+
+
+➢ tuple() - A pair of square brackets containing a comma-separated series of types.
+
+-----------------------------------
+["a", 15, true]
+-----------------------------------
+
+
+
+
 
 
 105. Understand Terraform Cloud and Enterprise Capabilities
 ===========================================================
+
+➢ Section 9 : Understand Terraform Cloud and Enterprise Capabilities
+
+	➢ Describe the benefits of Sentinel, Registry, and Workspaces
+
+	➢ Differentiate OSS and TFE Workspaces
+
+	➢ Summarize features of Terraform Cloud
+
+
+
+Benefits of Sentinel:
+---------------------
+
+➢ Sentinel is an embedded policy-as-code framework integrated with the HashiCorp Enterprise products.
+
+
+
+What is Policy?
+---------------
+
+➢ A policy is a statement of intent, and is implemented as a procedure or protocol.
+
+➢ Security policies adopted internally protect data privacy and infrastructure integrity.
+	Example policies:
+	- only specific security groups type can access my DB services
+	- no of the security group may have 0.0.0.0 of IP ranges - Classless Inter-Domain Routing (CIDR) or all users access
+	- no resources will be executed outside us-west-2 region in production env
+	- no resources will be executed outside eu-east-1 region in staging env
+
+➢ Operational policies prevent service outages or degradation.
+	- minimum count servers for specific service must running all the time (prevent service failure/outage)
+
+➢ Treating policy as code requires a way to specify policies and a mechanism to enforce them.
+	- first code policy 
+	- second create mechanism to enforce the policies
+
+
+
+Benefits of Sentinel:
+---------------------
+
+➢ Sentinel provides a simple policy-oriented language to write policies, and integrates with our tools like Terraform and enforce them.
+
+➢ Sample Policy - Require VPCs to have DNS hostnames enabled
+
+-----------------------------------
+# This policy uses the Sentinel tfplan/v2 import to require that all VPCs support DNS so that EC2 instances
+created in them will have public DNS if they have public IPs
+
+import "tfplan-functions" as plan
+
+# Get all VPCs
+allVPCs = plan.find_resources("aws_vpc")
+
+# Filter to VPCs with violations
+violatingSupportVPCs = plan.filter_attribute_is_not_value(allVPCs,
+		"enable_dns_support", true, true)
+violatingHostnameVPCs = plan.filter_attribute_is_not_value(allVPCs,
+		"enable_dns_hostnames", true, true)
+
+# Main rule
+validated = length(violatingSupportVPCs["messages"]) is 0 and length(violatingHostnameVPCs["messages"]) is 0
+main = rule {
+ validated
+}
+-----------------------------------
+
+
+
+
+Module Registry:
+----------------
+
+➢ Terraform Cloud's private module registry helps you share Terraform modules across your Organization.
+
+➢ Registry can be Private or Public.
+
+➢ Modules in Registry can be Versioned and searched easily.
+
+
+
+Benefits of Workspace:
+----------------------
+
+➢ Workspaces are how Terraform Cloud organizes infrastructure.
+
+➢ Working with Terraform involves managing collections of infrastructure resources, and most organizations manage many different collections.
+
+➢ Terraform Cloud manages infrastructure collections with workspaces instead of directories.
+
+➢ Each workspace retains backups of its previous state files.
+
+➢ Terraform Cloud manages a workspace's Terraform runs, it retains a record of all run activity.
+
+
+
+Summarize features of Terraform Cloud:
+--------------------------------------
+
+➢ Terraform Cloud is an application that helps teams use Terraform together.
+
+➢ Terraform Cloud manages Terraform runs in a consistent and reliable environment.
+
+➢ Terraform Cloud is available as a hosted service at https://app.terraform.io
+
+➢ Terraform offer free accounts for small teams.
+
+➢ Paid plans with additional feature sets for medium-sized businesses.
+
+➢ Large enterprises can purchase Terraform Enterprise, HashiCorp self-hosted distribution of Terraform Cloud.
+
+
+
+
+
+
+
 
 
 
