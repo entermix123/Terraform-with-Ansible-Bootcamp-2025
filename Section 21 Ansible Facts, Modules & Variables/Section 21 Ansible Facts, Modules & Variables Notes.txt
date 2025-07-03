@@ -13,14 +13,520 @@ Section 21: Ansible Facts, Modules & Variables
 ====================
 
 
+➢ Ansible Modules are discrete units of code that can be used from the command line or in a playbook task.
+
+➢ Ansible executes each module, usually on the remote managed node, and collects return values.
+
+➢ SetUp Module:
+	○ Used to get Facts while executing Ansible Playbooks.
+	○ Module is automatically called by playbooks to get the Information about the Remote Host/Ansible Clients.
+
+
+➢ Examples:
+------------
+
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]
+
+[web_app]
+root@157.230.211.126		# DO instance 1 Ubuntu
+
+[be_app]
+root@142.93.116.93		# DO instance 2	CentOS
+-------------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Test the connection with the clients
+	terminal --> ansible all -m ping
+
+
+SETUP MODULE
+------------
+Show details for any instance with 'setup' module
+	terminal --> ansible be_app -m setup
+
+
+We can filer specific resource of the instance
+	terminal --> ansible be_app -m setup -a "filter=ansible_memory_mb"
+
+	# ansible 				- commom ansible command
+	# be_app				- target group
+	# -m setup				- used module
+	# -a "filter=ansible_memory_mb"		- argument, filter the specific resource
+
+
+# result: we receive JSON object with the resource details
+----------------------------------------------------------------------
+root@142.93.116.93 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_memory_mb": {
+            "nocache": {
+                "free": 291,
+                "used": 169
+            },
+            "real": {
+                "free": 89,
+                "total": 460,
+                "used": 371
+            },
+            "swap": {
+                "cached": 0,
+                "free": 0,
+                "total": 0,
+                "used": 0
+            }
+        },
+        "discovered_interpreter_python": "/usr/bin/python3.9"
+    },
+    "changed": false
+}
+----------------------------------------------------------------------
+
+
+
+
+SEARCH ANSIBLE CLOUD PROVIDERS MODULES
+--------------------------------------
+➢ Find ansible module for specific cloud provider
+	terminal --> ansible-doc -l | grep aws
+
+
+
+SHOW INFORMATION ABOUT SPECIFIC ANSIBLE MODULE
+----------------------------------------------
+We want to see information about specific ansible module - 'amazon.aws.iam_instance_profile'
+
+We can check with Google search
+	browser --> amazon.aws.iam_instance_profile
+	# result: https://docs.ansible.com/ansible/latest/collections/amazon/aws/iam_instance_profile_module.html
+	# on the browser we will receive more well structured information
+
+If we don't want or can't use browser, we can use ansible CLI to get the module information:
+Show information for module 'amazon.aws.iam_instance_profile'
+	terminal --> ansible-doc amazon.aws.iam_instance_profile
+
+
+
+
+
+
 
 130. Ansible Facts
 ==================
 
 
+➢ Ansible facts are used to get the Ansible Client Information - OS, Processor, release, IP etc.
+	- client OS, processor, OS release, memory details, network details etc.
+	- we can get clients facts with ansible 'setup' module shown in the previous lecture
+
+➢ Task of collecting Ansible Client Information is called the Gathering Facts and Gathered information is called the Facts or variables.
+
+➢ SetUp Modules is used to collect the Facts.
+
+➢ Playbooks default execute SetUp module to get the Information of Ansible Clients.
+
+
+
+
+
+
 
 131. Create Custom Facts
 ========================
+
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]
+
+[web_app]
+root@157.230.211.126		# DO instance 1 Ubuntu
+
+[be_app]
+root@142.93.116.93		# DO instance 2	CentOS
+-------------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Test the connection with the clients
+	terminal --> ansible all -m ping
+
+
+
+➢ Types of Facts:
+	○ Default Facts - we can get with 'setup' module
+	○ Custom Facts - using 'setup' module with additional configuration
+		- We can get information which is:
+			- user defined
+			- user specific,
+			- information that do NOT come with default 'setup' module
+		- When Cloud agnostic systems must be managed, the custom facts are very helpful
+		- Most of the configurations are made on custom facts base
+
+➢ Custom Facts - Used to get the Extra Information about your managed Nodes.
+	○ To get User Defined Facts.
+
+➢ If Custom Facts are on Managed Nodes, then Custom Facts will be called default.	
+	- If we craeet custom facts on the ansible client, when we call setup module, those custom facts will be called as default as well
+
+➢ Custom facts help to reduce the code lines in playbooks.
+
+➢ Custom Facts help to build logic about environment specific configuration. - ENV SPECIFIC CONFIGURATION IS NOT REQUIRED
+	○ User can execute config as per environment dev/non-prd/prd/stg.
+
+➢ Steps to create Custom Facts -
+	○ Create /etc/ansible/facts.d on your managed nodes.
+	○ Inside the facts.d create one or more custom facts file with extension of .facts
+	○ Output of the fact file should be JSON.
+	○ Fact file should have execution permission.
+
+
+
+
+SCENARION - WE WANT TO GET GIT AND HTTPD VERSION AS CUSTOM FACT
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+
+Client machine
+--------------
+
+➢ Connect to the client instance and switch to root user if not
+	client terminal --> ssh root@157.230.211.126			
+	client terminal --> sudo su -
+
+➢ Install and list installed packages					# we install httpd only on one instance !
+	client terminal --> sudo yum list installed
+	# result: the installed packages will be listed
+	- check if git is installed and print the version
+		client terminal --> sudo yum list installed | grep git
+		client terminal --> git --version
+		# result: git version 2.47.1
+		
+	- install httpd
+		client terminal --> yum install httpd
+		client terminal --> y			# confirm
+		client terminal --> httpd -v
+		# result: Server version: Apache/2.4.62 (CentOS Stream)
+			  Server built:   Jan 29 2025 00:00:00
+
+We want only version numbers, without package name
+	- for git: 'git version 2.47.1' - we want only 2.47.1, how to do it?
+	- for httpd: 
+		Server version: Apache/2.4.62 (CentOS Stream) - we want only 'Apache/2.4.62'
+		Server built:   Jan 29 2025 00:00:00
+
+We can print only the third value of the result of the command git --version
+	client terminal --> git --version | awk '{print $3}'
+	# result: '2.47.1'
+
+	client terminal --> /usr/sbin/httpd -v | awk 'NR==1 {print $3}'
+	
+	# /usr/sbin/httpd -v		- httpd version with path to the module
+	# | awk 'NR==1 {print $3}'	- awk - specific detail, NR==1 - only first line, {print $3} - third value on the line
+
+	# result: Apache/2.4.62
+
+
+
+➢ We need to create script and set these commands as executables
+	- Create script file
+		client terminal --> vi getfacts.sh
+
+getfacts.sh
+-----------------------------------------------
+#!/bin/bash							# set interpreter
+
+git_version=$(git --version | awk '{print $3}')			# set env variable for git version with command
+httpd_version=$(/usr/sbin/httpd -v | awk 'NR==1 {print $3}')	# set env variable for httpd version with command
+
+cat << EOF						# print varibales on the console in JSON format
+{
+
+	"GIT_VERSION": "$git_version",
+	"HTTPD_VERSION": "$httpd_version"
+
+}
+EOF
+-----------------------------------------------
+save changes: escape, :wq!, enter
+
+	- Provide executable permissions to the file
+		client terminal --> chmod 755 getfacts.sh
+
+	- Execute the getfacts.sh
+		client terminal --> ./getfacts.sh
+
+# result:
+-----------------------------------------------
+{
+
+        "GIT_VERSION": "2.47.1",
+        "HTTPD_VERSION": "Apache/2.4.62"
+
+}	
+-----------------------------------------------
+
+
+
+
+
+
+Engine Machine - Ansible Master
+-------------------------------
+
+➢ Create client httpd and git version configuration file in /tmp directory and psate the same commands as in the getfacts.sh on the client
+	terminal --> vi /tmp/get_version.fact
+
+/tmp/get_version.fact
+-----------------------------------------------
+#!/bin/bash							# set interpreter
+	
+git_version=$(git --version | awk '{print $3}')			# set env variable for git version with command
+httpd_version=$(/usr/sbin/httpd -v | awk 'NR==1 {print $3}')	# set env variable for httpd version with command
+
+cat << EOF							# print varibales on the console in JSON format
+{
+
+	"GIT_VERSION": "$git_version",
+	"HTTPD_VERSION": "$httpd_version"
+
+}
+EOF
+-----------------------------------------------
+save changes: escape, :wq!, enter
+
+
+➢ Create ansible custom facts configuration directory on both clients true the ansible engine machine
+	terminal --> ansible all -m file -a "path=/etc/ansible/facts.d state=directory" -b
+
+		# absinle 						- common ansible command
+		# all							- all groups
+		# -m file						- use file module
+		# -a "path=/etc/ansible/facts.d state=directory"	- arguments, destination path, create directory
+		# -b 							- execute the command as root user
+
+	# configurations directories should be created on both instances
+
+# result:
+----------------------------------------------------------------------
+root@157.230.211.126 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": true,							# created
+    "gid": 0,
+    "group": "root",
+    "mode": "0755",							# execution permission
+    "owner": "root",
+    "path": "/etc/ansible/facts.d",					# path
+    "size": 4096,
+    "state": "directory",
+    "uid": 0
+}
+----------------------------------------------------------------------
+
+
+
+➢ Copy created file get_version.fact from ansible negine to the clients with execute permissions
+	terminal --> ansible all -m copy -a "src=/tmp/get_version.fact dest=/etc/ansible/facts.d mode='0755'" -b
+
+	# absinle 								- common ansible command
+	# all									- all groups
+	# -m copy								- use copy module
+	# -a "src=/tmp/get_version.fact dest=/etc/ansible/facts.d mode='0755'"	
+			- arguments, source file path, target dir path, set execution permissions - mode='0755'
+	# -b 									- execute the command as root user
+
+	# file get_version.fact should be copied on both client instances
+
+# result: this is the result from single instance
+----------------------------------------------------------------------
+root@142.93.116.93 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.9"
+    },
+    "changed": true,		 					# copied
+    "checksum": "1c557436124f6204f0b37fe92b69a64623c3bcbe",
+    "dest": "/etc/ansible/facts.d/get_version.fact",			# destination path
+    "gid": 0,
+    "group": "root",
+    "mode": "0755",							# execute permissions
+    "owner": "root",
+    "path": "/etc/ansible/facts.d/get_version.fact",
+    "secontext": "system_u:object_r:etc_t:s0",
+    "size": 215,
+    "state": "file",
+    "uid": 0
+}
+----------------------------------------------------------------------
+
+
+
+
+➢ Check if when we use 'setup' module, our custom facts are received
+	terminal --> ansible all -m setup -a "filter=ansible_local"
+
+	# ansoble 					- common ansible command
+	# all						- target all groups						
+	# -m setup					- use setup module
+	# "filter=ansible_local"			- filter the created custom facts
+
+# result: this is the result from both client instances
+----------------------------------------------------------------------
+root@157.230.211.126 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_local": {
+            "get_version": {
+                "GIT_VERSION": "2.43.0",				# we have git version
+                "HTTPD_VERSION": ""					# on this instance we didn't install htpd
+            }
+        },
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": false
+}
+
+
+root@142.93.116.93 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_local": {
+            "get_version": {
+                "GIT_VERSION": "2.47.1",				# we have git version
+                "HTTPD_VERSION": "Apache/2.4.62"			# we installed httpd on this instance
+            }
+        },
+        "discovered_interpreter_python": "/usr/bin/python3.9"
+    },
+    "changed": false
+}
+----------------------------------------------------------------------
+
+
+This is the way we can set different facts for the different instances and know what to expect as received information.
+	- if httpd version is not found, we can install the package on the instance as result
+
+
+
+
+
+SUMMARY
+=======
+
+1. Connect to client, install packages, create and test script
+--------------------------------------------------------------
+	- Install pckages
+		client terminal --> yum install httpd
+		client terminal --> y			# confirm
+		client terminal --> httpd -v		# confirm installation
+
+	- Create script
+		client terminal --> vi getfacts.sh
+
+getfacts.sh
+-----------------------------------------------
+#!/bin/bash						# set interpreter
+
+git_version=$(git --version | awk '{print $3}')			# set env variable for git version with command
+httpd_version=$(/usr/sbin/httpd -v | awk 'NR==1 {print $3}')	# set env variable for httpd version with command
+
+cat << EOF						# print varibales on the console in JSON format
+{
+
+	"GIT_VERSION": "$git_version",
+	"HTTPD_VERSION": "$httpd_version"
+
+}
+EOF
+-----------------------------------------------
+save changes: escape, :wq!, enter
+
+	- Provide executable permissions to the file
+		client terminal --> chmod 755 getfacts.sh
+
+	- Test the getfacts.sh script
+		client terminal --> ./getfacts.sh
+
+
+
+
+
+2. Create fact file on the ansible engine
+-----------------------------------------
+	terminal --> vi /tmp/get_version.fact			# asme as the script file
+
+/tmp/get_version.fact
+-----------------------------------------------
+#!/bin/bash							# set interpreter
+	
+git_version=$(git --version | awk '{print $3}')			# set env variable for git version with command
+httpd_version=$(/usr/sbin/httpd -v | awk 'NR==1 {print $3}')	# set env variable for httpd version with command
+
+cat << EOF							# print varibales on the console in JSON format
+{
+
+	"GIT_VERSION": "$git_version",
+	"HTTPD_VERSION": "$httpd_version"
+
+}
+EOF
+-----------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+3. Create ansible custom facts configuration directory on clients from the ansible engine machine
+-------------------------------------------------------------------------------------------------
+	terminal --> ansible all -m file -a "path=/etc/ansible/facts.d state=directory" -b
+
+		# absinle 						- common ansible command
+		# all							- all groups
+		# -m file						- use file module
+		# -a "path=/etc/ansible/facts.d state=directory"	- arguments, destination path, create directory
+		# -b 							- execute the command as root user
+
+
+4. Copy created file get_version.fact from ansible negine to the clients with execute permissions
+-------------------------------------------------------------------------------------------------
+	terminal --> ansible all -m copy -a "src=/tmp/get_version.fact dest=/etc/ansible/facts.d mode='0755'" -b
+
+	# absinle 								- common ansible command
+	# all									- all groups
+	# -m copy								- use copy module
+	# -a "src=/tmp/get_version.fact dest=/etc/ansible/facts.d mode='0755'"	
+			- arguments, source file path, target dir path, set execution permissions - mode='0755'
+	# -b 
+
+
+5. Test if we receive the custom facts we created
+-------------------------------------------------
+	terminal --> ansible all -m setup -a "filter=ansible_local"
+
+	# ansoble 					- common ansible command
+	# all						- target all groups						
+	# -m setup					- use setup module
+	# "filter=ansible_local"			- filter the created custom facts
+
 
 
 
