@@ -10,23 +10,600 @@ Section 20: Ansible Ad-Hoc Commands
 
 
 
+
 124. Syntax of Ansible Ad-Hoc Commands
 ======================================
+
+➢ Manage Configuration using Ansible:
+	○ Ad-Hoc commands
+	○ Playbooks - templates
+
+➢ Ad-hoc command is one liner command that perform one task on Ansible Clients.
+
+➢ Syntax:
+	terminal --> ansible [group] -m shell -a [command]
+
+	# ansible				- common ansible command
+	# [group]				- group name
+	# -m 					- module
+	# shell					- use shell for command terminal 
+	# -a					- argument
+	# [command]				- command to be executed
+
+
+Example:
+--------
+
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]
+root@35.209.121.30		# GCP instance 1
+
+[web_app]
+root@35.208.172.78		# GCP instance 2
+
+[be_app]
+root@34.68.176.74		# GCP instance 3
+
+[db_app]
+root@157.230.211.126		# DO instance 1
+root@142.93.116.93		# DO instance 2
+-------------------------------
+
+
+Cheack connections with both DO Instances
+	terminal --> ansible all -m ping
+
+	# ansible 			- common ansible command
+	# all				- group name
+	# -m ping			- use module ping
+
+	# all instances should be available
+
+
+
+SHOW STATISTICS FOR CURRENT MACHINE
+-----------------------------------
+Show memoru statistics on ansible-engine machine
+	terminal --> free -m
+
+Show uptime of the ansible-engine machine
+	terminal --> uptime
+	# result:  12:09:55 up 1 day,  2:01,  2 users,  load average: 0.01, 0.02, 0.00
+-----------------------------------
+
+
+Show statistics for memory for db_app group clients
+	terminal --> ansible db_app -m shell -a "free -m"
+
+	# ansible			- common ansible command
+	# db_app			- clients group name
+	# -m shell			- use shell module
+	# -a "free -m"			- argument - show free memory command
+	
+	# result: on the consol we should see the statistics for memory of the db_app group instances
+
+
+Show statistics for uptime for db_app group instances
+	terminal --> ansible db_app -m shell -a "uptime"
+
+	# ansible			- common ansible command
+	# db_app			- clients group name
+	# -m shell			- use shell module
+	# -a "free -m"			- argument - show uptime for instances in the group
+
+	# result: on the consol we should see the statistics for uptime of the db_app group instances
+
+
+Show statistics for installed packages for db_app group instances
+	terminal --> ansible db_app -m shell -a "yum list installed"
+
+	# ansible			- common ansible command
+	# db_app			- clients group name
+	# -m shell			- use shell module
+	# -a "free -m"			- argument - show uptime for instances in the group
+
+	# result: 
+		- we creted the first DO instance with Ubuntu and there is no 'yum' package on it so we will recieve error
+		- we creted the second DO instance with CentOS and there is 'yum' module, so we receive installed packages
+
+
+We can search for specific installed package as follow
+	terminal --> ansible db_app -m shell -a "yum list installed" | grep nginx
+
+	# ansible			- common ansible command
+	# db_app			- clients group name
+	# -m shell			- use shell module
+	# -a "free -m"			- argument - show uptime for instances in the group
+	# | grep nginx			- search for nginx packages
+
+
+
+
+
+➢ Ansible Modules explanation
+------------------------------
+
+➢ Find all Modules in Ansible and save them in txt file
+	terminal --> ansible-doc -l >> ansible_module.txt 
+
+Print the file on the console
+	terminal --> cat ansible_module.txt
+	# we can see that the list is very long
+
+Check line count in the	list 
+	terminal --> ansible-doc -l | wc -l
+	# result: 10682
+
+We can search for specific module in the ansible_module.txt file as follow. 
+We want to DindDigitalOcean/AWS/GCP/Azure module
+	terminal --> cat ansible_module.txt | grep digitalocean
+	terminal --> cat ansible_module.txt | grep gcp
+	terminal --> cat ansible_module.txt | grep aws
+	terminal --> cat ansible_module.txt | grep azure
+	# result: we receive around 30-50 modules that we can manually go over
+	# we can firther specify the search argument to show less results
+
+We can search for ping/shell modules
+	terminal --> cat ansible_module.txt | grep ping
+	terminal --> cat ansible_module.txt | grep shell
+	# we receive managable count of modules that we can look over
+
+
+
+➢ Get Info and use of any specific module
+------------------------------------------
+
+We can go to ansible documentation and search for any module we are interested in:
+	- https://docs.ansible.com/ansible/latest/collections/all_plugins.html
+
+➢ Search for 'ansible shell' in google search
+	- https://docs.ansible.com/ansible/latest/collections/ansible/builtin/shell_module.html
+	➢ Parameters - https://docs.ansible.com/ansible/latest/collections/ansible/builtin/shell_module.html#id2
+	➢ Example - https://docs.ansible.com/ansible/latest/collections/ansible/builtin/shell_module.html#id6
+
+We can see all modules in Ansible here - https://docs.ansible.com/ansible/2.9/modules/list_of_all_modules.html
+	- We can find specific module with 'Ctrl + f' search and how this specific module can be used
+
+
 
 
 
 125. How Ansible Execute Stuff on Clients
 =========================================
 
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]
+root@35.209.121.30		# GCP instance 1
+
+[web_app]
+root@35.208.172.78		# GCP instance 2
+
+[be_app]
+root@34.68.176.74		# GCP instance 3
+
+[db_app]
+root@157.230.211.126		# DO instance 1
+root@142.93.116.93		# DO instance 2
+-------------------------------
+
+
+Find hidden nasible directory made on each instance we connected with ansible
+	- connect to DO instance from their platform
+	- list all folders and files
+		terminal --> ls -a
+		# we can see that there is .ansible directorys 
+			- this directory is automatically created on ansible connection
+			- in this directory the commands from ansible-engine will be saved, executed and then deleted in python
+			- this is ansible working/temporary directory
+			- we can check this if we add ANSIBLE_KEEP_REMOTE_FILES=1 before ansible command from the ansible-engine
+			- this will not delete the working files on the client and will be able to see them after execution
+
+	- list the content is this directory
+		terminal --> ls -a .ansible
+		terminal --> ls -a .ansible/tmp
+		# we can see that this direcories are empty
+
+		
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Execute command for uptime on db_app group instances and prevent ansible from deleting the files
+	terminal --> ANSIBLE_KEEP_REMOTE_FILES=1 ansible db_app -m shell -a "uptime"
+
+
+We can login to the DO instance again and check .ansible directory
+	DO instance terminal --> ls -a .ansible/tmp
+	# there is created directory and with python file inside
+
+
+
 
 
 126. Transfer file from Engine to Clients
 =========================================
 
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]
+root@35.209.121.30		# GCP instance 1
+
+[web_app]
+root@35.208.172.78		# GCP instance 2
+
+[be_app]
+root@34.68.176.74		# GCP instance 3
+
+[db_app]
+root@157.230.211.126		# DO instance 1
+root@142.93.116.93		# DO instance 2
+-------------------------------
+
+
+➢ User can copy the Files on Ansible Clients from Ansible Controller.
+
+➢ Syntax:
+	terminal --> ansible [group] -m copy -a [src=sorce_path dest=destination_path]
+
+		# ansible					- common ansible command
+		# [group]					- group name
+		# -m copy					- use module compy
+		# -a [src=sorce_path dest=destination_path]	- argument as source path - destination path
+
+Example:
+--------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Create test file ansible_test.txt
+	terminal --> vi ansible_test.txt
+
+ansible_test.txt
+------------------------------------------------
+Hello team, this is complete ansible training.
+------------------------------------------------
+save changes - escape, :wq!, enter
+
+Check the current directory
+	terminal --> pwd
+	# result: /root/ansible
+
+Copy the test file on the db_app group
+	terminal --> ansible db_app -m copy -a "src=/root/ansible/ansible_test.txt dest=/tmp"
+
+# result: for both instances we have similar to this result in yellow color
+---------------------------------------------------------------------------
+root@142.93.116.93 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.9"
+    },
+    "changed": true,
+    "checksum": "5bbc32de8a6a8a13e3cfa640cc078942d7f91ad1",			# source file identificator
+    "dest": "/tmp/ansible_test.txt",
+    "gid": 0,
+    "group": "root",
+    "md5sum": "b1c018d1408bda0a81e908586270dd0c",				# target file identificator
+    "mode": "0644",
+    "owner": "root",
+    "secontext": "unconfined_u:object_r:admin_home_t:s0",
+    "size": 48,
+    "src": "/root/.ansible/tmp/ansible-tmp-1751283988.5774078-73362-121816921835586/.source.txt",
+    "state": "file",
+    "uid": 0
+---------------------------------------------------------------------------
+
+We can verufy the file transfer by logging to the target isntances and theck the /tmp directory
+	terminal --> cd /tmp
+	terminal --> cat ansible_test.txt
+
+
+If we try to copy the files again with the same command
+	terminal --> ansible db_app -m copy -a "src=/root/ansible/ansible_test.txt dest=/tmp"
+
+# result: similar result will appear but in green color that means that no changes are made
+---------------------------------------------------------------------------
+root@142.93.116.93 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.9"
+    },
+    "changed": false,							# changed is flase - the file is not appied
+    "checksum": "5bbc32de8a6a8a13e3cfa640cc078942d7f91ad1",		# only source file identificator
+    "dest": "/tmp/ansible_test.txt",
+    "gid": 0,
+    "group": "root",
+    "mode": "0644",
+    "owner": "root",
+    "path": "/tmp/ansible_test.txt",
+    "secontext": "unconfined_u:object_r:admin_home_t:s0",
+    "size": 48,
+    "state": "file",
+    "uid": 0
+---------------------------------------------------------------------------
+
+
+
+CASE 1 - CHANGE FILE ON THE CLIENT
+----------------------------------
+
+Change the file on the client 
+	client1 terminal --> vi ansible_test.txt
+
+ansible_test.txt
+------------------------------------------------
+xxxxx Hello team, this is complete ansible training.
+------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+We now copy the same file from the ansible-engine machine again
+	terminal --> ansible db_app -m copy -a "src=/root/ansible/ansible_test.txt dest=/tmp"
+
+# result:
+---------------------------------------------------------------------------
+root@142.93.116.93 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.9"
+    },
+    "changed": true,								# changed file
+    "checksum": "5bbc32de8a6a8a13e3cfa640cc078942d7f91ad1",			# different checksum
+    "dest": "/tmp/ansible_test.txt",
+    "gid": 0,
+    "group": "root",
+    "md5sum": "b1c018d1408bda0a81e908586270dd0c",
+    "mode": "0644",
+    "owner": "root",
+    "secontext": "unconfined_u:object_r:admin_home_t:s0",
+    "size": 48,
+    "src": "/root/.ansible/tmp/ansible-tmp-1751284914.515512-73505-178510513385998/.source.txt",
+    "state": "file",
+    "uid": 0
+---------------------------------------------------------------------------
+
+The file will be overwrited on client1 instance. Ansible check the cheksum value and if its different there is a change in the file and it must be copied.
+
+
+
+
+CASE 2 - CHANGE FILE ON THE ENGINE
+----------------------------------
+
+Change the file on the ansible-engine machine
+	terminal --> vi ansible_test.txt
+
+ansible_test.txt
+------------------------------------------------
+yyyyy Hello team, this is complete ansible training.
+------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+Copy the file again to the clients
+	terminal --> ansible db_app -m copy -a "src=/root/ansible/ansible_test.txt dest=/tmp"
+
+# result: files on both of the instances are being changed
+---------------------------------------------------------------------------
+root@142.93.116.93 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.9"
+    },
+    "changed": true,
+    "checksum": "fce2ed9348412e4fde8fbda6e66164f7085f02d5",
+    "dest": "/tmp/ansible_test.txt",
+    "gid": 0,
+    "group": "root",
+    "md5sum": "fa5c2014478c1aca3223409fb29d9481",
+    "mode": "0644",
+    "owner": "root",
+    "secontext": "unconfined_u:object_r:admin_home_t:s0",
+    "size": 54,
+    "src": "/root/.ansible/tmp/ansible-tmp-1751285075.4512026-73569-217044038558760/.source.txt",
+    "state": "file",
+    "uid": 0
+}
+---------------------------------------------------------------------------
+
+
+
+
+➢ Copy Content in new file is also possible.
+---------------------------------------------
+➢ Syntax:
+	terminal --> ansible [group] -m copy -a [content=”Your Content Here” dest=destination_path]
+	
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m copy							- use module compy
+	# -a [content=”Your Content Here” dest=destination_path]	- arguments, content and target file path
+
+
+We will create new file on the remote instances. We weill set content in the file with command from the ansible-engine machine.
+
+Change the content of the file ansible_test.txt on db_app group instances. We must set destination file, or we will receive error.
+	terminal --> ansible db_app -m copy -a "content='This is Yordan' dest=/tmp/test.txt"
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m copy							- use module compy
+	# -a "content='This is Yordan' dest=/tmp/test.txt"		- arguments, content and target file path
+
+
+# result: on both instances test.txt file will be created. on the console we will receive similar messages:
+---------------------------------------------------------------------------
+root@142.93.116.93 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.9"
+    },
+    "changed": true,							# changed
+    "checksum": "87c27baa9ab38ef585e289b65a165b759cab9917",		# source file identifier
+    "dest": "/tmp/test.txt",
+    "gid": 0,
+    "group": "root",
+    "md5sum": "f23df7de708127d2e74a857888a2b43c",			# target file identifier
+    "mode": "0644",
+    "owner": "root",
+    "secontext": "unconfined_u:object_r:admin_home_t:s0",
+    "size": 14,
+    "src": "/root/.ansible/tmp/ansible-tmp-1751285451.9526575-73641-35590828519558/.source.txt",
+    "state": "file",
+    "uid": 0
+}
+---------------------------------------------------------------------------
+
+We can check on one or both of the target instances if the file test.txt is craeted and its content
+	client terminal --> cat /tmp/test.txt
+	# result: This is Yordan
+
+
+
+
+
+
 
 
 127. Manage File/Directory on Ansible Clients
 =============================================
+
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]
+root@35.209.121.30		# GCP instance 1
+
+[web_app]
+root@35.208.172.78		# GCP instance 2
+
+[be_app]
+root@34.68.176.74		# GCP instance 3
+
+[db_app]
+root@157.230.211.126		# DO instance 1
+root@142.93.116.93		# DO instance 2
+-------------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Test the connection with the clients
+	terminal --> ansible all -m ping
+
+
+➢ User can create Files or directories on Ansible Clients from Ansible Controller.
+
+➢ Syntax:
+	terminal --> ansible [group] -m file -a "dest=file/dir destination location state=<State>"
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m file							- use file action
+	# -a “dest=file/dir destination location state=<State>”		- arguments, dest file and state
+
+
+
+Examples
+--------
+
+➢ Create file:
+	terminal --> ansible [group] -m file -a "dest=file destination location state=touch"
+	terminal --> ansible db_app -m file -a "dest=/tmp/temp_test state=touch"
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m file							- use file action
+	# -a "dest=/tmp/temp_test state=touch"				- arguments, dest file and state - touch - create
+
+	# the temp_test files should be created in every instance in db_app group
+	# connect to one of the two instances and configrm file creation
+		client terminal --> ls /tmp/
+
+
+
+➢ Delete file:
+	terminal --> ansible [group] -m file -a "dest=file destination location state=absent"
+	terminal --> ansible db_app -m file -a "dest=/tmp/temp_test state=absent"
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m file							- use file action
+	# -a “dest=/tmp/temp_test state=absent”				- arguments, dest file and state - absent - delete
+
+	# check file deletion on the client instances
+		client terminal --> ls /tmp/
+
+
+
+➢ Create file with specific permission:
+	terminal --> ansible [group] -m file -a "dest=file destination location state=touch mode='permissions'"
+	terminal --> ansible db_app -m file -a "dest=/tmp/temp_test.py state=touch mode='0775'"
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m file							- use file action
+	# -a ansible db_app -m file -a "dest=/tmp/temp_test.py state=touch mode='0775'"
+					- arguments, dest file state - create and permission - executable
+
+	# verify the file creation and its permissions
+		client terminal --> ls /tmp/
+
+
+➢ Create directory:
+	terminal --> ansible [group] -m file -a “dest=directory destination location state=directory”
+	terminal --> ansible db_app -m file -a "dest=/tmp/new_dir/yordan state=directory"
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m file							- use file action
+	# -a "dest=/tmp/new_dir/yordan state=directory"			- arguments, dest dir and state - directory
+
+	# verify directories creation 
+		client terminal --> ls /tmp/new_dir/
+
+
+➢ Delete directory:
+	terminal --> ansible [group] -m file -a “dest=directory destination location state=absent”
+	terminal --> ansible db_app -m file -a "dest=/tmp/new_dir state=absent"
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m file							- use file action
+	# -a "dest=/tmp/new_dir/yordan state=absent"			- arguments, dest dir and state - absent - delete
+
+	# verify directories deletion 
+		client terminal --> ls /tmp/
+
+
+
+
+
 
 
 
@@ -34,4 +611,113 @@ Section 20: Ansible Ad-Hoc Commands
 ========================================
 
 
+We have configured clients as follow:
+
+dev_hosts
+-------------------------------
+[all]
+root@35.209.121.30		# GCP instance 1
+
+[web_app]
+root@35.208.172.78		# GCP instance 2
+
+[be_app]
+root@34.68.176.74		# GCP instance 3
+
+[db_app]
+root@157.230.211.126		# DO instance 1
+root@142.93.116.93		# DO instance 2
+-------------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+Test the connection with the clients
+	terminal --> ansible all -m ping
+
+
+
+➢ User can Install/Uninstall packages using package Manager on Ansible Clients from Ansible Controller.
+
+➢ Ansible Packages for Linux/Unix Destro
+	○ Linux → Module yum			- like CentOS
+	○ Unix/Debian → Module apt		- like Ubuntu
+
+➢ Check for installed packages on the client
+	terminal --> ansible db_app -m shell -a "sudo apt list installed"	# for Unix/Debian/Ubuntu
+	terminal --> ansible db_app -m shell -a "sudo yum list installed"	# for Linux/CentOS	
+
+	# one of the instances is with UbuntuOS and the other is with CentOS so one will send us error
+
+
+➢ Check for installed nginx package on the client
+	terminal --> ansible db_app -m apt -a "name=nginx state=present"	# for Unix/Debian/Ubuntu
+	terminal --> ansible db_app -m yum -a "name=nginx state=present"	# for Linux/CentOS
+
+	# Ubuntu instance will send us error because do not have yum package manager
+	# CentOS will send us adecuquate response
+
+
+
+When we use shell we can use 'sudo' command and execute commands as root user. But when we use yum or apt we cannot use root user. To use root user we need to add '-b' at the end of the command - it will append sudo by default.
+
+Check if Git is installed on the instances
+	terminal --> ansible db_app -m apt -a "name=git state=present" -b		# for Unix/Debian/Ubuntu
+	terminal --> ansible db_app -m yum -a "name=git state=present" -b	# for Linux/CentOS
+
+	# ansible							- common ansible command
+	# db_app							- group name
+	# -m yum/apt							- use package manager
+	# -a "name=git state=present" 					- argument module name and its state
+	# -b								- use root user
+
+
+➢ Update existing packages - python
+	terminal --> ansible web_app -m apt -a "name=python3 state=latest" -b
+	terminal --> ansible db_app -m yum -a "name=python3 state=latest" -b
+
+	# ansible							- common ansible command
+	# db_app							- group name
+	# -m yum/apt							- use package manager
+	# -a "name=git state=latest" 					- argument module name and set latest state
+	# -b								- use root user
+
+	# if python is not the latest version it will be updated
+
+
+➢ Install Syntax:
+	terminal --> ansible [group] -m yum/apt -a "name=<package-name> state=<State>"
+	terminal --> ansible web_app -m apt -a "name=nginx state=latest" -b
+	terminal --> ansible db_app -m yum -a "name=httpd state=latest" -b
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m yum/apt							- use package manager
+	# -a "name=httpd state=latest"					- argument package name
+	# -b								- use root user
+
+	# the CentOS instance will install httpd package but the Ubuntu will send us error
+
+
+
+➢ Uninstall Syntax:
+	terminal --> ansible [group] -m yum/apt -a "name=<package-name> state=absent"
+	terminal --> ansible db_app -m yum -a "name=httpd state=absent" -b
+
+	# ansible							- common ansible command
+	# [group]							- group name
+	# -m yum/apt							- use package manager
+	# -a "name=httpd state=absent"					- argument package name
+	# -b								- use root user
+
+	# the CentOS instance will uninstall httpd package 
+	# the Ubuntu will send us error
+	# value of state must be one of: absent, installed, latest, present, removed
 
