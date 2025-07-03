@@ -19,38 +19,781 @@ Section 19: Configure Ansible Engine and Ansible Clients
 
 
 
+					Connection Scheme Architecture
+					------------------------------
+
+				-----------------	-----------------
+				|   Inventory 	|	|  Ansible.cfg	|
+				|     File	|	|		|			Cnsible Clients
+	-----------------	-----------------	-----------------			 AWS Instances	
+	|  PlayBooks	|		^			^
+	|    AdHoc	|		|			|		-----		-----------------
+	|  Commands	|		|			|		|   |		|		|
+	-----------------		|			|	|-------| S |---------->|   Server 1	|
+		^			-----		---------	|	| S |		|		|
+		|			    |		|		|	| H |		-----------------
+		|			    |		|		|	|   |
+		|			-------------------------	|	| C |
+		|			|			|--------	| O |		-----------------
+		|-----------------------|    Ansible Server	|---------------| N |---------->|		|
+					|			|--------	| E |		|   Server 2	|
+					-------------------------	|	| C |		|		|
+								 	|	| T |		-----------------
+				     Ansible Engine/Collector/Master	|	| I |		
+									|	| O |
+									|	| N |		-----------------
+									|	|   |		|		|
+									--------|   |---------->|   Server 3	|
+										-----		|		|
+												-----------------
+
+
+
+➢ Create / Open AWS Account.
+	- Create or login to AWS
+	- On new account we have free tier resources for 12 months
+	- We will work in region 'us-east-2'
+	- We can switch the region on top right menu of almost every AWS service or Home console
+
+➢ Verify Security Group Inbound Rules.
+---------------------------------------
+	- Go on AWS/VPC/Security/Security Groups
+	- Check if the region is 'us-east-2'
+	- Enter into details of the default VPC and focus on 'inbound rules'
+		- inbound rules must be satisfied for incomming connection
+		- outbound rules must be satisfied for outgoing traffic
+	- If we do not have inbound rule with 'source - 0.0.0.0/0' - all traffic is allowed, we need to add it
+		- Click 'edit oinbound rules' button
+		- Add Rule
+			- Type: All traffic
+			- Protocols: All
+			- Port range: All
+			- Source: Custom
+			- search field: 0.0.0.0/0	# this is not recommended, set for the demo only
+		- Save rule
+	
+	- Oce we create AWS instance we will use this security group and all machines will be able to communicate with it
+		- in production inbound rules are set only to few known IPs, the will comunicate with the instance explicitly
+
+
+➢ Create SSH Key on Ansible Engine.
+------------------------------------
+Connetc to DigitalOcean Droplet - working machine (we can work on our local installed Linux machine)
+	terminal --> ssh root@IP
+	terminal --> password
+
+Go to root directory
+	terminal --> cd ~
+
+List all files and directories
+	terminal --> ls -a
+	# result: we should see '.ssh' directory
+	# if we don't have '.ssh' we must create it
+		terminal --> mkdir .ssh
+
+Navigate to '.ssh' directory and check if we have already generated key
+List '.ssh' directory to check if we have created key
+	terminal --> ls -a ./.ssh
+	# we should have only 'authorized_keys'. This key is not the key we will use
+
+Navigate to root directory again and generate ssh key
+	terminal --> cd ~
+	terminal --> ssh-keygen		# the key will be generated in '/root/.ssh' folder
+	terminal --> eneter		# we can set the name of the key - optional
+	terminal --> enter		# passwork for the key - optional
+	terminal --> enter		# confirm passwork for the key - optional
+
+Confirm key generation
+	terminal --> ls -a ./.ssh
+	# we should have 2 additional files - id_ed25519.pub and id_ed25519
+
+Print the file id_edxxxxx.pub and copy the its content
+	terminal --> cat id_ed25519.pub
+	# result: ssh-ed25519 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx root@ansible-engine
+
+
+➢ Upload Public Key on AWS.
+----------------------------
+	- Go to AWS/EC2/Key Pairs/Actions/Import key pair
+		- Import settings/name: ansible-engine
+		- Key pair file: paste the key in the field
+		- Import key pair
+
+➢ Launch / Create required number of nodes.
+--------------------------------------------
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set 2 intances
+		- AMI (amazone Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Selext existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+We have to wait untill the machines are created. We can check theyr status on AWS/EC2/Instances.
+	- Set names for each of the instances
+
+
+➢ Requirements of Ansible Clients.
+	○ Python must be installed on nodes.
+
+➢ Ansible engine use SSH connection to Ansible Clients
+	○ Using Username and Password
+	○ Using Private SSH Keys		# we use ssh key - already created and set
+
+
+
+
+
+
 117. Connect AWS Nodes with Ansible Engine
 ==========================================
+
+➢ Check Python availability on AWS Nodes.
+➢ Verify passwordless access from Ansible Engine to Ansible Clients.
+➢ Sample Test to verify Configuration:
+➢ Add Hosts in inventory file and test ansible connection.
+➢ Provide clients IP/FQDN in Inventory of Ansible.
+
+
+
+
+1. Connetc to DigitalOcean Droplet - working machine (we can work on our local installed Linux machine)
+	terminal --> ssh root@IP
+	terminal --> password
+
+
+
+➢ Check Python availability on AWS Nodes.
+------------------------------------------
+	- We can connect to every AWS Instance on AWS/EC2/Running Instances
+	- mark hte specific Instance/Actions/Connect
+		- We choose EC2 Instance Connect
+			- we use 'ec2-user', different from the root user  (AWS do not allow us to connect with root user)
+
+	- Once connected to the EC2 instance we can chech if python and python3 are installed and its version
+		EC2 terminal --> witch python3
+		# result: /usr/bin/python		# mean that python3 is intalled
+
+		EC2 terminal --> python3 --version
+		# result: Python 3.x.x
+		
+		EC2 terminal --> witch python
+		# result: /usr/bin/python		# mean that python is intalled
+
+		EC2 terminal --> python --version
+		# result: Python 2.x.x
+
+		
+	- This mean that both instances have python and python3 isntallerd
+
+
+
+
+
+➢ Verify passwordless access from Ansible Engine to Ansible Clients.
+--------------------------------------------------------------------
+	- copy the public DNS of one of the AWS instances 
+	- go to our working machine and try to access the AWS instance
+		terminal --> ssh ec2-user@DNS
+		terminal --> yes		# confirm
+		# result: we should be logged in 
+
+	- confirm python3 installation
+		AWS terminal --> python3 --version
+		# result:  python 3.x.x
+
+	- exit the AWS Instance
+		AWS terminal --> exit
+
+
+
+
+➢ Sample Test to verify Configuration:
+---------------------------------------
+
+	- Navigate to the ansible root directory
+		terminal --> cd ansible
+
+	- Activate python virtual environment
+		terminal --> source myansible/bin/activate
+
+	- We can test the connection from our work PC to the instances on AWS
+		terminal --> ansible all -m ping
+		# result: [WARNING]: No inventory was parsed, only implicit localhost is available
+			  [WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+
+
+
+➢ Provide clients IP/FQDN in Inventory of Ansible.
+---------------------------------------------------
+We need to copy the public IP or public DNS of the instances on AWS and set them in the inventory of ansible.
+
+
+
+
+➢ Add Hosts in inventory file and test ansible connection.
+-----------------------------------------------------------
+	- We must modify hosts file and add the hosts
+		terminal --> vi hosts
+		# we can set as hosts the instances public DNS (Fully Qualified Domain Name) or public IP
+
+hosts
+-----------------------------------
+[all]
+ec2-user@Instance_1_public_DNS
+ec2-user@Instance1_2_publicIP
+-----------------------------------
+save change - escape, :wq!, enter
+
+
+	- We can test the connection from our work PC to the instances on AWS again
+		terminal --> ansible all -m ping
+		# result: connections must be successful to both AWS Instances
+		# ansible should identify used python version
+		# we will get error if python is not installed on any specific istance
+
+
+
+
 
 
 
 118. SetUp Google Cloud Nodes
 =============================
 
+Similar approach like AWS
+	- configure security group
+	- configure public and private key
+
+➢ Create or Login to our Google account
+	- On new Google CLoud account we will get ~$300 credit to practice
+
+➢ Configure Firewall - (Security Group)
+	- go on GCP/VPC Network/Firewall
+	- firewall rule 'default-allow-ssh' - Filter IP ranges: 0.0.0.0/0, Protocol/Ports: TCP:22 should exists
+	- if NOT exist, create firewall rule name: allow-ansible with params: Filter IP ranges: 0.0.0.0/0, Protocol/Ports: TCP:22
+
+
+➢ Set Key Pair 
+Connetc to DigitalOcean Droplet - working machine (we can work on our local installed Linux machine)
+	terminal --> ssh root@IP
+	terminal --> password
+	- copy the public key from our working PC
+		terminal --> cat /root/.ssh/id_ed25519.pub
+		# copu the key
+		
+	- go on GCP/Compute/Compute Engine/Setting/Metadata/SSH Key
+	- Edit/+ Add New Item
+	- Paste public SSH key in key field
+	- Save
+
+
+➢ Create GCP Instances
+	- on GCP/Compute Engine/VM Instances/Create Instance
+		- Name: ansible-gcp-1
+		- Region: us-central1 (Iowa), zone: us-central1-a
+		- Machine Configuration				# on right section we can see the monthly consts estimate
+			- Series: E2
+			- Machine Type: f1-micro (1 cpu, 0.614 GB memory)	# appr. $6/month
+			- Boot Disk: Ubuntu
+			- Version: 22.04 LTS
+			- Boot Disk Type: SSD persistent disk, size: 10GB
+			- Networking: 
+				- check allow HTTP traffic
+				- check allow HTTPS traffic
+			- Network Interfaces: default default
+			- Security: SS key 1: set the key from the working machine
+			- Create
+
+		- Wait until the machine is running and go to its details
+			- in Instance/Network Interfaces section we can see the private and public IPs
+
+
 
 
 119. Connect Google Cloud Nodes with Ansible Engine
 ===================================================
+
+➢ Check Python version
+-----------------------
+Connect to the created GCP Intance
+	- Instance Details/Remote Access/SSH/Connect in browser window
+		Instance terminal --> python3 --version
+		# result: Python 3.x.x				# Python is installed
+		
+	- close the connection
+
+Copy the Public IP of the GCP Instance from Instance/Network Interfaces section
+
+
+
+➢ Add Hosts in inventory file and test ansible connection.
+----------------------------------------------------------
+1. Connetc to DigitalOcean Droplet - working machine (we can work on our local installed Linux machine)
+	terminal --> ssh root@IP
+	terminal --> password
+
+
+	- Navigate to ansible root directory
+		terminal --> cd ansible
+
+	- Activate python virtual environment
+		terminal --> source myansible/bin/activate
+
+
+➢ Add Hosts in inventory file and test ansible connection.
+-----------------------------------------------------------
+	- We must modify hosts file and add the hosts
+		terminal --> vi hosts
+		# we can set as hosts the instances external IP
+
+hosts
+-----------------------------------
+[all]
+ec2-user@Instance_1_public_DNS
+ec2-user@Instance1_2_publicIP
+root@Instance_external_IP
+-----------------------------------
+save change - escape, :wq!, enter
+
+
+	- We can test the connection from our work PC to the instances on GCP
+		terminal --> ansible all -m ping
+		terminal --> yes			# confirm connection
+		# result: connections must be successful to both AWS Instances and GCP Instance
+		# ansible should identify used python version
+		# we will get error if python is not installed on any specific istance
+		# we can see that we can work on multiple public cloud platforms
+
+
 
 
 
 120. Ansible Directory Config
 =============================
 
+Connetc to DigitalOcean Droplet - working machine (we can work on our local installed Linux machine)
+	terminal --> ssh root@IP
+	terminal --> password
+
+	- Navigate to ansible root directory
+		terminal --> cd ansible
+
+	- Activate python virtual environment
+		terminal --> source myansible/bin/activate
+
+
+
+On the working machine in the root ansible directory we have 2 ansible configuration files
+	- ansible.cfg
+	- hosts
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory = hosts			# hosts addresses location
+-------------------------------
+
+
+hosts
+-------------------------------
+[all]					# list of ansble clients
+root@gcp_instance_external_ip		
+-------------------------------
+
+
+
+
+➢ SEPARATE ENVIRONMENTS HOSTS
+------------------------------
+
+We have few environments:
+	- DevEnv		- we may have 100 servers
+	- PrefEnv		- we may have 600 servers
+	- StgEnv		- we may have 150 servers
+
+We need to perform action on specific environment servers only!
+The solution is to create separated hosts files for every environment and map them in ansible.cfg file.
+	- Dev_IPs
+	- Perf_IPs
+	- Stg_IPs
+
+This way we can perform actions on specific environment and DO NOT MIX them.
+
+
+Rename hosts file to dev_hosts and craete the other two environment hosts
+	terminal --> mv hosts dev_hosts		# rename hosts to dev_hosts
+	terminal --> touch perf_hosts		# create perf_hosts file
+	terminal --> touch stg_hosts		# create stg_hosts file
+
+Set ansible.cfg to read separated hosts filess
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory = dev_hosts			# set hosts for dev env only
+-------------------------------
+
+Now when we ececute commands it will affect only dev_hosts
+
+
+We can create directory structure for inventory files. This is simple example structure. 
+	terminal --> mkdir inventory
+	terminal --> mkdir ./inventory/dev
+	terminal --> mkdir ./inventory/perf
+	terminal --> mkdir ./inventory/stg
+
+
+inventory
+|
+|-- dev
+|    +-- dev_hosts
+|
+|
+|-- perf
+|    +-- perf_hosts
+|
+|
+|-- stg
+     +-- stg_hosts
+
+
+We can create more complex structure even for each environment - for example to separate DB services hosts files, BE services hosts files, Front_End services hosts files...
+
+
+Move all hosts files in the corresponding inventory directory
+	terminal --> mv dev_hosts inventory/dev
+	terminal --> mv perf_hosts inventory/perf
+	terminal --> mv stg_hosts inventory/stg
+
+Confirm file movement:
+	terminal --> ls ./inventory/dev
+	# result: dev_hosts
+
+	terminal --> ls ./inventory/perf
+	# result: perf_hosts
+
+	terminal --> ls ./inventory/stg
+	# result: stg_hosts
+
+
+Set the invetory enviroment paths in ansible.cfg file
+
+	1. Copy the location of the dev_hosts and take the path
+		terminal --> cd inventory/dev
+		terminal --> pwd
+		# result: /root/ansible/inventory/dev			# copy the path
+
+	2. Navigate to the ansible root directory	
+		terminal --> cd ~/ansible
+
+	3. Edit the ansible.cfg file
+		terminal --> vi ansible.cfg
+	
+ansible.cfg
+-------------------------------
+[defaults]
+inventory = /root/ansible/inventory/dev/dev_hosts			# set the hosts location for dev env
+-------------------------------
+save change - escape, :wq!, enter
+
+
+	4 Test the connection from our work PC to the instance on GCP
+		terminal --> ansible all -m ping
+		terminal --> yes			# confirm connection
+		# the test should be successful
+
+
+
+ 
+
+
 
 
 121. Inventory file with Groups
 ===============================
+
+➢ Create 2 more GCP Instances named ansible-gcp-2 and ansible-gcp-3 in zone: us-central1-b and c
+-------------------------------------------------------------------------------------------------
+	- on GCP/Compute Engine/VM Instances/Create Instance
+		- Name: ansible-gcp-2
+		- Region: us-central1 (Iowa), zone: us-central1-b
+		- Machine Configuration				# on right section we can see the monthly consts estimate
+			- Series: E2
+			- Machine Type: f1-micro (1 cpu, 0.614 GB memory)	# appr. $6/month
+			- Boot Disk: Ubuntu
+			- Version: 22.04 LTS
+			- Boot Disk Type: SSD persistent disk, size: 10GB
+			- Networking: 
+				- check allow HTTP traffic
+				- check allow HTTPS traffic
+			- Network Interfaces: default default
+			- Security: SS key 1: set the key from the working machine
+			- Create
+
+		- Wait until the machine is running and go to its details
+			- copy the External IPs from GCP/Instance/Network Interfaces section
+
+
+➢ Check connection from working PC
+-----------------------------------
+	- Login to DigitalOcean Droplet PC
+		terminal --> ssh root@IP
+		terminal --> password
+
+	- Navigate to nasible root directory
+		terminal --> cd ansible
+
+	- Activate python virtual environment
+		terminal --> source myansible/bin/activate
+
+
+Set the paths of all inventory directories in ansible.cfg
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory = /root/ansible/inventory/
+-------------------------------
+save change - escape, :wq!, enter
+
+
+Add newly created gcp instances in dev hosts
+	terminal --> vi inventory/dev/dev_hotst
+
+dev_hotst
+-------------------------------
+[all]
+root@35.209.121.30			# first gcp instance
+root@35.208.172.78			# second gcp instance
+root@34.68.176.74			# third gcp instance
+-------------------------------
+save change - escape, :wq!, enter
+
+
+Test connection with the newly created GCP Instances
+	terminal --> ansible root@35.208.172.78 -m ping
+	terminal --> ansible root@34.68.176.74 -m ping	
+	# result: both instances should be accessabel
+
+Test theconnection to all gcp instances
+	terminal --> ansible all -m ping
+	# result: all instances should be accessabel
+
+
+
+➢ Set groups in dev_hosts
+--------------------------
+Modify dev_hosts and set the different instances for different groups services
+	terminal --> vi inventory/dev/dev_hotst
+
+
+dev_hotst
+-------------------------------
+[all]				# set the first gcp instance in [all] group
+root@35.209.121.30
+
+[web_app]			# set the second gcp instance in [web_app] group
+root@35.208.172.78
+
+[be_app]
+root@34.68.176.74		# set the thied gcp instance in [be_app] group
+root@35.209.121.30		# set the first gcp instance again in [be_app] group
+
+[db_app]
+root@35.209.121.30		# set the first gcp instance again in [db_app] group
+-------------------------------
+save change - escape, :wq!, enter
+
+# We are mixing the instances to test that more than one instance can be configured in one group
+# In practice all instances must be different in every group
+
+
+Connect [web_app] group 
+	terminal --> ansible web_app -m ping
+	# we should connect with one intance only
+
+Connect [be_app] group 
+	terminal --> ansible be_app -m ping
+	# we should connect with two intances
+
+Connect [db_app] group 
+	terminal --> ansible db_app -m ping
+	# we should connect with one intance only
+
+Connect with two groups with one command separated by semi-column (:)
+	terminal --> ansible web_app:db_app -m ping
+	# we should connect with two intances - one per group configured
+
+
+
+
 
 
 
 122. SetUp Nodes on Digital Ocean
 =================================
 
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+
+➢ Launch Instances on DigitalOcean
+-----------------------------------
+
+Create or login on DigitalOcean platform - https://cloud.digitalocean.com/
+	- You should have $200 creadit from Terraform section of this course
+
+Copy the created SHH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+Create a Instances - create 2 droplets: one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64 / CentOS Steam x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $4/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ansible-client1, ansible-client2
+		- Create Droplet
+
+Wait till droplets are created and copy their public IPs
+	- ansible-client1 - 157.230.211.126
+	- ansible-client2 - 142.93.116.93
+
+
+NMow we have 3 instances on DigitalOcean
+	- ansible-engine
+	- ansible-client1
+	- ansible-client2
+
+
+
+➢ Add the created DigitalOcean (DO) Instances in the inventory of our ansible-engine machine
+---------------------------------------------------------------------------------------------
+
+We can check the user that we will use by connecting on the DO instance
+	- go to the created DO instance and connect via terminal.
+	# result: [root@ansible-client2 ~]# 	# now we know that we are logging in with root user
+
+
+Modify dev_hosts and set the different DO instances
+	terminal --> vi inventory/dev/dev_hotst
+
+
+dev_hotst
+-------------------------------
+[all]				
+root@157.230.211.126
+root@142.93.116.93
+-------------------------------
+save change - escape, :wq!, enter
+
+
+
+➢ Check connection with the instances
+--------------------------------------
+
+Check connection with the DO instances and
+	terminal --> ansible root@157.230.211.126 -m ping
+	terminal --> yes					# confirm
+
+	terminal --> ansible root@142.93.116.93 -m ping
+	terminal --> yes					# confirm
+
+	# both connections must be successful
+
+This verification must be avoided in production environment because ansible automation can't confirm connection.
+It the next lecture we will see how to disable this verification.
+
+
+Cheack connections with both DO Instances
+	terminal --> ansible all -m ping
+
+	# all 2 connections sgould be successful
+
+
+
+
+
 
 
 123. How to disable host key Checking?
 ======================================
+
+➢ What is Host-Key Checking?
+	- Host key checking is a security feature used in SSH (Secure Shell) to varify the identity of a remote server.
+
+When we verificate connection with specific client machine, the client machine save that entry in variable called 'non-host'.
+After that whenever we try to access the same client from the same server, the client will not ask for this verification any more.
+
+In the practice we have dynamic craetion and destruction of servers (clients) and nothing is executed on them. So how we can avoid this connection verification when our ansible-engine is connecting to a new client server?
+
+We can disable SSH host-key ckecking mechanism to avoid this issue.
+
+
+
+➢ Managing Host Key Checking in Ansible
+----------------------------------------
+Host key checking can cause issues in automation if the host keys change or if you're connecting to new hosts frequently.
+
+➢ User need to disable the Host-key verification in Ansible Execution
+
+There are few ways to disable host-key checking:
+
+1. Modify ansible.cfg file						# RECOMMENDED
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory = /root/ansible/inventory/
+host_key_checking = False			# disable the host key checking
+-------------------------------
+save change - escape, :wq!, enter
+
+This configuration will disabel the host tkey verification and directly connect to the machines defined in our inventory.
+This is a permanent solution and do not depends on session. RECOMMENDED!
+
+
+2. Setting environment variable named ANSIBLE_HOST_KEY_CHECKING=False	# not recommended 
+	terminal --> export ANSIBLE_HOST_KEY_CHECKING=False
+
+	# the environment variable is valid for particular session
+	# when we update or create new session this environemnt variable will be NULL
+	# whe nwe try to connect to new clients error will arise
+
+
+3. We disable key checking in particular scenario, we can manage it with Command Line Option
+	terminal --> ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook playbook.yml
+
+Example:
+Check connection with the DO instances from the last lection
+	terminal --> ANSIBLE_HOST_KEY_CHECKING=False ansible root@157.230.211.126 -m ping
+
+
 
 
 
