@@ -14,15 +14,106 @@ Section 18: Ansible Environment Preparation and Installation
 110. Ansible Installation Overview
 ==================================
 
+➢ Ansible Installation is dedicated to Linux/Unix Machines only.
+
+➢ Python 3 installation is must on Ansible Engine/Controller Node.
+
+➢ Windows is not supported as Ansible Engine Node.
+
+➢ Ansible 2.5 and above work with Python 3. Older version requires Python 2.
+
+➢ Ways to Install Ansible on Controller.
+
+➢ 3 ways to Install Ansible:
+	○ Using Linux/Unix package manager
+	○ Using Python PIP
+	○ Using Compile File
+
+➢ We will create Cloud Machine on Public Cloud.
+	○ Digital Ocean
+	○ User can use own Linux System as well.
+	○ User will get the Discount coupon for Digital Ocean, which is more then enough to complete this course.
+
+
+
+
 
 
 111. Install Ansible Using PIP
 ==============================
 
 
+➢ Ansible Installation using PIP.
+	○ User can Install Specific Version of Ansible.
+	○ Multiple Ansible Installation is Support on Same System.
+		- we can install and test new version of Ansible before migrate the service
+	○ Ansible Upgrade Path is very Easy using PIP Installation.
+		- upgrade or downgrade Ansible is felaxability advantage of PIP
+
+
+				
+				-----------------	
+				|   Python 3	|	Ansible 2.6	-------------
+		--------------->|   V Env 1	|<----------------------|  Ansible  |	
+		|		|		|			-------------
+		|		-----------------
+		|
+		|
+		|		-----------------
+		|		|   Python 3	|	Ansible 2.8	-------------
+PYTHON3 --------|-------------->|   V Env 2	|<----------------------|  Ansible  |	
+		|		|		|			-------------
+		|		-----------------
+		|
+		|
+		|		-----------------
+		|		|   Python 3	|	Ansible 2.9	-------------
+		--------------->|   V Env 3	|<----------------------|  Ansible  |	
+				|		|			-------------
+				-----------------
+
+
+➢ The advantage using PIP is that we can manage different Ansible version on the same machine with the different python virtual nevironments.
+
+
+
+
 
 112. Create Cloud Machine for Ansible Engine
 ============================================
+
+We will create DigitalOcean work machine
+	- in the next lecture we can find $100 cupon for DigitalOcean
+	- use the cupon for creating a new account or in existing one
+
+Create a Droplet on DigitalOcean
+	- Login to DigitalOcean
+	- Create/Droplets
+		- Choose location - San Francisco
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $12/Month - 2G/1CPU/50GB SSD Disk/ 2 TB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ansible-engine	- set machine name readable
+		- Create Droplet
+
+
+Digital Ocean free tier Ubuntu 
+	Password - Pass
+	Droplet Name - ansible-engine
+	IP - xxx.xxx.xxx.xx
+
+We can connect to the droplet with local terminal (cmd, bash, shell) as below:
+Connetc to Droplet
+	terminal --> ssh root@IP
+	terminal --> password
+
+Update the package manager
+	terminal --> sudo apt-get update
+
+We will use the console on DigitalOcean because is not require to reconnect often.
+
 
 
 
@@ -30,14 +121,311 @@ Section 18: Ansible Environment Preparation and Installation
 113. Install Ansible Using Python VirtualEnv
 ============================================
 
+We can use the cmmands from the next lection to install prerequisite software
+
+1. Login to DigitalOcean Droplet
+	terminal --> ssh root@IP
+	terminal --> password
+
+2. Update the package manager
+	terminal --> sudo apt-get update
+
+3. Check if we have isntalled python3
+	terminal --> python3 --version
+
+4. Install Python3
+	terminal --> apt install python3-pip
+	terminal --> y		# confirm
+
+5. If Missing Install python3
+	terminal --> sudo apt update
+	terminal --> sudo apt install software-properties-common
+	terminal --> y 							# confirm
+	terminal --> sudo add-apt-repository ppa:deadsnakes/ppa
+	terminal --> enter
+	terminal --> sudo apt update
+	terminal --> sudo apt install python3
+	terminal --> sudo apt install python3-pip
+	terminal --> python3 --version
+
+6. Install Dependencies
+	terminal --> sudo apt-get install python3-minimal python3-virtualenv python3-dev build-essential
+	terminal --> y		# confirm
+
+Check the installation folders
+	terminal --> which pip3
+	terminal --> which python3
+
+7. Set up virtualenv
+	terminal --> mkdir ansible
+	terminal --> cd ansible
+	terminal --> virtualenv myansible
+
+8. Activate Virtual Env
+	terminal --> source myansible/bin/activate
+	# at the beggining of the terminal we should have '(myansible)' - this mean that the venv is activated
+
+9. Install Ansible in the current venv
+	terminal --> pip3 install ansible
+	# wait untill the console exit the installation
+
+10. Verify Ansible version
+	terminal --> ansible --version
+	# result: ansible [core 2.18.6]
+
+11. Exit current virtual environment
+	terminal --> deactivate
+	# if we try to find ansible out if our virtual environment we will not find it
+	# this mean that Ansible is not connected with our machine directly but true python pip virutal environment
+
 
 
 114. Run Instructions : Install Ansible Using Python VirtualEnv
 ===============================================================
 
+1. Verify Python3 is installed.
+
+    python3 --version
+    apt install python3-pip
+
+
+2. If Missing Install python3
+
+    sudo apt update
+    sudo apt install software-properties-common
+    sudo add-apt-repository ppa:deadsnakes/ppa
+    sudo apt update
+    sudo apt install python3
+    sudo apt install python3-pip
+    python3 --version
+
+
+3. Install Dependencies
+
+sudo apt-get install python3-minimal python3-virtualenv python3-dev build-essential
+
+
+4. Set up virtualenv
+
+    mkdir ansible
+    cd ansible
+    virtualenv myansible
+
+
+5. Activate Virtual Env
+
+source myansible/bin/activate
+
+
+6. Install Ansible
+
+pip3 install ansible
+
+
+7. Verify Ansible version
+
+ansible --version 
+
+
+
 
 
 115. Configure Ansible
 ======================
+
+Login to DigitalOcean Droplet
+	terminal --> ssh root@IP
+	terminal --> password
+
+Activate Virtual Env
+	terminal --> source myansible/bin/activate
+
+Verify Ansible version
+	terminal --> ansible --version
+
+# result:
+ansible [core 2.18.6]
+  config file = None	# no configuration
+  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /root/ansible/myansible/lib/python3.12/site-packages/ansible
+  ansible collection location = /root/.ansible/collections:/usr/share/ansible/collections
+  executable location = /root/ansible/myansible/bin/ansible
+  python version = 3.12.7 (main, Jun 18 2025, 13:16:51) [GCC 14.2.0] (/root/ansible/myansible/bin/python)
+  jinja version = 3.1.6
+  libyaml = True
+
+
+➢ While Install Ansible using virtual env, default ansible config path is None.
+
+➢ This Path is required to Ansible for Configuration and Inventory.
+
+➢ Path Preferences
+	○ ANSIBLE_CONFIG
+		■ Env Variable
+	○ ./ansible.cfg			# preffered
+		■ Current Dir		# preffered
+	○ ~/.ansible.cfg
+		■ Hidden file in Home Dir
+	○ /etc/ansible/ansible.cfg
+		■ Ansible config at etc
+
+
+Create ansible configuration in tem directory
+	terminal --> touch /tmp/ansible.cfg
+
+Verify the file creation
+	terminal --> ls /tmp/
+
+
+
+ANSIBLE CONFIG AS ENVIRONEMNT VARIABLE
+--------------------------------------
+
+Set environemnt variable for Ansible configuration file
+	terminal --> export ANSIBLE_CONFIG=/tmp/ansible.cfg
+
+Verify environemnt variable creation
+	terminal --> echo $ANSIBLE_CONFIG
+	# result: /tmp/ansible.cfg
+
+Verify Ansible version
+	terminal --> ansible --version
+
+# result:
+ansible [core 2.18.6]
+  config file = /tmp/ansible.cfg	# we have set the configration file as env variable
+  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /root/ansible/myansible/lib/python3.12/site-packages/ansible
+  ansible collection location = /root/.ansible/collections:/usr/share/ansible/collections
+  executable location = /root/ansible/myansible/bin/ansible
+  python version = 3.12.7 (main, Jun 18 2025, 13:16:51) [GCC 14.2.0] (/root/ansible/myansible/bin/python)
+  jinja version = 3.1.6
+  libyaml = True
+
+
+Remove ansible,cfg as environemnt variable
+	terminal --> unset ANSIBLE_CONFIG
+
+
+
+CREATE ANSIBLE.CFG AS HIDEN FILE IN OUR ASIBE MAIN (ROOT) DIRECTORY
+-------------------------------------------------------------------
+
+Verify that we are in the root diretory
+	terminal --> echo ~
+	# result: echo ~
+
+Create hidden ansible.cfg file
+	terminal --> touch ~/.ansible.cfg		# hidden file
+
+
+Verify Ansible version
+	terminal --> ansible --version
+
+# result:
+ansible [core 2.18.6]
+  config file = /root/.ansible.cfg		# we have set ansible.cfg file as hidden
+  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /root/ansible/myansible/lib/python3.12/site-packages/ansible
+  ansible collection location = /root/.ansible/collections:/usr/share/ansible/collections
+  executable location = /root/ansible/myansible/bin/ansible
+  python version = 3.12.7 (main, Jun 18 2025, 13:16:51) [GCC 14.2.0] (/root/ansible/myansible/bin/python)
+  jinja version = 3.1.6
+  libyaml = True
+
+Remove the hidden ansible.cf file from the ansible root directory
+	terminal --> rm -rf ~/.ansible.cfg
+
+
+
+
+CREATE CONFIGURATION FILE IN THE CURRENT DIRECTORY
+--------------------------------------------------
+
+Create ansible.cfg file in the current directory
+	terminal --> touch ansible.cfg
+
+Verify creation of ansible.cfg file
+	terminal --> ls
+
+Verify Ansible version
+	terminal --> ansible --version
+
+# result:
+ansible [core 2.18.6]
+  config file = /root/ansible/ansible.cfg	# we have set the configration file in the local directory
+  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /root/ansible/myansible/lib/python3.12/site-packages/ansible
+  ansible collection location = /root/.ansible/collections:/usr/share/ansible/collections
+  executable location = /root/ansible/myansible/bin/ansible
+  python version = 3.12.7 (main, Jun 18 2025, 13:16:51) [GCC 14.2.0] (/root/ansible/myansible/bin/python)
+  jinja version = 3.1.6
+  libyaml = True
+
+
+Now this ansible cinfiguration is limited to our virtual environment.
+
+If we want to use other configuration locations we have to delete the current ansible.cfg file
+	terminal --> rm -rf ansible.cfg
+
+
+If we install Ansible with the package manager we will get the host files also. Since we installed Ansible with PIP we need to create hosts file manually
+
+➢ Create hosts and ansible config at virtual env location.
+	terminal --> vi hosts
+
+➢ Create hosts
+	○ [all]
+
+➢ Create ansible config file
+	○ [defaults]
+	   Inventory = hosts
+
+
+
+Create hosts and ansible config at virtual env location.
+	terminal --> vi hosts
+
+hosts
+-----------------------------------
+[all]
+-----------------------------------
+save change - escape, :wq!, enter
+
+
+Set the inventory in the ansible.cfg file as hosts.
+
+Edit nasible.cfg
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+-----------------------------------
+[defaults]
+inventory = hosts
+-----------------------------------
+save change - escape, :wq!, enter
+
+
+Verify ansible.cfg modification
+	terminal --> cat ansible.cfg
+
+
+Verify Ansible configuration	
+	terminal --> ansible all
+
+	# result: [WARNING]: No inventory was parsed, only implicit localhost is available
+		  [WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not
+			     match 'all'
+	# result: ERROR! No argument passed to command module
+
+	# this mean that we don't have any hosts in our inventory
+
+
+
+
+
+
+
+
 
 
