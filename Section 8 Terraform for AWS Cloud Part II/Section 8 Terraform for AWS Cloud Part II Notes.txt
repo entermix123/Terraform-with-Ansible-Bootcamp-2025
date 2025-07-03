@@ -678,7 +678,7 @@ We have 3 files
 ➢ providers.tf
 ➢ variables.tf
 
-We will craete IAM user and will NOT destroy it with terraform. Thi IAM user will be used in the next lectures and Labs.
+We will create IAM user and will NOT destroy it with terraform. This IAM user will be used in the next lectures and Labs.
 	- NO terraform destroy
 
 
@@ -792,7 +792,7 @@ variable "INSTANCE_USERNAME" {
 
 
 
-Login to the igitalOcean ubuntu and pull the files from github.
+Login to the DigitalOcean ubuntu and pull the files from github.
 	terminal --> ssh root@IP
 	terminal --> password
 

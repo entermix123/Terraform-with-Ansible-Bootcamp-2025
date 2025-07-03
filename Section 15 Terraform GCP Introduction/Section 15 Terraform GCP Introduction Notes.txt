@@ -9,13 +9,191 @@ Section 15: Terraform GCP: Introduction
 
 
 
+
 91. Terraform vs Google Deployment Manager
 ==========================================
+
+Differences between Google Deployment Manager and Terraform
+
+	Terraform								Google Deployment Manager
+	- Widely used with any Cloud Provider					- Only for GCP
+	- Multi Cloud Deployment (can deploy resources on different clouds)	- Used in GCP only
+	- Terraform Uses HCL - Hashicorp Configuration Language			- Uses YML or Jinja formatting files
+	- All Major Cloud Services are supported				- GCP only
+	- User get the proper logging and Pre-Post Exception Supprot		- Minimum Logging feature
 
 
 
 92. Setup GCP Project For Terraform
 ===================================
+
+GCP Project SetUp
+
+➢ Prerequisite
+	- User Must have the Google Cloud Account
+
+➢ We can use Existing GCP Project or Create New Project for practice.
+
+➢ Create Service Account that will connect to our Local Environment to GCP Environment
+	- local env is where terraform is installed
+	- GCP env is where we will create resources
+
+➢ Create Terraform File for GCP Resource Provisioning
+
+
+
+Create new project
+------------------
+
+Go to Google Cloud Platform/Projects/New Project
+	➢ Create Project
+		- Project Name: MyFirstGCPProject
+		- GCP will generate Project ID
+	- only 25 projects are allowed with single account
+	
+
+	➢ Create Service Account - GCP/IAM & Admin/Service Account/Create Service Account
+		- Service Account Details
+			- Service Account name:
+			- Service Account email: 
+			- Service Account Description: 
+			- Create Account
+		- Grant the service account access to project
+			- Select role: Owner
+			- Continue
+		- Grant user access to this user account
+			- Service account user role:
+			- Service account admin role:
+			- Done
+
+	➢ Add key to the created Service Account - GCP/IAM & Admin/Service Account/Details/KEYS/ADD KEY/Creat new key
+		- choose JSON format
+		- CREATE
+		- save the file locally
+
+	➢ Enable API and Services - GCP/API & SERVICES/ ENABLE API AND SERVICES
+		- search for 'clod resource manager api'
+		- choose 'Clod Resource Manager API'
+			- Enable - this will enable this service for the current project
+
+		- search for 'compute engine api' - this sevice requires billing settings
+		- choose 'Compute Engine API'
+			- Enable - whis will enable this service for the project
+
+		- search for 'clod storage api'
+		- choose 'Clod Storage API'
+			- Enable - this will enable this service for the current project
+
+	➢ Create storage Bucket - GCP/Cloud Storage/Browser/CREATE BUCKET  (in GCP the buckets are global entities)
+		- Name Your Bucket: MyGCPBucket@312dsS2@ 	(must be globally unique name)
+		- Choose where to store your data
+			- CONTINUE
+			- Location type
+			- Multi-region
+			- Location - us
+ 			- CONTINUE
+		- Choose a default storage class for your data
+			- Standard
+			- CONTINUE
+		- Choose how to control access to objects
+			- leave default settings
+			- CONTINUE
+
+		- Advanced settings
+			- Encrtyption: Google-managed-encryption key
+			- CREATE
+		
+		- Open the Bucket and create directory
+			- Bucket/Details/CREATE FOLDER
+				- name: terraform-practice
+
+
+On the working machine
+----------------------
+Login to the linux working machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+
+➢ We have simple terraform main.tf file
+
+main.tf
+--------------------------------------------------
+prvider "google" {
+   creadentials = file("service_account_key_file_name")
+
+   project = "Project ID"
+   region  = "us-east1"
+   zone    = "us-east1-c"
+}
+
+resource "google_compute_network" "vpc_network" {		# GCP VPC resource
+   name			    = "practice-network"
+   auto_create_subnetworks  = "true"
+}
+
+terraform {							# remote terraform state configs
+  backend "gsp" {
+    bucket  = "MyGCPBucket@312dsS2@"				# bucket name
+    prefix  = "terraform-practice"				# subdirectory of the bucket
+    creadentials = file("service_account_key_file_name")	# GCP account creadetial key name
+  }
+}
+--------------------------------------------------
+
+
+Update the linux package manager
+	terminal --> sudo apt-get update
+
+Pull the repo
+	terminal --> git clone repo_url
+	or
+	terminal --> git pull
+
+Navigate to the working folder
+	terminal --> cd /path/to/working/folder
+
+Recreate the GCP EKY on the working machine
+	terminal --> vi service_account_key_file_name
+	terminal --> paste the key file content and save changes
+
+
+INIT
+----
+Initialize terrafomr
+	terminal --> terraform init
+	# we can see console logs of downloaded modules
+
+PLAN
+----
+Plan terraform resources
+	terminal --> terraform plan
+
+	# the plan should be successful and we can review the logs
+	# result: 	
+		Plan: 1 to add, 0 to change, 0 to destroy.
+
+APPLY
+-----
+Apply the plan made on the DigitalOcean Ubuntu machine
+	terminal --> terraform apply --auto-approve
+	# this will create the resource on GCP
+
+We can check the GCP network on GCP/Network. We subnest for each region automatically created.
+We can see the terraform state file in GCP/Cloud Storage/Bucket/terraform-practice/default.tfstate file
+
+
+DESTROY
+-------
+Destroy all resources to stop the consts generation on GCP.
+
+On the working machine destroy all resources with terraform
+	terminal --> terraform destroy
+	terminal --> yes			# configr
+
+We can check that the network is deleted on GCP/Network.
+Now we can check the content of the terraform state file and see the differences on GCP/Cloud Storage/Bucket/terraform-practice/default.tfstate file
+
 
 
 
