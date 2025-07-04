@@ -8,8 +8,58 @@ Section 23: Basics of Ansible Playbook
 
 
 
+
+
 136. Playbook Introduction
 ==========================
+
+➢ Two ways to execute Tasks on Ansible Clients-
+	○ Ad-Hoc Commands
+	○ Playbooks
+
+➢ Why do you need Playbooks?
+	○ To execute multiple configuration.
+
+➢ Playbook is a YAML file, which contains multiple tasks.
+
+➢ Along with task, user have option to use dynamic things.
+	○ Variables, Files & Templates etc.
+
+➢ Playbooks are useful for multiple things like:
+	○ Configuration Management, Deployment, Orchestration etc.
+
+➢ Structure of Playbooks-
+	○ Concepts
+		■ Tasks
+		■ Play
+		■ Playbooks
+
+➢ Play - Play is combination of Tasks + Targets.
+
+➢ Task - Operation, user wants to perform.
+
+➢ Playbooks - Playbook is combination of Plays or List or sequence of Plays.
+
+➢ Playbook Sample:
+-----------------------------------------------------
+---
+  - name: Playbook					# playbook name - optional
+    hosts: all						# specify group name
+    become: yes						# switch user option, if only become option is set, then root is active
+    become_user: root					# specify user - root is default value
+    tasks:
+      - name: ensure apache is at the latest version	# task name, optional
+      yum:						# package manager - CentOS (Fedora based)
+        name: httpd					# package for installation
+        state: latest					# version
+-----------------------------------------------------
+
+
+We can set multiple tasks in this playbook.
+
+
+
+
 
 
 
@@ -17,9 +67,467 @@ Section 23: Basics of Ansible Playbook
 ================================
 
 
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific apckage)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific apckage)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory/
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2
+filters:
+    instance-state-name: running
+-------------------------------
+
+
+➢ Start instances on AWS and check for connection
+	terminal --> ansible all -i demo.aws_ec2.yml -u ec2-user -m ping
+
+	# ansible					- common ansible command
+	# all 						- target groups
+	# -i demo.aws_ec2.yml				- use dynamic inventory file
+	# -u ec2-user					- use user
+	# -m ping					- use module ping
+
+
+
+DEMO:
+-----
+
+Create Playbook working directory and navigate to it
+	terminal --> mkdir aws_playbooks_intro
+	terminal --> cd aws_playbooks_intro
+
+Create two files
+	➢ intro_playbook.yml
+	➢ install_httpd.yml
+
+
+We can use code editor like Visual Studio Code to create the files or work diretly here. Since we will write YAML syntax we can install YAML extention in VSCode for easy coding.
+
+Create intro_playbook.yml file
+	terminal --> vi intro_playbook.yml
+	
+intro_playbook.yml
+-----------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook		# define interpreter
+- name: Introduction Ansible Playbooks			# playbook name
+  hosts: all						# target groups
+  remote_user: ec2-user					# AWS user
+  become: 'yes'						# switch user option
+  # gather_facts: false					# skip gathering facts - not recommended
+  become_user: root					# switch to root user
+
+  tasks:
+    - name: Checking Connection via Ping		# first task name
+      ping:						# module name
+
+    - name: Uninstall Apache WebServer			# second task name
+      yum:						# CentOS (Fedora based) package manager
+        name: httpd					# target packages
+        state: absent 					# action - delete
+-----------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+Execute the created playbook
+	terminal --> ansible-playbook -i /root/ansible/demo.aws_ec2.yaml -u ec2-user intro_playbook.yml
+
+	# ansible-playbook						- ansible playbook common command
+	# -i /root/ansible/demo.aws_ec2.yaml				- pull path to the dynamic inventory file
+	# -u ec2-user							- use user ec2-suer for aws
+	# intro_playbook.yml						- name of the used playbook
+
+	- Results: We receive few actions and their results
+		- Gathering Facts - we receive instances setup (facts) and custom facts configured (specific packages installed)
+		- First Task - Ping - checking connection
+		- Second Task - Uninstall httpd (nginx) packages from the isntances
+
+	- We will receive briefe report for the tasks for each instance with params
+		instance.xxx : - ok=2,  - changed=0, - unreachable=0,  - failed=0,  - skipped=0,  - rescued=0,  - ignored=0
+
+		- ok=3
+			- We are pinging the instances
+			- We are uninstalling apache
+
+
+
+
+Create Install_https.yml file
+	terminal --> vi install_httpd.yml
+
+install_httpd.yml
+-----------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook		# define interpreter
+- name: Installing WebServer				# playbook name
+  hosts: all						# target groups
+  remote_user: ec2-user					# set current user
+  become: 'yes'						# switch user option
+  become_user: root					# switch to root user
+
+  tasks:
+    - name: Ensure Apache is at the Latest Version	# first task name
+      yum:						# used package manager - for CentOS (Fedora based Linux OS)
+        name: httpd					# define package for action
+        state: latest					# define package version
+
+    - name: Ensure Apache is Running			# second task name
+      service:						# target object
+        name: httpd					# taget name (apache)
+        state: started					# action
+-----------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+Execute the created playbook
+	terminal --> ansible-playbook -i /root/ansible/demo.aws_ec2.yaml -u ec2-user install_httpd.yml
+
+	# ansible-playbook						- ansible playbook common command
+	# -i /root/ansible/demo.aws_ec2.yaml				- pull path to the dynamic inventory file
+	# -u ec2-user							- use user ec2-suer for aws
+	# Install_https.yml						- name of the used playbook
+
+	- Results: We receive few actions and their results
+		- Gathering Facts - we receive instances setup (facts) and custom facts configured (specific packages installed)
+		- First Task - Ping - checking connection
+		- Second Task - Uninstall httpd (apache) packages from the isntances
+
+	- We will receive briefe report for the tasks for each instance with params
+		instance.xxx : - ok=3,  - changed=2, - unreachable=0,  - failed=0,  - skipped=0,  - rescued=0,  - ignored=0
+		
+		- ok=3
+			- We are pinging the instances
+			- We are isntalling apache
+			- We are starting apache service
+
+		- changed=2
+			- We are isntalling apache
+			- We are starting apache service
+			
+
+We can verify the apache installation when connect to one of the AWS instances and check for httpd service
+	aws instance terminal --> systemctl status httpd
+
+	# result: Active
+
+
+If we execute the same command again, nothing will change.
+
+If we stop the service on our aws instance and execute the ansible playbook again, only the not satisfied task will be executed.
+
+Stop apache service on aws instance
+	aws instance terminal --> stop httpd
+	aws instance terminal --> status httpd
+
+Execute the ansible playbook again
+	terminal --> ansible-playbook -i /root/ansible/demo.aws_ec2.yaml -u ec2-user install_httpd.yml
+
+	- We will receive briefe report for the tasks with params
+		instance.xxx : - ok=3,  - changed=1, - unreachable=0,  - failed=0,  - skipped=0,  - rescued=0,  - ignored=0
+
+		- ok=3
+			- We are pinging the instances
+			- We are isntalling apache
+			- We are starting apache service
+
+		- changed=1
+			- We are starting apache service
+
+
+
+
+
+
+
 
 138. Start Writing-Executing PlayBooks
 ======================================
 
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--ansible
+	|--- myansible/				# oython virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ intro_playbook.yml		# playbook 1
+	|	|--+ install_httpd.yml		# playbook 2
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific apckage)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific apckage)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ Set ansible configurations for AWS:
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+save chabges: escape, :wq!, enter
+
+
+
+➢ Set dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Start instances on AWS and check for connection
+	terminal --> ansible all -i demo.aws_ec2.yml -u ec2-user -m ping
+
+	# ansible					- common ansible command
+	# all 						- target groups
+	# -i demo.aws_ec2.yml				- use dynamic inventory file
+	# -u ec2-user					- use user
+	# -m ping					- use module ping
+
+
+
+
+DEMO - Use tha short commands to execute playbooks
+--------------------------------------------------
+
+➢ Executing Playbooks without providing execution commands.
+
+
+Find the binary ansible-playbook folder
+	terminal --> which ansible-playbook
+
+	# result: /root/ansible/myansible/bin/ansible-playbook		# copy the location
+
+
+Navigate to playbook working directory
+	terminal --> cd aws_playbooks_intro
+
+
+Set 2 playbooks 
+	➢ intro_playbook.yml
+	➢ install_httpd.yml
+
+Modify intro_playbook.yml
+	terminal --> vi intro_playbook.yml
+
+intro_playbook.yml
+-----------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook		# set binary ansible-playbook directory
+- name: Introduction Ansible Playbooks			# playbook name
+  hosts: all						# target groups
+  remote_user: ec2-user					# define default user
+  become: 'yes'						# switch user
+  become_user: root					# switch to root user
+
+  tasks:
+    - name: Checking Connection via Ping		# first task name
+      ping:						# use ping module
+
+    - name: Uninstall Apache WebServer			# second task name
+      yum:						# define the OS specific package manager
+        name: httpd					# define target package
+        state: absent 					# action of the package - uninstall
+-----------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+
+
+Modify install_httpd.yml
+	terminal --> vi install_httpd.yml
+
+install_httpd.yml
+-----------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook		# set binary ansible-playbook directory
+- name: Installing WebServer				# playbook name
+  hosts: all						# target groups
+  remote_user: ec2-user					# use user for aws
+  become: 'yes'						# switch user option
+  become_user: root					# switch to root user
+
+  tasks:
+    - name: Ensure Apache is at the Latest Version	# first task name
+      yum:						# define OS specific package manager
+        name: httpd					# target package
+        state: latest					# version
+
+    - name: Ensure Apache is Running			# second task name
+      service:						# target object
+        name: httpd					# sepcify package - apache
+        state: started					# target state - start service
+-----------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+
+Navigate to ansible root directory
+	terminal --> cd ..
+
+Set executable permission to the playbooks directory
+	terminal --> chmod 0755 -R aws_playbooks_intro/
+
+Now we can directly execute our playbooks instead t owrite long commands
+	Long command with all params every time
+		terminal --> ansible-playbook -i /root/ansible/demo.aws_ec2.yaml -u ec2-user install_httpd.yml
+
+	Shoert commands with one time set configuration
+		terminal -> aws_playbooks_intro/intro_playbook.yml		# execution of the playbook is the path to it 
+		terminal -> aws_playbooks_intro/install_httpd.yml	
+
+
+
+SUMMARY FOR SHORT COMMAND
+-------------------------
+1. Set full path for for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+
+
+Make sure that the aws user credentials are set as envaironment variables or other configuration.
+
+➢ Verify Playbook Syntax before execution
+	terminal --> aws_playbooks_intro/intro_playbook.yml --syntax-check
+	# result: playbook: aws_playbooks_intro/intro_playbook.yml
+
+	terminal --> aws_playbooks_intro/install_httpd.yml --syntax-check 
+	# result: playbook: aws_playbooks_intro/install_httpd.yml
+
+	# the playbook will not be applied
+	- If syntax is not correct we will receive error
+
+➢ Execute Playbook in Dry Run Mode
+	terminal --> aws_playbooks_intro/install_httpd.yml --check
+	terminal --> aws_playbooks_intro/intro_playbook.yml --check
+
+	# the playbook will not be applied
+	# result: this will show what output we will get after executing the playbooks
+
+➢ Execute Playbook with verbose output.
+	terminal --> aws_playbooks_intro/install_httpd.yml -v
+	terminal --> aws_playbooks_intro/intro_playbook.yml -v
+
+	# the playbook will be executed
+	# result: this will show additional log information
 
 
