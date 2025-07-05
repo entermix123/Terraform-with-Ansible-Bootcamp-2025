@@ -315,7 +315,7 @@ Login to DigitalOcean Droplet working PC
 Working folder structure
 root/
 |
-|--ansible
+|--ansible/
 	|--- myansible/				# oython virtual environment
 	|--- aws_playbooks_intro/		# playbooks directory	
 	|	|--+ intro_playbook.yml		# playbook 1
@@ -498,10 +498,12 @@ Now we can directly execute our playbooks instead t owrite long commands
 
 SUMMARY FOR SHORT COMMAND
 -------------------------
-1. Set full path for for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
 2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
 3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
 4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
 
 
 Make sure that the aws user credentials are set as envaironment variables or other configuration.
