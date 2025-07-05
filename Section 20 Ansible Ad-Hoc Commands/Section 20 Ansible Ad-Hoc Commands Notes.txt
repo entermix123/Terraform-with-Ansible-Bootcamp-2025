@@ -193,11 +193,11 @@ root@142.93.116.93		# DO instance 2
 -------------------------------
 
 
-Find hidden nasible directory made on each instance we connected with ansible
+Find hidden ansible directory made on each instance we connected with ansible
 	- connect to DO instance from their platform
 	- list all folders and files
 		terminal --> ls -a
-		# we can see that there is .ansible directorys 
+		# we can see that there is .ansible directories 
 			- this directory is automatically created on ansible connection
 			- in this directory the commands from ansible-engine will be saved, executed and then deleted in python
 			- this is ansible working/temporary directory
@@ -207,7 +207,7 @@ Find hidden nasible directory made on each instance we connected with ansible
 	- list the content is this directory
 		terminal --> ls -a .ansible
 		terminal --> ls -a .ansible/tmp
-		# we can see that this direcories are empty
+		# we can see that this directories are empty
 
 		
 Login to DigitalOcean Droplet working PC
