@@ -99,9 +99,9 @@ List '.ssh' directory to check if we have created key
 Navigate to root directory again and generate ssh key
 	terminal --> cd ~
 	terminal --> ssh-keygen		# the key will be generated in '/root/.ssh' folder
-	terminal --> eneter		# we can set the name of the key - optional
-	terminal --> enter		# passwork for the key - optional
-	terminal --> enter		# confirm passwork for the key - optional
+	terminal --> enter		# we can set the name of the key - optional
+	terminal --> enter		# password for the key - optional
+	terminal --> enter		# confirm password for the key - optional
 
 Confirm key generation
 	terminal --> ls -a ./.ssh
@@ -123,17 +123,17 @@ Print the file id_edxxxxx.pub and copy the its content
 --------------------------------------------
 	- go to AWS/EC2/Launch Instance
 		- Name and tags: ansible-client
-		- on the right side section - "Summary" set 2 intances
-		- AMI (amazone Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- on the right side section - "Summary" set 2 instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
 		- Architecture: x64
 		- Instance type: t2.micro - free tier eligible
 		- Key pair (login): ansible-engine
-		- Network settings/Firewall (security groups): Selext existing security group
+		- Network settings/Firewall (security groups): Select existing security group
 			- Common security groups: choose the default we have configured
 		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
 		- Launch Instance
 
-We have to wait untill the machines are created. We can check theyr status on AWS/EC2/Instances.
+We have to wait until the machines are created. We can check their status on AWS/EC2/Instances.
 	- Set names for each of the instances
 
 
