@@ -12,13 +12,388 @@ Section 24: Basic Playbook of Ansible PlayBook
 
 
 
+
+
+
 139. Logging Debug Statement using Ansible Playbooks
 ====================================================
 
 
 
+➢ User needs to put some debug information/print information while executing the stuff.
+
+➢ Ansible use debug module for such print statements.
+
+➢ debug Module is helpful for debugging variables and expressions.
+
+➢ debug Module accepts three parameters.
+	○ msg - print or logging statement
+		- single or multi statement
+
+	○ var - variable which value user wants to print
+		- print/get the value of variable
+
+	○ verbosity - Define verbosity of messages.
+		- level of verbosity
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ ansible_debug.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+➢ Create ansible_debug.yml
+	terminal --> vi aws_playbooks_intro/ansible_debug.yml
+
+ansible_debug.yml
+-----------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook			# path to the binary ansible-playbook dir
+- name: This is Overview of Ansible Debug Module		# playbook name
+  hosts: all							# target groups
+  remote_user: ec2-user						# set used user
+  become: 'yes'							# switch user option enabled
+  become_user: root						# switch to root user
+
+  tasks:							# tasks section
+    - name: Task for Debug Module Messaging			# first task name
+      debug:							# use debug module
+        msg: "Hi, this is Custom message for Debug Module"	# custom message
+    
+    - name: Prints two lines of messages			# second task name
+      debug:							# use debug module
+        msg:						
+        - "Hi This is multiline message."			# custom message 1
+        - "And I am line number 2..."				# custom message 2
+    
+    - name: Print Varaible in messages				# third task name
+      debug:							# use debug module
+        msg: 
+        - "Host IP is - {{ inventory_hostname }}"						# custom message 1 with vars 
+        - Host IP is - {{ inventory_hostname }}							# custom message 2 with vars 
+        - System {{ inventory_hostname }} has gateway {{ ansible_default_ipv4.gateway }}	# custom message 3 with vars 
+    
+    - name: debug module var parameter				# fourth task name
+      debug:							# use debug module
+        var: inventory_hostname 				# print variable
+    
+    - name: verbocity in debug module				# fifth task name
+      debug:							# use debug module
+        msg: "Hi this is deep logging at deub level 2"		# custom message
+        verbocity: 2						# verbosity level
+-----------------------------------------------------
+save chabges: escape, :wq!, enter
+
+➢ Give executable rights to the playbook file
+	terminal --> chmod 0755 aws_playbooks_intro/ansible_debug.yml
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+➢ Check for correct syntax of the playbook
+	terminal --> aws_playbooks_intro/ansible_debug.yml --syntax-check 
+
+	# the playbook will not be applied
+	# result: playbook: aws_playbooks_intro/ansible_debug.yml		# the syntax of the playbook is correct
+
+➢ Execute Playbook in Dry Run Mode
+	terminal --> aws_playbooks_intro/ansible_debug.yml --check
+
+	# the playbook will not be applied
+	# result: this will show what output we will get after executing the playbooks
+
+➢ Execute Playbook with verbosity level 1
+	terminal --> aws_playbooks_intro/ansible_debug.yml -v
+
+	# the playbook will not be applied, because the verbosity level is not met
+	# we have configured verbosity level = 2
+
+➢ Execute the playbook
+	terminal --> aws_playbooks_intro/ansible_debug.yml -vv			# or more: -vvv, -vvvv etc.
+
+	# if we set verbosity level = 2 : -vv or more (-vvv - level 3) the playbook will be applied
+
+Results:
+	- We will receive all custom messages and varibles for each task
+
+
+
+
+
+
+
+
 140. Variables in Ansible Play-books
 ====================================
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ ansible_var.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+Create playbook ansible_var.yml
+	terminal -> vi aws_playbooks_intro/ansible_var.yml
+
+ansible_var.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook			# path to the binary ansible-playbook dir
+
+- name: This is Overview of Ansible Debug Module		# playbook name
+  hosts: all							# target groups
+  remote_user: ec2-user						# use user
+  become: 'yes'							# switch user option enabled
+  become_user: root						# switch to root user
+
+  vars:								# variables section
+    test: hello, this is dummy value				# var 1 - text
+    my_name: Anshul Chauhan					# var 2 - text
+    my_age: 31							# var 3 - integer
+    my_height: 5.11						# var 4 - float
+    is_male: true						# var 5 - bool
+
+  tasks:							# tasks section
+    - name: Reading Ansible Playbook varaible			# task 1 name
+      debug:							# use debug module
+        var: test						# reading the variable 'test' with debug module
+
+    - name: Reading Ansible Playbook varaibles			# task 2 name
+      debug:							# use debug module
+        msg:							# message section
+        - My name is {{ my_name }}						# custom message with var 2
+        - I am {{ my_age }} years old.						# custom message with var 3
+        - And I am {{ my_height }} long, my gender is male - {{ is_male }}	# custom message with var 4 and 5
+----------------------------------------------------- 
+save chabges: escape, :wq!, enter
+
+➢ Give executable rights to the playbook file
+	terminal --> chmod 0755 aws_playbooks_intro/ansible_var.yml
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> aws_playbooks_intro/ansible_var.yml --syntax-check
+	# result: playbook: aws_playbooks_intro/ansible_var.yml
+
+➢ Execute Playbook in Dry Run Mode
+	terminal --> aws_playbooks_intro/ansible_var.yml --check
+
+	# the playbook will not be applied
+	# result: this will show what output we will get after executing the playbooks
+
+➢ Execute Playbook
+	terminal --> aws_playbooks_intro/ansible_var.yml
+
+	# result all messages and variables will be printed
+
+
+
+
+
 
 
 
@@ -26,24 +401,794 @@ Section 24: Basic Playbook of Ansible PlayBook
 ===============================
 
 
+➢ Data Collection or Data Store is used to store multiple values.
+
+➢ You can have sequence data structure.
+
+➢ You can have map data structure.
+
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ ansible_datacollection.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+Create playbook ansible_datacollection.yml
+	terminal -> vi aws_playbooks_intro/ansible_datacollection.yml
+
+ansible_datacollection.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook			# path to the binary ansible-playbook dir
+
+- name: This is Overview of Ansible Data Collection		# playbook name
+  hosts: all							# target groups
+  remote_user: ec2-user						# use user for aws
+  become: 'yes'							# switch user option enabled
+  become_user: root						# switch to root user
+
+  vars:								# variables section
+    xyz: Hello this is XYZ					# single var
+    packages: ['wget', 'unzip', 'curl', 'vim']			# list of variables - packages for installation
+    cities:							# list type 2
+    - New York
+    - London
+    - Tokyo
+    - Dubai
+    web_server: {'Linux': 'httpd', 'Unix': 'apache2'}		# dict: install pkgs with condition as a key and pkg as value
+
+  tasks:							# tasks section
+    - name: This is Data Collection Retrieval 			# task 1 name
+      debug:							# use debug module
+        var: xyz 						# read single variable
+
+    - name: Getting Sequence Data Collection F 1		# task 2 name - funtion 1
+      debug:							# use debug module
+        var: packages						# read list type 1
+
+    - name: Getting Sequence Data Collection F 2		# task 3 name - funtion 2
+      debug:							# use debug module
+        var: cities						# read list type 2
+
+    - name: Getting Sequence Data Collection F 3		# task 4 name - funtion 3
+      debug:							# use debug module
+        var: web_server						# read dictionary with web_server packages options
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+➢ Give executable rights to the playbook file
+	terminal --> chmod 0755 aws_playbooks_intro/ansible_datacollection.yml		# give permission to specific file
+	or	
+	terminal --> chmod 0755 -R aws_playbooks_intro/		# give permission to directory and its cntent
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> aws_playbooks_intro/ansible_datacollection.yml --syntax-check
+	# result: playbook: aws_playbooks_intro/ansible_datacollection.yml
+
+➢ Execute Playbook in Dry Run Mode
+	terminal --> aws_playbooks_intro/ansible_datacollection.yml --check
+
+	# the playbook will not be applied
+	# result: this will show what output we will get after executing the playbooks
+
+➢ Execute Playbook
+	terminal --> aws_playbooks_intro/ansible_datacollection.yml
+
+	# result all variables and data structures will be printed as a task
+	# Lists will be printed in the same format regardless of the configuration type
+	# using type 1 lists configuration we can create a loop and install packages on an instance
+
+
+ 
+
+
+
 
 142. Uses of Set_Fact and Register
 ==================================
+
+
+➢ Ansible Modules generally returns a data structure.
+	- returned module data is used further
+
+➢ User can store the output of module using ansible registers module.
+	- we can use register module to store the module's returned data
+
+➢ User can use the value of registers in different scenarios like conditional statement, logging etc.
+
+➢ Set_fact is used to store the Variable.
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ register_ansible.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+Create playbook register_ansible.yml
+	terminal -> vi aws_playbooks_intro/register_ansible.yml
+
+register_ansible.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook				# path to the binary ansible-playbook dir
+
+- name: This is Overview of Ansible Register and Set_Fact		# playbook name 
+  hosts: all								# target groups
+  remote_user: ec2-user							# use user for aws
+  become: 'yes'								# switch user option enabled
+  become_user: root							# switch to root user
+
+  tasks:								# tasks section
+    - name: Retrive Installed Shell Version				# task name (if shell is not right version - update it)
+      shell: "bash --version"						# use shell module and execute command
+      register: bash_ver						# use register to store the result as variable 'bash_var'
+
+    - set_fact:								# set fact - set variable created by funtion
+        bash_version: "{{bash_ver.stdout_lines[0].split()[3]}}"		# craete variable with theresult of a function/command
+    
+    - debug:								# use debug module
+        var: bash_version 						# read the result of the variable function
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+➢ Give executable rights to the playbook file
+	terminal --> chmod 0755 aws_playbooks_intro/register_ansible.yml		# give permission to specific file
+	or	
+	terminal --> chmod 0755 -R aws_playbooks_intro/		# give permission to directory and its cntent
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> aws_playbooks_intro/register_ansible.yml --syntax-check
+	# result: playbook: aws_playbooks_intro/register_ansible.yml
+
+➢ Execute Playbook in Dry Run Mode
+	terminal --> aws_playbooks_intro/register_ansible.yml --check
+
+	# the playbook will not be applied
+	# result: this will show what output we will get after executing the playbooks
+
+➢ Execute Playbook
+	terminal --> aws_playbooks_intro/register_ansible.yml
+
+	# result the variable 'bash_version' will be printed on the console
+
+
+
+
+
+
 
 
 
 143. Arithmetic Operations on Variables in Playbook
 ===================================================
 
+➢ Arithmetic Operations in Playbook is possible with Jinja Syntax.
+
+➢ {{ variable_name }} is Jinja Syntax.
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ arithmetic_operations.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins - not required for this example
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin - not required for this example
+filters:
+    instance-state-name: running	# set fileter for running instances only - not required for this example
+-------------------------------
+
+
+Create playbook register_ansible.yml
+	terminal -> vi aws_playbooks_intro/arithmetic_operations.yml
+
+arithmetic_operations.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook				# path to the binary ansible-playbook dir
+
+- name: This is to Display Arithmetic Opeations on Varaibles		# playbook name
+  hosts: localhost							# target host - localhost
+  gather_facts: false							# disable facts gathering
+
+  vars:							# variable section
+    a : 10						# set var a
+    b : 20 						# set var b
+
+  tasks:						# tasks section
+    - name: Operations on variables			# task name
+      debug: 						# use debug module
+        msg:						# set custom messages and use variables
+        - "value of a is : {{a}}"			# single variable representation
+        - "value of b is : {{b}}"			# single variable representation
+        - "Addtion of a & b : {{a + b}}"		# sum operation
+        - "Subs of a & b : {{a - b}}"			# subtraction operation
+        - "Multi of a & b : {{a * b}}"			# multiplication operation
+        - "Devide of a & b : {{a/b}}"			# division operation
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+➢ Give executable rights to the playbook file
+	terminal --> chmod 0755 aws_playbooks_intro/arithmetic_operations.yml		# give permission to specific file
+	or	
+	terminal --> chmod 0755 -R aws_playbooks_intro/		# give permission to directory and its cntent
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS - for this example we use localhost and not AWS so ignore 1, 3, 5 of below requirements
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> aws_playbooks_intro/arithmetic_operations.yml --syntax-check
+	# result: playbook: aws_playbooks_intro/arithmetic_operations.yml
+
+➢ Execute Playbook in Dry Run Mode
+	terminal --> aws_playbooks_intro/arithmetic_operations.yml --check
+
+	# result: this will show the result of the operations configured
+
+➢ Execute Playbook
+	terminal --> aws_playbooks_intro/arithmetic_operations.yml
+
+	# result:  this will show the result of the operations configured
+
+
+
+
+
+
 
 
 144. Practice on Arithmetic Operators
 =====================================
 
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ practice_arithmetic.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins - not required for this example
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin - not required for this example
+filters:
+    instance-state-name: running	# set fileter for running instances only - not required for this example
+-------------------------------
+
+
+Create playbook register_ansible.yml
+	terminal -> vi aws_playbooks_intro/practice_arithmetic.yml
+
+practice_arithmetic.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook				# path to the binary ansible-playbook dir
+
+- name: This is to Display Arithmetic Opeations on Varaibles		# playbook name
+  hosts: localhost							# target host
+  gather_facts: false							# disable facts gathering
+
+  vars:							# variable section
+    a : 10						# set var a
+    b : "{{a*10}}"					# set var b with previously defined variable
+
+  vars_prompt:						# set user input functionality
+    - name : x						# name of the first input - read as a string
+      prompt: Please enter Value of x 			# input message 
+      private: no					# public
+
+    - name : y						# name of the second input - read as a string
+      prompt: Please eneter value of y			# input message
+      private: no					# public
+
+  tasks:						# tasks section
+    - name: Operations on variables			# task name
+      debug: 						# use debug module
+        msg:						# custom messages
+        - "value of a is : {{a}}"						# single variable representation
+        - "value of b is : {{b}}"						# single variable representation
+        - "Addition of User Defined Values x, y is : {{x+y}}"			# result of user inputs - concatination
+        - "Addition of User Defined Values x, y is : {{x|int + y|int}}"		# result with user inputs - sum of ints
+        - "Multiple of User Defined Values x, y is : {{x|int * y|int}}"		# result with user inputs - multiplication of ints
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+➢ Give executable rights to the playbook file
+	terminal --> chmod 0755 aws_playbooks_intro/practice_arithmetic.yml		# give permission to specific file
+	or	
+	terminal --> chmod 0755 -R aws_playbooks_intro/		# give permission to directory and its cntent
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS - for this example we use localhost and not AWS so ignore 1, 3, 5 of below requirements
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> aws_playbooks_intro/practice_arithmetic.yml --syntax-check
+	# result: playbook: aws_playbooks_intro/practice_arithmetic.yml
+
+➢ Execute Playbook in Dry Run Mode
+	terminal --> aws_playbooks_intro/practice_arithmetic.yml --check
+
+	# we will be asked for x and y
+	# result: this will show the result of the operations configured
+
+➢ Execute Playbook
+	terminal --> aws_playbooks_intro/practice_arithmetic.yml
+
+	# we will be asked for x and y
+	# result:  this will show the result of the operations configured
+
+
+
+
+
+
 
 
 145. Filter and Methods of Ansible Playbook
 ===========================================
+
+
+➢ Filter and methods are ways to perform operations on your variables.
+
+➢ Filters: Inbuilt operation definition in Ansible (Jinja2 format)
+
+➢ Methods: Python Methods, custom filters 
+
+➢ How to use:
+	- Use '|' for inbuilt filters on variables.
+	- Use '.' for methods on variables.
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ filter_methods_ansible.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins - not required for this example
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin - not required for this example
+filters:
+    instance-state-name: running	# set fileter for running instances only - not required for this example
+-------------------------------
+
+
+Create playbook register_ansible.yml
+	terminal -> vi aws_playbooks_intro/filter_methods_ansible.yml
+
+filter_methods_ansible.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook				# path to the binary ansible-playbook dir
+
+- name: This is to Display filter and method Opeations on Varaibles	# playbook name
+  hosts: localhost							# target host
+  gather_facts: false							# gathering facts disabled
+
+  vars:									# variable section
+    a : "HeLLo tHiS is ANSHUL and i aM a SoftWARE enginEER"		# variable as text
+    b : 10								# variable as integer
+    c : "20"								# variable as string
+	
+  tasks:								# tasks section
+    - name: Operations on variables					# name of the task
+      debug: 								# use debug module
+        msg:								# custom messages
+        - "value of a is : {{a}}"					
+        - "value of b + c is : {{b+c|int}}"				# b is integer, c must be converted to integer - filter
+        - "Small case value of a : {{a|lower}}"				# make all letters in var 'a' text small - filter
+        - "Capital case Value of a: {{a|upper}}"			# make all letters in var 'a' text capitals - filter
+        - "Title Case value of a : {{a|title}}"				# set text as title - every word start with cap - filter
+        - "Small case value of a : {{a.lower()}}"			# make all letters in var 'a' text small - method
+        - "Capital case Value of a: {{a.upper()}}"			# make all letters in var 'a' text capitals - method
+        - " Split of String a : {{a.split()}}" 				# split text in var 'a' by space, receive list - method
+        - " Split of String a : {{a.lower().split()}}" 			# split text in var 'a' by space, receive list - method
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+We can find all filters in ansible here - https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_filters.html
+
+➢ Give executable rights to the playbook file
+	terminal --> chmod 0755 aws_playbooks_intro/filter_methods_ansible.yml		# give permission to specific file
+	or	
+	terminal --> chmod 0755 -R aws_playbooks_intro/		# give permission to directory and its cntent
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS - for this example we use localhost and not AWS so ignore 1, 3, 5 of below requirements
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> aws_playbooks_intro/filter_methods_ansible.yml --syntax-check
+	# result: playbook: aws_playbooks_intro/filter_methods_ansible.yml
+
+➢ Execute Playbook in Dry Run Mode
+	terminal --> aws_playbooks_intro/filter_methods_ansible.yml --check
+
+	# result: this will be as below
+
+➢ Execute Playbook
+	terminal --> aws_playbooks_intro/filter_methods_ansible.yml
+
+Results:
+--------
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match
+'all'
+
+PLAY [This is to Display filter and method Opeations on Varaibles] ***************************************************
+
+TASK [Operations on variables] ***************************************************************************************
+ok: [localhost] => {
+    "msg": [
+        "value of a is : HeLLo tHiS is ANSHUL and i aM a SoftWARE enginEER",
+        "value of b + c is : 30",
+        "Small case value of a : hello this is anshul and i am a software engineer",
+        "Capital case Value of a: HELLO THIS IS ANSHUL AND I AM A SOFTWARE ENGINEER",
+        "Title Case value of a : Hello This Is Anshul And I Am A Software Engineer",
+        "Small case value of a : hello this is anshul and i am a software engineer",
+        "Capital case Value of a: HELLO THIS IS ANSHUL AND I AM A SOFTWARE ENGINEER",
+        " Split of String a : ['HeLLo', 'tHiS', 'is', 'ANSHUL', 'and', 'i', 'aM', 'a', 'SoftWARE', 'enginEER'] "
+    ]
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=1    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
 
 
 
