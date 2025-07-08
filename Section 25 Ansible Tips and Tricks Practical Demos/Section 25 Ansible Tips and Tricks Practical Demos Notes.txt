@@ -12,8 +12,239 @@ Section 25: Ansible Tips and Tricks: Practical Demos
 153. Ansible Playbook Dry Run - Check & Diff Mode
 
 
+
+
+
 146. Ansible Pause Module - Pause Execution
 ===========================================
+
+➢ Asible Pause Module : Pause module is used to apuse the exrcution of a playbook for a specified amount of time or until a user procides input.
+
+➢ Use Case of Ansible Pause:
+	- Wait for a Service to Start
+	- Waiting for User Input
+		- backup volume name
+		- restore  volume name
+	- Introducing a Delay Between Tasks
+	- Pausing for Manual Maintenance
+
+
+All Parameters in pause modules are optional:
+------------------------------------------
+minute  	-	A positive number
+------------------------------------------
+seconds		-	A positive number
+------------------------------------------
+prompt		-	"Text Message"		# expecting user input
+------------------------------------------
+echo		-	Yes/No		
+------------------------------------------
+
+
+
+
+Example playbook with 3 pause scenarios
+---------------------------------------
+
+
+ansible_pause.yml
+----------------------------------------------------- 
+- name: Example Playbook for Pausing for Manual Maintenance
+  hosts: all
+  become: yes  # Use sudo to perform operations that require root privileges
+
+  tasks:
+    - name: Notify about maintenance                                                        # sc1 task 1
+      debug:
+        msg: "Maintenance window: Please perform the required checks."                      # print a message
+
+    - name: Pause for maintenance                                                           # sc1 task 2
+      pause:
+        prompt: "Press 'Enter' to continue after maintenance is completed"                  # require user confirmation
+
+    - name: Resume operations post-maintenance                                              # sc1 task 3
+      shell: echo "Maintenance completed, resuming operations"                              # print a message
+
+  tags: scenario1
+
+
+- name: Install and Start Apache HTTP Server on Ubuntu                                      # sc2 name 
+  hosts: all
+  become: yes  # Use sudo to perform operations that require root privileges
+
+  tasks:                                                                                    # sc2 task 1
+    - name: Update apt package index
+      apt:                                                                                  # use apt module
+        update_cache: yes                                                                   # update package index
+
+    - name: Install Apache HTTP Server                                                      # sc2 task 2
+      apt:                                                                                  # use apt module
+        name: apache2                                                                       # target package
+        state: present                                                                      # install
+
+    - name: Start and Enable Apache service                                                 # sc2 task 3
+      systemd:                                                                              # use systemd module                            
+        name: apache2                                                                       # target service                        
+        state: started                                                                      # start
+        enabled: yes                                                                        # enable
+
+    - name: Pause to allow the web server to start                                          #  sc2 task 4
+      pause:                                                                                # use pause module
+        seconds: 30                                                                         # pause for 30 seconds
+
+    - name: Ensure Apache is running                                                        # sc2 task 5
+      systemd:                                                                              # use systemd module
+        name: apache2                                                                       # target service
+        state: started                                                                      # target state - start the service
+      register: httpd_status                                                                # register variable
+
+    - name: Display Apache status                                                           # sc2 task 6
+      debug:                                                                                # use debug module
+        msg: "Apache is {{ httpd_status }} and enabled"                                     # print a message
+
+  tags: scenario2
+
+
+- name: Ansible Pause Parameters                                                            # sc3 name
+  hosts: all
+  become: yes  # Use sudo to perform operations that require root privileges
+
+  tasks:                                                                                                                
+    - name: Pause for 30 seconds                                                            # sc3 task 1
+      pause:                                                                                # use pause module                              
+        seconds: 30                                                                         # pause for 30 seconds
+
+    - name: Pause for user confirmation                                                     # sc3 task 2
+      pause:                                                                                # use pause module
+        prompt: "Press 'Enter' to continue after verifying the backup"                      # require user confirmation
+
+    - name: Pause for UserName input                                                        # sc3 task 3
+      pause:                                                                                # use pause module
+        prompt: "Enter your UserName: "                                                     # require user input - username 
+        echo: yes                                                                           # echo input - visible
+
+    - name: Pause for password input without echoing                                        # sc3 task 4
+      pause:                                                                                # use pause module    
+        prompt: "Enter your Password: "                                                     # require user input - password conf
+        echo: no                                                                            # don't echo - not visible
+
+  tags: scenario3
+----------------------------------------------------- 
+
+
+We can execute specific scenario setting its tag:
+
+
+
+
+DEMO:
+-----
+
+
+Prerequisite configuration:
+---------------------------
+
+Create a Droplet on DigitalOcean
+	- Login to DigitalOcean
+	- Create/Droplets
+		- Choose location - San Francisco
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $12/Month - 2G/1CPU/50GB SSD Disk/ 2 TB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ansible-engine	- set machine name readable
+		- Create Droplet
+
+
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- common_playbooks_intro/		# playbooks directory	
+	|	|--+ ansible_pause.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory				# set static inventory path
+host_key_checking = False					# skip connection confirmation when connect to instance
+-------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+
+
+➢ Execute first scenario form the playbook
+	terminal --> ansible-playbook common_playbooks_intro/ansible_pause.yml --tags scenario1
+
+	# we will be asked for cuse input - press enter
+	# the tasks will be completed
+
+
+➢ Execute second scenario form the playbook
+	terminal --> ansible-playbook common_playbooks_intro/ansible_pause.yml --tags scenario2
+
+	# 1. the apachec packages will be installed
+	# 2. The service will be started
+		# we will have a choice for the pouse time we set to ensure that the apache service is started
+		Pausing for 30 seconds
+		(ctrl+C then 'C' = continue early, ctrl+C then 'A' = abort)
+
+	# after the pause time the apache status will be printed
+
+
+
+➢ Execute third scenario form the playbook
+	terminal --> ansible-playbook common_playbooks_intro/ansible_pause.yml --tags scenario3
+	
+	# 1. Pause module will be active for 30 seconds
+		# we will have a choice for the pouse time we set to ensure that the apache service is started
+		Pausing for 30 seconds
+		(ctrl+C then 'C' = continue early, ctrl+C then 'A' = abort)
+	# 2. Pause module prompt will require pressing 'Enter'
+	# 3. Pause module prompt will require user input of 'UserNmae'. THe input will be visible
+	# 4. Pause module prompt will require user input of 'Password'. The input will not be visible
+
+
+
+
+
+
 
 
 
@@ -21,9 +252,300 @@ Section 25: Ansible Tips and Tricks: Practical Demos
 ==========================================================
 
 
+➢ Passing Variables via Command Line:
+	- User can pass variables directly when run the playbook using the --extra-vars (or -e) option.
+
+	➢ Define the variable in 3 formats
+		➢ ansible-playbbok playbook.yml --extra-vars "var1=value1 var2=value2"
+			- single variable setting
+
+		➢ ansible-playbbok playbook.yml --extra-vars '{"var1": "value1", "var2": "value2"}'
+			- key: value pairs setting - JSON format
+
+		➢ ansible-playbbok playbook.yml --extra-vars "@vars.yml"
+			- variables file in JSON or YML format
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Create a Droplet on DigitalOcean
+	- Login to DigitalOcean
+	- Create/Droplets
+		- Choose location - San Francisco
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $12/Month - 2G/1CPU/50GB SSD Disk/ 2 TB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ansible-engine	- set machine name readable
+		- Create Droplet
+
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- common_playbooks_intro/		# playbooks directory	
+	|	|--+ pass_variable.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory				# set static inventory path
+host_key_checking = False					# skip connection confirmation when connect to instance
+-------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+
+
+➢ Create pass_variable.yml file
+	terminal --> vi common_playbooks_intro/pass_variable.yml
+
+pass_variable.yml
+----------------------------------------------------- 
+---
+- name: Pass Variable to Playbook from Command Line
+  hosts: all
+  vars:
+    var1: value1
+    var2: value2
+
+  tasks:
+    - name: Print variables
+      debug:
+       msg: "var1={{ var1 }} var2={{ var2 }}"
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+
+
+➢ Execute the playbook with values the defined in the playbook variables
+-------------------------------------------------------------------------
+	terminal --> ansible-playbook common_playbooks_intro/pass_variable.yml
+
+# result:
+
+PLAY [Pass Variable to Playbook from Command Line] *******************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+
+TASK [Print variables] ***********************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "var1=value1 var2=value2"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+➢ Execute the playbook with values passed as extra variables
+-------------------------------------------------------------
+	terminal --> ansible-playbook common_playbooks_intro/pass_variable.yml -e "var1=custom_value1 var2=Custom_value_2"
+
+# result:
+PLAY [Pass Variable to Playbook from Command Line] *******************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+
+TASK [Print variables] ***********************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "var1=custom_value1 var2=Custom_value_2"		# we can see the changes values
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
 
 148. Ansible Terminology : ansible_hostname and inventory_hostname
 ==================================================================
+
+Ansible Terminology: ansible_hostname and inventory_hostname
+
+➢ ansible_hostname and inventory_hostname are variables that refer to different aspects of the hosts managed by Ansible.
+
+➢ ansible_hostname - name given to the machine on the cloud platform
+---------------------------------------------------------------------
+	- ansible_hostname is a fact gathered by Ansible when it performs the setup module on a host. It represents the hostname of the target machine as reported by the operationg system.
+	- It is used to refer to the actual hostname of the machine being managed
+
+➢ inventory_hostname - name defined in the ansible inventory file
+------------------------------------------------------------------
+	- inventory_hostname is the name of the host as specified in the Ansible inventory file
+		- IP address or FQDN (DNS) reccord
+	- It is used to refer to the host within the context of the inventory and Ansible playbook
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Create a Droplet on DigitalOcean
+	- Login to DigitalOcean
+	- Create/Droplets
+		- Choose location - San Francisco
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $12/Month - 2G/1CPU/50GB SSD Disk/ 2 TB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ansible-engine	- set machine name readable
+		- Create Droplet
+
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ inventory_ansible_hostname.yml	# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory				# set static inventory path
+host_key_checking = False					# skip connection confirmation when connect to instance
+-------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+
+➢ Create inventory_ansible_hostname.yml file
+	terminal --> vi common_playbooks_intro/inventory_ansible_hostname.yml
+
+inventory_ansible_hostname.yml
+----------------------------------------------------- 
+---
+- name: Example playbook to demonstrate ansible_hostname_ vs invenory_hostname
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+    - name: Display inventory_hostname
+      debug:
+        msg: "inventory_hostname: {{ inventory_hostname }}"
+    
+    - name: Display ansible_hostname
+      debug:
+        msg: "ansible_hostname: {{ ansible_hostname }}"
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+➢ Execute the playbook
+	terminal --> ansible-playbook common_playbooks_intro/inventory_ansible_hostname.yml
+
+
+# result:
+
+PLAY [Example playbook to demonstrate ansible_hostname_ vs invenory_hostname] ****************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+
+TASK [Display inventory_hostname] ************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "inventory_hostname: root@157.230.211.126"		# the name defined in the ansible inventory file
+}
+
+TASK [Display ansible_hostname] **************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "ansible_hostname: ansible-client1"			# the name given to the machine on the cloud platform
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
 
 
 
@@ -31,9 +553,406 @@ Section 25: Ansible Tips and Tricks: Practical Demos
 =====================================
 
 
+➢ User can set environment variables for tasks or entire plays using the environemnt directive.
+	- we can set environemnt directive at task level or play level
+
+➢ This is useful when you need to ensure that crtain environment variables are set for the commands or scripts that you are running on remote hosts.
+
+➢ Use cases:
+	- Running Commands with Specific Environment Variables.
+	- Configuring Paths - 'PATH' to include directories where custom binaries
+	- Setting Apllication-Specific Variables - Database connection string (token, password), API keys, etc.
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ environment_varaible.yml		# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+
+➢ Create environment_varaible.yml file
+	terminal --> vi common_playbooks_intro/environment_varaible.yml
+
+environment_varaible.yml
+----------------------------------------------------- 
+---
+- name: Demonstrate various use cases of environment variables in Ansible	# play name
+  hosts: localhost								# target hosts - localhost
+  gather_facts: no								# disable fact gathering
+  environment:							 	# use environment directive to set playbook env variable
+    PLAY_LEVEL_VAR: "This is a play-level environment variable"		# set var value - var is available for all playbook tasks
+
+  tasks:
+    - name: Print a statement without environment variables			# task 1 name
+      debug:									# use debug module
+        msg: "This is a statement without any environment variables."		# print custom message
+
+    - name: Print system environment variables					# task 2 name
+      command: env						# use command env to tak all system vars (1 for the exaple)
+      register: system_env							# store all envs in this custon var
+
+    - name: Print system environment variables debug				# task 3 name
+      debug:									# use debug module
+        msg: "{{ system_env.stdout }}"					# print all variables saved in system_env custom var
+
+    - name: Print play-level environment variable				# task 4 name
+      shell: "env | grep PLAY_LEVEL_VAR"			# take the value of the playbook env var (set at the top)
+      register: play_level_env					# set custom env variable with the same name and value
+
+    - name: Print play-level environment variable debug				# task 5 name
+      debug:									# use debug module
+        msg: "{{ play_level_env.stdout }}"					# custom message with variable value
+
+    - name: Set and print task-level environment variable			# task 6 name
+      environment:							# use environment directive to create task only env
+        TASK_LEVEL_VAR: "This is a task-level environment variable"		# set task level var
+	# this env will NOT be avalable for any other task in the playbook
+      shell: "env | grep TASK_LEVEL_VAR"					# take the value of the task level var
+      register: task_level_env							# create playbook env
+
+    - name: Print task-level environment variable debug				# task 7 name
+      debug:									# use debug module
+        msg: "{{ task_level_env.stdout }}"					# custom mesg with the task level env var status
+
+    - name: Override play-level environment variable at task level		# task 8 name
+      environment:								# set task level env var
+        PLAY_LEVEL_VAR: "This play-level environment variable has been overridden at task level"	# overwrite the env var
+      shell: "env | grep PLAY_LEVEL_VAR"					# take the value of task lvl var
+      register: overridden_play_level_env					# save the shell result in play var
+
+    - name: Print overridden play-level environment variable debug		# task 9 name
+      debug:									# use debug module
+        msg: "{{ overridden_play_level_env.stdout }}"				# print the overwrited env var
+
+    - name: Combine system and custom environment variables			# task 10 name
+      environment:								# use environemnt directive to create task lvl env
+        CUSTOM_VAR: "This is a custom variable combined with system variables"	# set task lvl env
+      shell: "echo \"HOME=$HOME, CUSTOM_VAR=$CUSTOM_VAR\""			# set shell command with system envs
+      args:									# arguments
+        chdir: /tmp								# set dir
+      register: combined_env							# save shell command result in play task var
+
+    - name: Print combined environment variables debug				# task 11 name
+      debug:									# use debug module
+        msg: "{{ combined_env.stdout }}"					# print play var 
+	
+    - name: Use environment variable in a shell command				# task 12 name
+      environment:								# use environemnt directive to create task lvl env
+        SHELL_COMMAND_VAR: "Value set for shell command"			# set task lvl env
+      shell: "echo \"The value of SHELL_COMMAND_VAR is $SHELL_COMMAND_VAR\""	# set shell command with system and task lvl vars
+      register: shell_command_env						# save shell command result in play var
+
+    - name: Print shell command environment variable debug			# task 13 name
+      debug:									# use debug module
+        msg: "{{ shell_command_env.stdout }}"					# print status of the env command
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+➢ Execute the playbook
+	terminal --> ansible-playbook common_playbooks_intro/environment_varaible.yml
+
+
+# result:
+-------------------------------------------------------------------------------------------------
+PLAY [Demonstrate various use cases of environment variables in Ansible] *********************************************
+
+TASK [Print a statement without environment variables] ***************************************************************
+ok: [localhost] => {
+    "msg": "This is a statement without any environment variables."
+}
+
+TASK [Print system environment variables] ****************************************************************************
+changed: [localhost]
+
+TASK [Print system environment variables debug] **********************************************************************
+ok: [localhost] => {
+    "msg": "LESSOPEN=| /usr/bin/lesspipe %s\nUSER=root\nSSH_CLIENT=162.243.190.66 12606 22\nXDG_SESSION_TYPE=tty\nSHLVL=1\nHOME=/root\nOLDPWD=/root\nSSH_TTY=/dev/pts/0\nPS1=(myansible) \\[\\e]0;\\u@\\h: \\w\\a\\]${debian_chroot:+($debian_chroot)}\\u@\\h:\\w\\$ \nPLAY_LEVEL_VAR=This is a play-level environment variable\nDBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/0/bus\nLOGNAME=root\n_=/root/ansible/myansible/bin/ansible-playbook\nXDG_SESSION_CLASS=user\nTERM=xterm\nXDG_SESSION_ID=2078\nPATH=/root/ansible/myansible/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin\nXDG_RUNTIME_DIR=/run/user/0\nLANG=C.UTF-8\nVIRTUAL_ENV_PROMPT=myansible\nLS_COLORS=rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:\nSHELL=/bin/bash\nLESSCLOSE=/usr/bin/lesspipe %s %s\nVIRTUAL_ENV=/root/ansible/myansible\nPWD=/root/ansible/common_playbooks_intro\nSSH_CONNECTION=162.243.190.66 12606 146.190.126.72 22\nXDG_DATA_DIRS=/usr/local/share:/usr/share:/var/lib/snapd/desktop"
+}
+
+TASK [Print play-level environment variable] *************************************************************************
+changed: [localhost]
+
+TASK [Print play-level environment variable debug] *******************************************************************
+ok: [localhost] => {
+    "msg": "PLAY_LEVEL_VAR=This is a play-level environment variable"
+}
+
+TASK [Set and print task-level environment variable] *****************************************************************
+changed: [localhost]
+
+TASK [Print task-level environment variable debug] *******************************************************************
+ok: [localhost] => {
+    "msg": "TASK_LEVEL_VAR=This is a task-level environment variable"
+}
+
+TASK [Override play-level environment variable at task level] ********************************************************
+changed: [localhost]
+
+TASK [Print overridden play-level environment variable debug] ********************************************************
+ok: [localhost] => {
+    "msg": "PLAY_LEVEL_VAR=This play-level environment variable has been overridden at task level"
+}
+
+TASK [Combine system and custom environment variables] ***************************************************************
+changed: [localhost]
+
+TASK [Print combined environment variables debug] ********************************************************************
+ok: [localhost] => {
+    "msg": "HOME=/root, CUSTOM_VAR=This is a custom variable combined with system variables"
+}
+
+TASK [Use environment variable in a shell command] *******************************************************************
+changed: [localhost]
+
+TASK [Print shell command environment variable debug] ****************************************************************
+ok: [localhost] => {
+    "msg": "The value of SHELL_COMMAND_VAR is Value set for shell command"
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=13   changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+-------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
 
 150. Execute Tasks on Ansible Hosts
 ===================================
+
+We can have requirements to
+	- execute task on a local host
+	- execut task on a specific host
+
+➢ Ansible provides several methods for executing tasks on the local host.
+
+➢ Using the local Connection Plugin:
+
+	➢ The local connection plugin allows you to run taksk on the local machine directly.
+		- sue case: we run tasks locally to calculate a value we will provide to the execution on the host
+		- whatever kind of processed data have to be consumed by the remote machine
+
+	➢ Using delegate_to:
+		- The deligate_to keyworkd allows you to delegate the execution of a task to a specific host, including the local host or only to a specific host.
+		
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Create a Droplet on DigitalOcean
+	- Login to DigitalOcean
+	- Create/Droplets
+		- Choose location - San Francisco
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $12/Month - 2G/1CPU/50GB SSD Disk/ 2 TB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ansible-engine	- set machine name readable
+		- Create Droplet
+
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ execution_on_ansible_host.yml	# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory				# set static inventory path
+host_key_checking = False					# skip connection confirmation when connect to instance
+-------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+
+➢ Create execution_on_ansible_host.yml file
+	terminal --> vi common_playbooks_intro/execution_on_ansible_host.yml
+
+execution_on_ansible_host.yml
+----------------------------------------------------- 
+- hosts: localhost					# set hosts for this tasks
+  tasks:
+    - name: Run a command on the local machine		# task name
+      command: echo "Running on the local host"		# print message
+  tags: scenario1					# set tag to execute this task only
+
+
+- hosts: all						# set hosts for this tasks
+  tasks:
+    - name: Run a command on the remote hosts		# task 1 name
+      command: echo "Running on remote host"		# print message
+    
+    - name: Run a command on the local machine		# task 2 name
+      command: echo "Running on the local host"		# print message
+      delegate_to: localhost				# delegate task 2 to localhost only
+  tags: scenario2					# set tag to execute this 2 task only
+
+
+- hosts: all						# set hosts for this tasks
+  tasks:
+    - name: Run a command on the remote hosts		# task 1 name
+      command: echo "Running on remote host"		# print message
+    
+    - name: Run a command on the local machine			# task 2 name
+      local_action: command echo "Running on the local host"	# local_action execute the command on the localhost
+  tags: scenario3						# set tag to execute this 2 task only
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+
+➢ Execute scenario1 from the playbook
+	terminal --> ansible-playbook common_playbooks_intro/execution_on_ansible_host.yml --tags scenario1
+
+# result:
+
+PLAY [localhost] *****************************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [localhost]
+
+TASK [Run a command on the local machine] ****************************************************************************
+changed: [localhost]
+
+PLAY [all] ***********************************************************************************************************
+
+PLAY [all] ***********************************************************************************************************
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+➢ Execute scenario2 from the playbook
+	terminal --> ansible-playbook common_playbooks_intro/execution_on_ansible_host.yml --tags scenario2
+
+# result:
+
+PLAY [localhost] *****************************************************************************************************
+
+PLAY [all] ***********************************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+
+TASK [Run a command on the remote hosts] *****************************************************************************
+changed: [root@157.230.211.126]
+
+TASK [Run a command on the local machine] ****************************************************************************
+changed: [root@157.230.211.126 -> localhost]
+
+PLAY [all] ***********************************************************************************************************
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+➢ Execute scenario3 from the playbook
+	terminal --> ansible-playbook common_playbooks_intro/execution_on_ansible_host.yml --tags scenario3
+
+# result:
+
+PLAY [localhost] *****************************************************************************************************
+
+PLAY [all] ***********************************************************************************************************
+
+PLAY [all] ***********************************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+
+TASK [Run a command on the remote hosts] *****************************************************************************
+changed: [root@157.230.211.126]
+
+TASK [Run a command on the local machine] ****************************************************************************
+changed: [root@157.230.211.126 -> localhost]
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -41,13 +960,565 @@ Section 25: Ansible Tips and Tricks: Practical Demos
 ====================================
 
 
+➢ Command and Shell both modules allow you to run commands on remote machines.
+
+➢ Command Module:
+------------------
+	➢ It does NOT preoccess the command through a shell, meaning features like shell operators (e.g., |, &&, >) are not available.
+	➢ Safety: It is more secure since it does not execute through a shell, reducing the risk of shell injection vulnerabilities.
+	➢ Idenpotency: Trend to be more idempotent as it avoids the complexity of shell expansions and redirections.
+
+➢ Shell Module:
+---------------
+	➢ It used to execute commands through a shell (/bin/sh by default). This allows for the use of shell features like pipes. redirections and logical operators (e.g., |, &&, >, etc.).
+	➢ Flexibility: Allows complex commands that requires shell features.
+	➢ Cmplexity: Suitable for more complex tasks that require shell scripting capabilities.
+
+➢ Use command module for simple, secure command executions without the need of shell features.
+
+➢ Use shell modulle when you need the flexibility of shell scripting as using pipes, redirections or complex commands structures.
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Create a Droplet on DigitalOcean
+	- Login to DigitalOcean
+	- Create/Droplets
+		- Choose location - San Francisco
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $12/Month - 2G/1CPU/50GB SSD Disk/ 2 TB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ansible-engine	- set machine name readable
+		- Create Droplet
+
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ ansible_command_shell_module.yml	# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory				# set static inventory path
+host_key_checking = False					# skip connection confirmation when connect to instance
+-------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+
+➢ Create ansible_command_shell_module.yml file
+	terminal --> vi common_playbooks_intro/ansible_command_shell_module.yml
+
+ansible_command_shell_module.yml
+----------------------------------------------------- 
+---
+- hosts: all						# set hosts
+  tasks:
+    - name: Using command module to list files		# task 1 name
+      command: ls /usr/bin				# print installed packages
+      register: command_output				# set playbook var with the command result
+
+    - name: Display command output			# task 2 name
+      debug:						# use debug module
+        msg: "{{ command_output.stdout_lines }}"	# print the var - formatted with new lines - jinja syntax
+
+    - name: Using shell module to list files and filter with grep	# task 3 name
+      shell: ls /usr/bin | grep 'vim'					# print vim packages from intalled packages (filter '|')
+      register: shell_output						# save playbook variable with the result of the shell
+
+    - name: Display shell output			# task 4 name
+      debug:						# use debug module
+        var: shell_output.stdout			# print variable with the result of the shell command, not formatted
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+Use jinja syntax to print out formatted outputs
+	- "{{ command_output.stdout_lines }}"
+
+Using 'var: shell_output.stdout' will print outputs on one line!
+
+
+➢ Execute the playbook
+	terminal --> ansible-playbook common_playbooks_intro/ansible_command_shell_module.yml
+
+
+# result:
+
+PLAY [all] ***********************************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+
+TASK [Using command module to list files] ****************************************************************************
+changed: [root@157.230.211.126]
+
+TASK [Display command output] ****************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": [				# all packages on separate lines with jinja syntax 
+        "NF",
+        "VGAuthService",
+	...
+        "zstdless",
+        "zstdmt"
+    ]
+}
+
+TASK [Using shell module to list files and filter with grep] *********************************************************
+changed: [root@157.230.211.126]
+
+TASK [Display shell output] ******************************************************************************************
+ok: [root@157.230.211.126] => {
+    "shell_output.stdout": "rvim\nvim\nvim.basic\nvim.tiny\nvimdiff\nvimtutor"		# only vim packages on one line
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
 
 152. Using Date, Time and Timestamp in Ansible
 ==============================================
+
+➢ Ansible provides various ways to handle date and time, primarily through the ansible_date_time variable and strftime filter.
+
+➢ ansible_date_time Variable:
+	➢ date: Current date in YYYY-MM-DD format.
+	➢ time: Current time in HH:MM:SS foramt.
+	➢ year, month, day, hour, minute, second: Individual date and time components.
+
+➢ Use Cases:
+	➢ Creating Backup Files with Timestamps
+	➢ Conditional Excution Based on Time
+	➢ Put the time in Logs
+
+➢ Using strftime Filter:
+	➢ This allows us to format dates and times according to our needs.
+	➢ Generating Human-Readable Timestamps.
+	➢ File Naming with Custom Date Formats.
+	➢ 
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Create a Droplet on DigitalOcean
+	- Login to DigitalOcean
+	- Create/Droplets
+		- Choose location - San Francisco
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $12/Month - 2G/1CPU/50GB SSD Disk/ 2 TB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ansible-engine	- set machine name readable
+		- Create Droplet
+
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ ansible_date_strftime_filtter.yml	# playbook 1
+	|	|--+ ansible_date_time_format.yml	# playbook 2
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory				# set static inventory path
+host_key_checking = False					# skip connection confirmation when connect to instance
+-------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+dev_hosts.yml
+-------------------------------
+[all]
+root@142.93.116.93		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+
+➢ Create ansible_date_strftime_filtter.yml file
+	terminal --> vi common_playbooks_intro/ansible_date_strftime_filtter.yml
+
+ansible_date_strftime_filtter.yml
+----------------------------------------------------- 
+---
+
+# Generating Human-Readable Timestamps				# play 1
+- hosts: all							# set hosts
+  tasks:
+    - name: Generate a human-readable timestamp			# play 1 task name
+      debug:							# use debug module
+        msg: "The current time is {{ ansible_date_time.iso8601 | strftime('%A, %B %d, %Y %I:%M %p') }}"
+
+	# print message with the current time formatted with strftime filter
+
+# File Naming with Custom Date Formats				# play 2
+- hosts: all							# set hosts
+  tasks:
+    - name: Create a file with a custom formatted timestamp	# play 2 task name
+      file:							# use file module
+        path: "/tmp/file_{{ ansible_date_time.iso8601 | strftime('%Y%m%d_%H%M%S') }}"	# set path to file location and format
+        state: touch									# target state - create file
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+
+➢ Create ansible_date_time_format.yml file
+	terminal --> vi common_playbooks_intro/ansible_date_time_format.yml
+
+ansible_date_time_format.yml
+----------------------------------------------------- 
+---
+- hosts: all								# set hosts
+  gather_facts: yes							# enable facts gathering
+  tasks:
+    - name: Print Default Ansible date					# task 1 name
+      debug:								# use debug module
+        msg: "Default date is {{ ansible_date_time }}"			# print message with var
+
+    - name: Print current date						# task 2 name
+      debug:								# use debug module
+        msg: "Current date is {{ ansible_date_time.date }}"		# print message with only date from the var
+
+    - name: Print current time						# task 3 name
+      debug:								# use debug module
+        msg: "Current time is {{ ansible_date_time.time }}"		# print message with only time from the var
+
+    - name: Print current timestamp					# task 4 name
+      debug:								# use debug module
+        msg: "Current timestamp is {{ ansible_date_time.iso8601 }}"	# print message with iso8601 standard from the var
+
+    - name: Print Unix timestamp					# task 5 name
+      debug:								# use debug module
+        msg: "Unix timestamp is {{ ansible_date_time.epoch }}"		# print message with epoch from the var
+
+    - name: Create a file with a timestamp				# task 6 name
+      file:								# use file module
+        path: "/tmp/file_{{ ansible_date_time.iso8601 | regex_replace(':', '-') }}"	# set file location and name
+        state: touch									# target state - create
+
+
+# Conditional Execution Based on Time
+- hosts: all								# play 2
+  tasks:		
+    - name: Run task only at night					# play 2 task name
+      debug:								# use debug module
+        msg: "This task runs only at night"						# print msg 
+      when: ansible_date_time.hour | int >= 20 or ansible_date_time.hour | int < 6	
+      # conditioning in time between 20h and 06h - not working hours
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+If some of the tasks of the play do not pass - fatal error, the next do not execute as well.
+
+➢ Execute the first playbook
+	terminal --> ansible-playbook common_playbooks_intro/ansible_date_strftime_filtter.yml
+
+➢ Execute the second playbook
+	terminal --> ansible-playbook common_playbooks_intro/ansible_date_time_format.yml
+
+
+# result:
+
+PLAY [all] ***********************************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.211.126 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.211.126]
+
+TASK [Print Default Ansible date] ************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Default date is {'year': '2025', 'month': '07', 'weekday': 'Tuesday', 'weekday_number': '2', 'weeknumber': '27', 'day': '08', 'hour': '09', 'minute': '32', 'second': '53', 'epoch': '1751967173', 'epoch_int': '1751967173', 'date': '2025-07-08', 'time': '09:32:53', 'iso8601_micro': '2025-07-08T09:32:53.725975Z', 'iso8601': '2025-07-08T09:32:53Z', 'iso8601_basic': '20250708T093253725975', 'iso8601_basic_short': '20250708T093253', 'tz': 'UTC', 'tz_dst': 'UTC', 'tz_offset': '+0000'}"
+}
+
+TASK [Print current date] ********************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Current date is 2025-07-08"
+}
+
+TASK [Print current time] ********************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Current time is 09:32:53"
+}
+
+TASK [Print current timestamp] ***************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Current timestamp is 2025-07-08T09:32:53Z"
+}
+
+TASK [Print Unix timestamp] ******************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Unix timestamp is 1751967173"
+}
+
+TASK [Create a file with a timestamp] ********************************************************************************
+changed: [root@157.230.211.126]
+
+PLAY [all] ***********************************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Run task only at night] ****************************************************************************************
+skipping: [root@157.230.211.126]
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=8    changed=1    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
+
+➢ We can extract and use specific information form the result.
+
+We can check the creation of the file on the remote host
+	remote host terminal --> ls /tmp
+
+	# result: ther should be a file_timestamp file
+
+
+
 
 
 
 153. Ansible Playbook Dry Run - Check & Diff Mode
 =================================================
+
+➢ Ansible provides two important features to perform dry runs: 'check mode' and 'diff mode'.
+	➢ We can indetify compile error before apply/execute the playbook on the hosts
+
+➢ This modes are used to preview the changes that would be made without actually applying them.
+
+➢ check Mode:
+	➢ Check Mode (--check) allow us to execute the playbook in a "dry run" mode. Ansible will go through the motions of running the tasks, checking what changes would be made, but without actually making any changes.
+
+➢ diff Mode:
+	➢ Diff mode (-diff) can be used alongside check mode to show the differences that would be applied to files managed by Ansible modules like copy, template, lineinfile, etc. It provides a detailed view of what would change in the files.
+
+➢ Use Cases for Check and Diff Modes:
+	➢ Verification Before Deployment
+	➢ Chenge Management - Prepare Report before applying the changes on the hosts
+	➢ Debugging and Testing Playbooks
+	➢ Audit and Compliance
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Create a Droplet on DigitalOcean
+	- Login to DigitalOcean
+	- Create/Droplets
+		- Choose location - San Francisco
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular- Disk Type: SSD/ $12/Month - 2G/1CPU/50GB SSD Disk/ 2 TB tranfer
+		- Choose Authentication Method: Password - Create a stron Password and save it somwhere on your PC
+		- Finalize Details
+			- Hostname: ansible-engine	- set machine name readable
+		- Create Droplet
+
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ ansible_dry_run.yml		# playbook 1
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/inventory				# set static inventory path
+host_key_checking = False					# skip connection confirmation when connect to instance
+-------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+dev_hosts.yml
+-------------------------------
+[all]
+root@142.93.116.93		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+
+➢ Create ansible_dry_run.yml file
+	terminal --> vi common_playbooks_intro/ansible_dry_run.yml
+
+ansible_dry_run.yml
+----------------------------------------------------- 
+---
+- hosts: all								# set hosts
+  tasks:
+    - name: Ensure a file exists with specific content			# task name
+      copy:								# use copy module to create a file
+        dest: /tmp/ansible_test_file.txt				# set destination path and file name
+        content: |							# set file content
+          This is a test file.
+          Managed by Ansible.
+        owner: root							# set file owner
+        group: root							# set file group
+        mode: '0644'							# set file permissions
+
+    - name: Ensure a line is present in a configuration file		# task 2 name
+      lineinfile:							# use lineinfile module
+        path: /tmp/ansible_test_config.conf				# set file path to location 
+        line: 'ConfigOption=True'					# execute command 
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+
+➢ Execute the second playbook with --diff and --check
+	terminal --> ansible-playbook common_playbooks_intro/ansible_dry_run.yml --diff --check
+
+
+# result:
+
+PLAY [all] ***********************************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+
+TASK [Ensure a file exists with specific content] ********************************************************************
+--- before
++++ after: /tmp/ansible_test_file.txt		# this will happen anfter we execute the playbook
+@@ -0,0 +1,2 @@
++This is a test file.
++Managed by Ansible.
+
+changed: [root@157.230.211.126]
+
+TASK [Ensure a line is present in a configuration file] **************************************************************
+fatal: [root@157.230.211.126]: FAILED! => {"changed": false, "msg": "Destination /tmp/ansible_test_config.conf does not exist !", "rc": 257}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=2    changed=1    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+
+
+
+
+➢ Execute the second playbook
+	terminal --> ansible-playbook common_playbooks_intro/ansible_dry_run.yml
+
+
+Check file creation on the host and prints its content
+	host terminal --> ls /tmp				# result: ansible_test_file.txt whould be present
+	host terminal --> cat /tmp/ansible_test_file.txt
+	
+	# result: 
+          This is a test file.
+          Managed by Ansible.
+
 
 
