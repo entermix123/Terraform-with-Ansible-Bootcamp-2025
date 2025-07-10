@@ -12,19 +12,593 @@ Section 28: Secure Your Infra: Ansible Vault
 159. Ansible terminology - What is an Ansible Vault?
 ====================================================
 
+➢ Ansible Vault : Ansible Vault is a feature in Ansible that allows us to keep sensitive data such as passwords, private keys and another secrets secure.
+	- We have vault fearues when working with Kubernetis, Terraform or Ansible.
+	- Ansible Vault is a utility service. By default Ansible Vault uses AES256 encryption mechanism.
+
+➢ Key Features
+	○ Encryption and Decryption: Ansible Vault uses AES256 symmetric encryption. We can encrypt entire files or ndivdual variables within our playbooks.
+		- We can manages secrets as key-value pairs or we can handle them in a separate file - both ways are available
+	○ Integration with Ansible Playbooks: Vault-ecnrypted files and variables can be seamlessly integrated into our Ansible playbook and roles.
+	○ Password Management: We can use command-line options, environment cariables or a file to manage Vault passwords.
+
+➢ Commands:
+	○ Encrpt a file: 
+		terminal --> ansible-vault encrypt filename
+	○ Decrypt a file: 
+		terminal --> ansible-vault decrypt filename
+	○ View an encrypted file: 
+		terminal --> ansible-vault view filename
+	○ Edit an encrypted file: 
+		terminal --> ansible-vault edit filename
+	○ Rekey a file (change password): 
+		terminal --> ansible-vault rekey filename
+	○ Encrypt a variable in a playbook: Use the '!valut' tag.
+
+
+
+
+
+
+
 
 
 160. Demo: Ansible Vault Encryption Decryption
 ==============================================
+
+➢ Login to working machine where Ansible is intalled
+	terminal --> ssh root@IP
+	terminal --> password
+
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- vault_playbooks_intro/		# playbooks directory	
+	|	|--+ secrets.yml		# playbook 1
+	|
+	|--+ ansible.cfg			# ansible configuration file
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Check if Ansible Vault is installed
+	terminal --> ansible-vault --version
+
+# result:
+ansible-vault [core 2.18.6]
+  config file = /root/ansible/ansible.cfg
+  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /root/ansible/myansible/lib/python3.12/site-packages/ansible
+  ansible collection location = /root/.ansible/collections:/usr/share/ansible/collections
+  executable location = /root/ansible/myansible/bin/ansible-vault
+  python version = 3.12.7 (main, Jun 18 2025, 13:16:51) [GCC 14.2.0] (/root/ansible/myansible/bin/python)
+  jinja version = 3.1.6
+  libyaml = True
+
+
+➢ Show Ansible Vault commands
+	terminal --> ansible-vault --help
+
+# result:
+usage: ansible-vault [-h] [--version] [-v] {create,decrypt,edit,view,encrypt,encrypt_string,rekey} ...
+
+encryption/decryption utility for Ansible data files
+
+positional arguments:
+  {create,decrypt,edit,view,encrypt,encrypt_string,rekey}
+    create              Create new vault encrypted file
+    decrypt             Decrypt vault encrypted file
+    edit                Edit vault encrypted file
+    view                View vault encrypted file
+    encrypt             Encrypt YAML file
+    encrypt_string      Encrypt a string
+    rekey               Re-key a vault encrypted file
+
+options:
+  --version             show program's version number, config file location, configured module search path, module
+                        location, executable location and exit
+  -h, --help            show this help message and exit
+  -v, --verbose         Causes Ansible to print more debug messages. Adding multiple -v will increase the verbosity,
+                        the builtin plugins currently evaluate up to -vvvvvv. A reasonable level to start is -vvv,
+                        connection debugging might require -vvvv. This argument may be specified multiple times.
+
+
+Yo use Ansible Vault we need to configure Vault password. Every time we use Ansible Vault we will be asked for this password. This paswword is used as encryption tool in Ansible Vault.
+
+➢ Create Ansible_vault Password file
+	terminal --> echo "TestAnsible" > /root/ansible/ansible_vault_password
+
+➢ Provide read only permission to Ansible Vault file
+	terminal --> chmod 600 /root/ansible/ansible_vault_password
+
+How we can use the ansible vault password - Pass the vault password file in the command
+
+
+
+ENCRYPT VARIABLE
+----------------
+➢ Craete a encrypted password (variable) and pass the location of the password
+	terminal --> ansible-vault encrypt_string "mysecretpassword" --name 'super_secret_password' --vault-password-file /root/ansible/ansible_vault_password
+		
+	# ansible-vault							- ansible vault common command
+	# encrypt_string						- encrypt string action
+	# "mysecretpassword"						- the password in plain text
+	# --name 'super_secret_password'				- name/key of the encrypted password
+	# --vault-password-file /root/ansible/ansible_vault_password	- set vault password path instead write on the console
+
+# result:
+
+Encryption successful
+super_secret_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          36363937383734373633616465393839623538643938383630366262376165613837646563373930
+          3538393438313666613665363035663866643939646231300a633134623365353831626530336563
+          36373832626538323163353033633739326338336437376563353062323135373330353864326331
+          3562366236666135630a373564646530346231383036303339643263343637663432373239356666
+          61396563623939386264303730353430346335633435633639393830633235393434
+
+
+
+
+ENCRYPT A FILE
+--------------
+
+➢ Create a secrets.yml playbook
+	terminal --> vi vault_playbooks_intro/secrets.yml
+
+secrets.yml
+--------------------------------------------------------
+super_secret_password: mysecretpassword
+--------------------------------------------------------
+save changes: escape, :wq!, enter
+
+➢ Encrypt the file
+	terminal --> ansible-vault encrypt vault_playbooks_intro/secrets.yml --vault-password-file /root/ansible/ansible_vault_password
+
+	# ansible-vault							- common ansible-vault command
+	# encrypt							- action - encrypt		
+	# vault_playbooks_intro/secrets.yml				- file location and name
+	# --vault-password-file /root/ansible/ansible_vault_password	- set vault password path instead write on the console
+
+	# result: encryption successful
+
+Verify file encryption
+	terminal --> cat secrets.yml
+
+# result:
+$ANSIBLE_VAULT;1.1;AES256
+34613066333863626630306665353465626163396331326434353135343362396137646330303639
+6331356564646231646130363465316237336430356466310a666664373734373838653063383331
+32383035303163353631653338626666663634313331323931333961356334356639616432316233
+6231646537366437380a663165313264386462376534343534323665323863326366323836626633
+33343537366166646638333035336662313438386464626430393735333631343365653034373764
+3735363863333862383038313237333763346339343032376634
+
+
+
+ENCRYPT A FILE
+--------------
+
+➢ Encrypt the file
+	terminal --> ansible-vault decrypt vault_playbooks_intro/secrets.yml --vault-password-file /root/ansible/ansible_vault_password
+
+	# ansible-vault							- common ansible-vault command
+	# decrypt							- action - decryption		
+	# vault_playbooks_intro/secrets.yml				- file location and name
+	# --vault-password-file /root/ansible/ansible_vault_password	- set vault password path instead write on the console
+
+	# result: Decryption successful
+
+
+Verify file decryption
+	terminal --> cat vault_playbooks_intro/secrets.yml
+	
+	# result: super_secret_password: mysecretpassword
+
+
+
+ENCRYPT WITH DIFFERENT PASSWORD
+-------------------------------
+➢ We can encrypt file or variable with different password (we have to save it!)
+	terminal --> ansible-vault encrypt <filename> --ask-vault-pass
+
+	# New Vault password:			 	# we need to enter password
+	# Confirm New Vault password:			# we need to confirm the password
+
+	# WE CAN DECRYPT THIS FILE/VAR ONLY WITH THE PASSWORD WE PROVIDED !!!
+
+
+
+
+
+
 
 
 
 161. Demo : Use Ansible Vault in Ansible Playbooks I
 ====================================================
 
+➢ Login to working machine where Ansible is intalled
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|	|--+ ansible_vault_password		# ansible vault password
+	|
+	|--- vault_playbooks_intro/			# playbooks directory	
+	|	|--+ playbook_without_vault_secrets.yml	# playbook without encrypted vars
+	|	|--+ playbook_with_vault_secrets.yml	# playbook with encrypted vars
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+We have ansible configuration file
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/
+host_key_checking = False
+--------------------------------------------------------
+
+➢ Check if Ansible Vault is installed
+	terminal --> ansible-vault --version
+
+
+Exploanation of secret encryption importance: When we set secrets in plain text in the playbook, we expose them into public/private repositories and other people have access to them. This is not recommended!
+
+➢ Create playbooks folder
+	terminal --> mkdir vault_palybooks_intro
+
+Example below we can see 2 scenarios:
+	1. Playbook 1 using Vault
+	2. Playbook 2 that Vault is not used
+
+
+➢ Create playbook_with_vault_secrets.yml file that use plain text secrets
+	terminal --> vi vault_palybooks_intro/playbook_without_vault_secrets.yml
+
+playbook_without_vault_secrets.yml
+--------------------------------------------------------
+- name: Example playbook Without Ansible Vault
+  hosts: localhost
+  vars:
+    db_username: 'admin'
+    db_password: 'supersecretpassword'
+  tasks:
+    - name: Print the database username and password
+      debug:
+        msg: "Database Username: {{ db_username }}, Password: {{ db_password }}"
+--------------------------------------------------------
+save changes: escape, :wq!, enter
+
+➢ Give executable rights to the playbook
+	terminal --> chmod 0755 -R vault_palybooks_intro
+
+
+➢ We can execute the playbook without encrypted variables and no vault password prvided
+	terminal --> ansible-playbook vault_palybooks_intro/playbook_without_vault_secrets.yml 
+
+	# ansible-playbook						- common ansible playbook command
+	# vault_palybooks_intro/playbook_without_vault_secrets.yml	- playbook file location and name
+
+# result:
+PLAY [Example playbook Without Ansible Vault] ************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [localhost]
+
+TASK [Print the database username and password] **********************************************************************
+ok: [localhost] => {
+    "msg": "Database Username: admin, Password: supersecretpassword"		# secrets are visible - NOT RECOMMENDED !!!
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+➢ Encrypt the db_username and db_password variables in the second playbook
+	terminal --> ansible-vault encrypt_string "admin" --name "db_username" --vault-password-file /root/ansible/ansible_vault_password
+
+	# ansible-vault							- common ansible-vault command
+	# encrypt_string						- action - encrypt string - variable		
+	# "admin"							- plain text of the value
+	# --name "db_username"						- set the variable name we want to encrypt
+	# --vault-password-file /root/ansible/ansible_vault_password	- set vault password file
+
+
+# result: 
+Encryption successful
+db_username: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          66613662343639373933356563326136636134396161663738333733303666396563326633653463
+          6633313032326433396666343635656436396233356437640a633064626366396663396336383634
+          61356165326265343932333637353136353663346462663230373464373430313162633165313331
+          3662313363326333610a323435393262313732303566373266346437313763656634613961333730
+          3461
+
+
+➢ Encrypt the db_password variables as well
+	terminal --> ansible-vault encrypt_string 'supersecretpassword' --name "db_password" --vault-password-file /root/ansible/ansible_vault_password
+
+	# ansible-vault							- common ansible-vault command
+	# encrypt_string						- action - encrypt string - variable		
+	# 'supersecretpassword'						- plain text of the passsword
+	# --name "db_password"						- set the variable name we want to encrypt
+	# --vault-password-file /root/ansible/ansible_vault_password	- set vault password file
+
+# result: 
+Encryption successful
+db_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          61356338333139623039373038663237323363336237626365623238356633336630343737646266
+          3934653638326638383438623632313832303734353131620a393532393935636130303964363333
+          39636138623838373161623039333239323135646265396437306666626664343633306466313637
+          3035626238396465650a666464313437333433633135313231343035323936643466623139613537
+          61303062306161353938646661633863346132346663303634363531376330303933
+
+
+
+➢ Create another playbook called playbook_with_vault_secrets.yml and set the necrypted db_username and db_password
+	terminal --> vi vault_palybooks_intro/playbook_with_vault_secrets.yml
+
+playbook_with_vault_secrets.yml
+--------------------------------------------------------
+---
+- name: Example playbook Without Ansible Vault
+  hosts: localhost
+  vars:
+    db_username: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          66613662343639373933356563326136636134396161663738333733303666396563326633653463
+          6633313032326433396666343635656436396233356437640a633064626366396663396336383634
+          61356165326265343932333637353136353663346462663230373464373430313162633165313331
+          3662313363326333610a323435393262313732303566373266346437313763656634613961333730
+          3461
+    db_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          61356338333139623039373038663237323363336237626365623238356633336630343737646266
+          3934653638326638383438623632313832303734353131620a393532393935636130303964363333
+          39636138623838373161623039333239323135646265396437306666626664343633306466313637
+          3035626238396465650a666464313437333433633135313231343035323936643466623139613537
+          61303062306161353938646661633863346132346663303634363531376330303933
+
+  tasks:
+    - name: Print the database username and password
+      debug:
+        msg: "Database Username: {{ db_username }}, Password: {{ db_password }}"
+--------------------------------------------------------
+save changes: escape, :wq!, enter
+
+
+
+➢ Execute the playbook with the encrypted db_username and db_password variables and no vault password prvided
+	terminal --> ansible-playbook vault_palybooks_intro/playbook_with_vault_secrets.yml 
+
+	# ansible-vault							- common ansible-vault command
+	# encrypt_string						- action - encrypt string - variable		
+	# "admin"							- plain text of the value
+	# --name "db_username"						- set the variable name we want to encrypt
+
+
+# result: 
+PLAY [Example playbook Without Ansible Vault] ************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [localhost]
+
+TASK [Print the database username and password] **********************************************************************
+fatal: [localhost]: FAILED! => {"msg": "Attempting to decrypt but no vault secrets found"}	# variables are protected
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=1    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+
+
+
+
+➢ Execute the playbook with the encrypted db_username and db_password variables with vault password prvided
+	terminal --> ansible-playbook vault_palybooks_intro/playbook_with_vault_secrets.yml --vault-password-file /root/ansible/ansible_vault_password
+
+	# ansible-vault							- common ansible-vault command
+	# encrypt_string						- action - encrypt string - variable		
+	# "admin"							- plain text of the value
+	# --name "db_username"						- set the variable name we want to encrypt
+	# --vault-password-file /root/ansible/ansible_vault_password	- provide vault password file name and location
+
+
+# result
+PLAY [Example playbook Without Ansible Vault] ************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [localhost]
+
+TASK [Print the database username and password] **********************************************************************
+ok: [localhost] => {
+    "msg": "Database Username: admin, Password: supersecretpassword"	# variables are visible
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
 
 
 162. Demo : Use Ansible Vault in Ansible Playbooks II
 =====================================================
+
+➢ Login to working machine where Ansible is intalled
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|	|--+ ansible_vault_password		# ansible vault password
+	|
+	|--- vault_playbooks_intro/			# playbooks directory	
+	|	|--+ secrets.yml			# secrets file
+	|	|--+ playbook_with_secrets_file.yml	# playbook with encrypted vars
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+Set ansible vault password file path into the ansible configuration file
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+Now we don't have to pass '--vault-password-file /root/ansible/ansible_vault_password' in every playbook execution.
+
+➢ Check if Ansible Vault is installed
+	terminal --> ansible-vault --version
+
+
+Exploanation of secret encryption importance: When we set secrets in plain text in the playbook, we expose them into public/private repositories and other people have access to them. This is not recommended!
+
+➢ Create playbooks folder
+	terminal --> mkdir vault_palybooks_intro
+
+
+➢ Create secrets file secrets.yml
+	terminal --> vi vault_palybooks_intro/secrets.yml
+
+secrets.yml
+--------------------------------------------------------
+---
+db_username: 'admin'							# variable 1
+db_password: 'supersecretpassword'					# variable 2
+
+# ansible-vault encrypt secrets.yml
+
+# Encrypt Varaible 
+# ansible-vault encrypt_string 'mysecretpassword' --name 'super_secret_password'
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+We can encrypt the secet file and then execute the playbook.
+
+➢ Encrypt the secrets.yml file
+	terminal --> ansible-vault encrypt vault_palybooks_intro/secrets.yml
+
+	# ansible-vault							- common ansible-vault command
+	# encrypt							- action - encrypt		
+	# vault_palybooks_intro/secrets.yml				- file location and name
+
+	# result: Encryption successful
+
+➢ Verify encryption of secrets.yml file
+	terminal --> cat vault_palybooks_intro/secrets.yml
+
+# result:
+$ANSIBLE_VAULT;1.1;AES256
+34666434303936363562633835333836353463373231313039343765303333313665643537336264
+6437393837363335333964343334346466383233303761390a316334393537323462316338393930
+38313365306463323333636531643736366634616132646638353235333739663332626339623761
+6464376530306531390a386163623636313361373131383333343234373661666238333064343663
+61376230393635383465613066306637353336663161643661626137633336383031396236353437
+61393135616530316634373735366362646163356430626362313138373537316263376437316566
+37643436313837663933316665653731323333353865343933626539346433666161313062613435
+64626436323732313638626439303535616365643630643133386631633832326565336235316236
+61386633383139373065313239383334346432336534656362333931303861343333633937323834
+34356634333437633932353934323438666235306366636436643431653961383261383033623461
+62343764343530353437656532643964613934383365303538653862323134653165316661646464
+35393334353135376230653830613137643064346537393139643533313539363366373036336163
+34306335626631363535653930663731343133643563373862616461383134653963633637633965
+3163653963633934336637313766623138303334393234613037
+
+
+➢ Create playbook that uses secrets file
+	terminal --> vi vault_palybooks_intro/playbook_with_secrets_file.yml
+
+playbook_with_secrets_file.yml
+--------------------------------------------------------
+- name: Example playbook using Ansible vault					# playbook name
+  hosts: localhost								# target hosts - localhost
+  vars_files:									# set file usage for secrets
+    - secrets.yml			# set file location and name (same dir with the playbook or complete path of the file)
+
+  vars:										# set variables
+    app_name: "MyApp"								# app name var
+    app_version: "1.0.0"							# app version var
+
+  tasks:									# tasks section
+    - name: Print the application name and version				# task 1 name
+      debug:									# use debug module 
+        msg: "Application Name: {{ app_name }}, Version: {{ app_version }}"	# print msg with not secret variables
+
+    - name: Print the database username and password					# task 2 name
+      debug:										# use debug module
+        msg: "Database Username: {{ db_username }}, Password: {{ db_password }}"	# print msg with secret variables
+      no_log: true						# do not print secreats in the logs - prevent secret exposure
+--------------------------------------------------------		
+save changes - escape, :wq!, enter
+
+➢ Give the folder executable permission
+	terminal --> chmod 0755 -R vault_palybooks_intro
+
+
+➢ Execute the playbook
+	terminal --> ansible-playbook vault_palybooks_intro/playbook_with_secrets_file.yml
+
+# result:
+PLAY [Example playbook using Ansible vault] **************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [localhost]
+
+TASK [Print the application name and version] ************************************************************************
+ok: [localhost] => {
+    "msg": "Application Name: MyApp, Version: 1.0.0"
+}
+
+TASK [Print the database username and password] **********************************************************************
+ok: [localhost]					# secrets are not printed
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
 
 
