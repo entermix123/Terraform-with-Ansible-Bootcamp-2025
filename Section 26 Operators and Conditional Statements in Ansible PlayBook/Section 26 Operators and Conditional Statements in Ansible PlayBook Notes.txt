@@ -8,21 +8,495 @@ Section 26: Operators and Conditional Statements in Ansible PlayBook
 157. Conditional Statements
 
 
+
+
+
 154. Comparison Operators
 =========================
 
+➢ Comparison Operators are helpful to work with conditional Operators.
+
+➢ Comparison Operators always return either True or False.
+
+➢ Comparison Operators Expressions - == , != , > , < , >= , <=
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ comparison_operator.yml		# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Create comparison_operator.yml file
+	terminal --> vi common_playbooks_intro/comparison_operator.yml
+
+comparison_operator.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: This will show the Use of Comparision Operators		# playbook name
+  hosts: localhost						# set hosts
+  gather_facts: false						# gather facts disabled
+
+  vars:								# set variables
+    a : "HELLO"
+    d : "hello"
+    b : 10
+    c : 20
+
+  tasks:
+    - name: Operations on variables					# task name
+      debug: 								# use debug module
+        msg:								# custom message with the operations
+          - "The value of b is - {{ b }}, and Value of c is - {{ c }}"
+          - "Is b greater than c : {{ b > c }}"
+          - "Is b less than c : {{ b < c }}"
+          - "Is b equals to c : {{ b == c }}"
+          - "Is b not equal to c : {{ b != c }}"
+          - "Is b greater than or equal to c : {{ b >= c }}"
+          - "Is b less than or equal to c : {{ b <= c }}"
+          - "Below Comparision is for String"
+          - "The value of a is - {{ a }}, and Value of d is - {{ d }}"
+          - "Is a greater than d : {{ a > d }}"
+          - "Is a less than d : {{ a < d }}"
+          - "Is a equals to d : {{ a == d }}"
+          - "Is a not equal to d : {{ a != d }}"
+          - "Is a equals to d : {{ a|lower == d }}"
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+
+➢ Execute the playbook
+	terminal --> ansible-playbook common_playbooks_intro/comparison_operator.yml
+
+# result:
+
+PLAY [This will show the Use of Comparision Operators] ***************************************************************
+
+TASK [Operations on variables] ***************************************************************************************
+ok: [localhost] => {
+    "msg": [
+        "The value of b is - 10, and Value of c is - 20",
+        "Is b greater than c : False",
+        "Is b less than c : True",
+        "Is b equals to c : False",
+        "Is b not equal to c : True",
+        "Is b greater than or equal to c : False",
+        "Is b less than or equal to c : True",
+        "Below Comparision is for String",
+        "The value of a is - HELLO, and Value of d is - hello",
+        "Is a greater than d : False",
+        "Is a less than d : True",
+        "Is a equals to d : False",
+        "Is a not equal to d : True",
+        "Is a equals to d : True"
+    ]
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=1    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+ 
 
 
 155. Membership Operators in Ansible
 ====================================
+
+➢ Membership operator also return True or False.
+
+➢ ‘in’ and ‘not in’ are the membership operators.
+
+➢ Test Operators are useful to perform the validation in Ansible.
+
+➢ Tests for variables:
+	○ is defined
+	○ is undefined
+
+➢ Tests for String:
+	○ String is lower
+	○ String is Upper
+	○ String is String
+
+➢ Test for numbers
+	○ Number is divisible by number
+	○ Number is even
+	○ Number is Odd
+	○ Number is Number
+
+➢ Tests for Paths:
+	○ Path is directory
+	○ Path is file
+	○ Path is link
+	○ Path is exists
+	○ Path is same file
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ membership_tests.yml		# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Create membership_tests.yml file
+	terminal --> vi common_playbooks_intro/membership_tests.yml
+
+membership_tests.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: This will show the Use of Comparision Operators
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    a : "HELLO"
+    d : "hello"
+    b : 10
+    c : 20
+    e : [1,5,9,10,15,109]
+    x: "/root/ansible/operators_statement"
+    y: "/root/ansible/operators_statement/comparision_operator.yml"
+
+  tasks:
+    - name: Operations on variables
+      debug: 
+        msg:
+          - "The List is - {{ e }}, Value of c is - {{ c }} and Value of b is - {{ b }}"
+          - "Is b memeber of e : {{ b in e }}"
+          - "Is c memeber of e : {{ c in e }}"
+          - "Is 25 memeber of e : {{ 25 in e }}"
+          - "Is c not a memeber of e : {{ c not in e }}"
+
+    - name: Tests Operators
+      debug: 
+        msg:
+          - "a is defined?   {{ a is defined }}"
+          - "c is defined?   {{ c is defined }}"
+          - "a is Upper?   {{ a is upper }}"
+          - "b is Lower?   {{ b is lower }}"
+          - "e is String?   {{ e is string }}"
+          - "y is file:   {{ y is file }}"
+          - "x is directory: {{ x is directory }}"
+          - "y is directory: {{ y is directory }}"
+
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+
+➢ Execute the playbook
+	terminal --> ansible-playbook common_playbooks_intro/membership_tests.yml
+
+# result:
+
+PLAY [This will show the Use of Comparision Operators] ***************************************************************
+
+TASK [Operations on variables] ***************************************************************************************
+ok: [localhost] => {
+    "msg": [
+        "The List is - [1, 5, 9, 10, 15, 109], Value of c is - 20 and Value of b is - 10",
+        "Is b memeber of e : True",
+        "Is c memeber of e : False",
+        "Is 25 memeber of e : False",
+        "Is c not a memeber of e : True"
+    ]
+}
+
+TASK [Tests Operators] ***********************************************************************************************
+ok: [localhost] => {
+    "msg": [
+        "a is defined?   True",
+        "c is defined?   True",
+        "a is Upper?   True",
+        "b is Lower?   False",
+        "e is String?   False",
+        "y is file:   False",
+        "x is directory: False",
+        "y is directory: False"
+    ]
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
 
 
 
 156. Logical Operator
 =====================
 
+➢ We have 2 logical operators - and, or
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ logical_operator.yml		# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Create logical_operator.yml file
+	terminal --> vi common_playbooks_intro/logical_operator.yml
+
+logical_operator.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: This will show the Use of Comparision Operators
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    a : "HELLO"
+    d : "hello"
+    b : 10
+    c : 20
+    e : [1,5,9,10,15,109]
+    x: true
+    y: false
+    z: false
+    m: true
+
+  tasks:
+    - name: Operations on variables
+      debug: 
+        msg:
+          - "x and y : {{ x and y }}"
+          - "x and m : {{ x and m }}"
+          - "x or m : {{ x or m }}"
+          - "y or z : {{ y or z}}"
+          - "x and y or m: {{ x and y or m}}"
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+
+➢ Execute the playbook
+	terminal --> ansible-playbook common_playbooks_intro/logical_operator.yml
+
+# result:
+
+PLAY [This will show the Use of Comparision Operators] ***************************************************************
+
+TASK [Operations on variables] ***************************************************************************************
+ok: [localhost] => {
+    "msg": [
+        "x and y : False",
+        "x and m : True",
+        "x or m : True",
+        "y or z : False",
+        "x and y or m: True"
+    ]
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=1    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
 
 
 157. Conditional Statements
 ===========================
+
+➢ Conditional statements are helpful to Apply Condition based Logic in Playbooks.
+
+	➢ when
+
+	➢ failed_when
+
+	➢ changed_when
+
+➢ when is like if condition statement in other languages.
+
+➢ Only execute the task if condition is true.
+
+➢ Condition/expression can be formed with comparison, membership, test and logical operator.
+
+➢ 
+
+➢ 
+
+➢ 
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to ansible-engine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ condition_statement.yml		# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Create condition_statement.yml file
+	terminal --> vi common_playbooks_intro/condition_statement.yml
+
+condition_statement.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: This is for Conditional Statement
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    x : 20
+    y : 10
+
+  tasks:
+    - name: Operation for Conditional Statement
+      debug: 
+        msg:
+          - "Value of x : {{ x }}, Value of y: {{ y }}"      
+
+    - name: Operation for Conditional Statement I
+      debug: 
+        msg:
+          - "x is Small of y"
+      when: x < y
+
+    - name: Operation for Conditional Statement II
+      debug: 
+        msg:
+          - "x is not Small then y"
+      when: x > y
+----------------------------------------------------- 
+save changes: escape, :wq!, enter
+
+
+
+➢ Execute the playbook
+	terminal --> ansible-playbook common_playbooks_intro/condition_statement.yml
+
+# result:
+
+PLAY [This is for Conditional Statement] *****************************************************************************
+
+TASK [Operation for Conditional Statement] ***************************************************************************
+ok: [localhost] => {
+    "msg": [
+        "Value of x : 20, Value of y: 10"
+    ]
+}
+
+TASK [Operation for Conditional Statement I] *************************************************************************
+skipping: [localhost]
+
+TASK [Operation for Conditional Statement II] ************************************************************************
+ok: [localhost] => {
+    "msg": [
+        "x is not Small then y"
+    ]
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=2    changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
+
 
