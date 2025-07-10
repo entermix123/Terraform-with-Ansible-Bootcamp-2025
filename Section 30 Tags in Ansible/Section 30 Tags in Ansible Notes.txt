@@ -3,5 +3,161 @@ Content
 
 Section 30: Tags in Ansible
 
+
+
+
 166. Tags in Ansible
 ====================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+DEMO:
+-----
+
+➢ Login to working machine where Ansible is intalled
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|	|--+ ansible_vault_password		# ansible vault password
+	|
+	|--- common_playbooks_intro/			# playbooks directory	
+	|	|--+ ags_ansible.yml			# tags playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ Set ansible configuration file
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Create playbooks folder
+	terminal --> mkdir common_playbooks_intro
+
+
+➢ Create secrets file ags_ansible.yml
+	terminal --> vi common_playbooks_intro/tags_ansible.yml
+
+tags_ansible.yml
+--------------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: This will show the Use of Tags
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Operations using the Tags 1
+      debug: 
+        msg:
+          - "Hi, This is Debug Message 1 "
+      tags:
+        - first
+
+    - name: Operations using the Tags 2
+      debug: 
+        msg:
+          - "Hi, This is Debug Message 2 "
+      tags:
+        - Second
+        - Common
+
+    - name: Operations using the Tags 3
+      debug: 
+        msg:
+          - "Hi, This is Debug Message 3 "
+
+    - name: Operations using the Tags 4
+      debug: 
+        msg:
+          - "Hi, This is Debug Message 4 "
+
+    - name: Operations using the Tags 5
+      debug: 
+        msg:
+          - "Hi, This is Debug Message 5 "
+      tags:
+        - first
+
+    - name: Operations using the Tags 6
+      debug: 
+        msg:
+          - "Hi, This is Debug Message 6 "
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R common_playbooks_intro/
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook common_playbooks_intro/tags_ansible.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: common_playbooks_intro/tags_ansible.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook common_playbooks_intro/tags_ansible.yml --check
+
+
+Now we can execute one or multiple specific tasks from the playbook true their tags.
+
+➢ List tags in specific playbook
+	terminal --> ansible-playbook common_playbooks_intro/tags_ansible.yml --list-tags
+
+	# The tags in the playbook will be listed
+
+➢ Execute Playbooks with tag 'first'
+	terminal --> ansible-playbook common_playbooks_intro/tags_ansible.yml --tags first
+
+➢ Execute Playbooks with tag 'first' and 'Common'
+	terminal --> ansible-playbook common_playbooks_intro/tags_ansible.yml --tags first,Common
+
+	# if the tag name is wrong (key sensitive), the task will be not executed
+
+➢ Execute Playbooks except tasks with specific tags
+	terminal --> ansible-playbook common_playbooks_intro/tags_ansible.yml --skip-tags first
+
+	# All tasks will be executed except tasks with tag 'first'
+
+
+Usecases:
+---------
+	- When we are executing mutiple machines on ansible production and we are using dynamic inventory we can group the invennoty based on the machine tags (env1, env2 etc.). We can associate specific tasks to specific environments/machines.
+	- We can associate one tag with multiple tasks and multiple tags in one task - many to many relationship between tags and tasks.
+
+
+We can set tags tactically and define the flow of the tasks.
+
+
+
+
