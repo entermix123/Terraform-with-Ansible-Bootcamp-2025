@@ -7,17 +7,651 @@ Section 29: Loops in Ansible PlayBook
 165. Loops in Ansible Playbook III
 
 
+
+
+
 163. Loops in Ansible Playbook I
 ================================
+
+➢ Loops in ansible are helpful to interate over items.
+
+➢ Loop are helpful if user wants to perform many things in one task, such as create a lot of users, install a lot of packages or repeat a polling step untiil a certain result is reached.
+
+➢ Standard Loops start with 'with_items'
+
+➢ Iterate multiple items with 'with_items'
+
+➢ Loop over Collection Variables with 'with_together'
+
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+➢ Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Working folder structure
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- ansible_loop_playbooks/		# playbooks directory	
+	|	|--+ loops_example.yml		# playbook 1
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create playbooks folder
+	terminal --> mkdir ansible_loop_playbooks
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+vault_password_file = /root/ansible/ansible_vault_password	# set ansible vault password file location
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+We need to find AWS instances existing groups to set as props to the users we will create with the playbook.
+	➢ Connect to the AWS instance
+		terminal --> ssh ec2-user@IP
+
+	➢ Switch to root user
+		terminal --> sudo su
+
+	➢ List all user groups
+		terminal --> cat /etc/group
+
+	# we choose 'nobody', 'postfix' and 'games' for the example below
+
+
+
+
+➢ Create playbook loops_example.yml
+	terminal -> vi ansible_loop_playbooks/loops_example.yml
+
+loops_example.yml
+--------------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: Loops in Ansible Playbook Part I			# playbook name
+  hosts: all							# set hosts to all
+  remote_user: ec2-user						# used aws ec2-user
+  become: 'yes'							# switch user option enabled
+  become_user: root						# switch to root user
+
+  vars:								# set collections variables
+    alpha: [ 'a', 'b', 'c', 'd' ]
+    numbers:  [ 1, 2, 3, 4 ]
+
+  tasks:							# tasks section
+    # Add Multiple User's in one go
+    - name: add several users in one go				# task 1 name
+      user:							# set user object
+        name: "{{ item }}"					# set user name prop with variable
+        state: present						# target state - create
+        groups: "games"						# set user group
+      with_items:						# loop section with all users we want to create
+        - testuser1						
+        - testuser2
+        - testuser3
+        - testuser4
+        - testuser5
+    
+
+    - name: add several users					# task 2 name
+      user:							# set users object
+        name: "{{ item.name }}"					# set user name prop with variable and sub prop
+        state: present						# target state - create
+        groups: "{{ item.groups }}"				# set user group with variable and sub prop
+      with_items:						# loop section with all users and their props we want to create
+        - { name: 'testuser6', groups: 'nobody' }
+        - { name: 'testuser7', groups: 'nobody' }
+        - { name: 'testuser8', groups: 'postfix' }
+        - { name: 'testuser9', groups: 'postfix' }
+    
+
+    - name: Loop Over Set of Collection variable		# task 3 name
+      debug:							# use debug module
+        msg: "{{ item.0 }} and {{ item.1 }}"			# set custom message with items of the variable collections
+      with_together:						# loop over the variable collections
+        - "{{ alpha }}"						# set variable collection 1
+        - "{{ numbers }}"					# set variable collection 2
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R ansible_loop_playbooks/
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R ansible_loop_playbooks/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible_loop_playbooks/loops_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: ansible_loop_playbooks/loops_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible_loop_playbooks/loops_example.yml --check
+
+➢ Execute Playbooks
+	terminal --> ansible_loop_playbooks/loops_example.yml
+
+	# all taks should be executed
+
+➢ Check id the users are created on our AWS instance
+	➢ Connect ot the AWS instance
+		terminal --> ssh ec2-user@IP
+
+	➢ Switch to root user
+		terminal --> sudo su
+
+	➢ List all user
+		terminal --> cat /etc/passwd
+
+		# all creted users should be present
+
+If we execute the playbook again, Ansible will check that the users are already created and will not create new users.
+
+We can delete users as change the target status in the playbooks to 'absent' and execute the playbooks again.
+
+
+
+
+
 
 
 
 164. Loops in Ansible Playbook II
 =================================
 
+➢ Random Choice Loop - 'with_random_choice'
+
+➢ Do-Untill Loop - To retry a task until a certain condition is met - 'until'
+	○ default value for 'reties' is 3 and 'delay' is 5.
+
+➢ Loop Over A List With An Index. 
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+➢ Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Working folder structure
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- ansible_loop_playbooks/		# playbooks directory	
+	|	|--+ loops_example2.yml		# playbook 1
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create playbooks folder
+	terminal --> mkdir ansible_loop_playbooks
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+vault_password_file = /root/ansible/ansible_vault_password	# set ansible vault password file location
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+➢ Create playbook loops_example2.yml
+	terminal -> vi ansible_loop_playbooks/loops_example2.yml
+
+loops_example2.yml
+--------------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: Loops in Ansible Playbook Part II			# playbook name
+  hosts: all							# set hosts to all
+  remote_user: ec2-user						# set aws default user
+  become: 'yes'							# enable switch user option
+  become_user: root						# siwtch to root user
+
+  vars:								# set variable collections
+    alpha: [ 'a', 'b', 'c', 'd' ]
+    numbers:  [ 1, 2, 3, 4 ]
+
+  tasks:							# tasks section
+
+    # Add Multiple User's in one go
+    - name : Random Looping Example				# task 1 name
+      debug:							# use debug module
+        msg: "{{ item }}"					# set custom message with object
+      with_random_choice:					# loop true the values in random manner
+        - "go through the door"
+        - "drink from the goblet"
+        - "press the red button"
+        - "do nothing"
+    
+    # Looping Over A List With An Index
+    - name: Looping over a List							# task 2 name
+      debug:									# use debug module
+        msg: "At array position {{ item.0 }} there is a value {{ item.1 }}"	# set message with var collections indeces
+      with_indexed_items:							# iterate collection operator
+        - "{{ alpha }}"								# set collection name
+
+    # Do Until Loop
+    - name: Ensure Apache is Running		# task 3 name
+      service:					# target object - service
+        name: httpd				# target object name - httpd (apache)
+        state: started				# target status - started
+      register: result				# create a playbook variable with the result
+      until: result.changed == True		# set condition for task execution with the created variable status
+      retries: 10				# set rety capacity  retry if status of the variable is NOT 'changed'
+      delay: 4					# set delay for the retries in seconds
+      # default value for 'reties' is 3 and 'delay' is 5.
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R ansible_loop_playbooks/
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R ansible_loop_playbooks/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible_loop_playbooks/loops_example2.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: ansible_loop_playbooks/loops_example2.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible_loop_playbooks/loops_example2.yml --check
+
+➢ Execute Playbooks
+	terminal --> ansible_loop_playbooks/loops_example2.yml
+
+	# all taks should be executed
+	# depending if we have isntalled httpd on the aws instance, it will start, else we will receive an error for the task
+
+
+
+
+
+
 
 
 165. Loops in Ansible Playbook III
 ==================================
+
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+➢ Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Working folder structure
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- ansible_loop_playbooks/		# playbooks directory	
+	|	|--+ loops_example3.yml		# playbook 1
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create playbooks folder
+	terminal --> mkdir ansible_loop_playbooks
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+vault_password_file = /root/ansible/ansible_vault_password	# set ansible vault password file location
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+➢ Create playbook loops_example3.yml
+	terminal -> vi ansible_loop_playbooks/loops_example3.yml
+
+loops_example3.yml
+--------------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook				# set ansible-playbook root directory
+- name: Loops in Ansible Playbook Part III				# playbook name
+  hosts: all								# hosts - all
+  remote_user: ec2-user							# aws default user
+  become: 'yes'								# enable switch user option
+  become_user: root							# switch to root user
+
+  vars:									# set 'packages' variables to be installed
+    packages: [ 'gettext-devel', 'openssl-devel', 'perl-CPAN', 'perl-devel', 'zlib-devel', 'unzip', 'wget' ]
+
+  tasks:								# tasks section
+    - name: Install Multiple Packages using Loop			# task 1 name
+      yum:								# use 'yum' package manager (Unix OS - CentOS)
+        name: '{{ item }}'						# set object to iterate with
+        state: present							# set target status - isntall
+      loop:								# loop over the values below
+        - gettext-devel
+        - openssl-devel
+        - perl-CPAN
+        - perl-devel
+        - zlib-devel
+        - unzip
+        - curl								# curl cannot be uninstalled for some reason
+        - wget
+
+	
+    - name: UnInstall Multiple Packages using Index Loop		# task 2 name
+      yum:								# use 'yum' package manager (Unix OS - CentOS)
+        name: '{{ item.1 }}'			# set object and its sub prop - the value of the key-value pair, item.0 is the key
+        state: absent							# set target status - uninstall
+      with_indexed_items:						# set to iterate collection
+        - "{{ packages }}"						# speciffy the collection name
+
+
+    - name: Install Multiple Packages using Index Loop			# task 3 name
+      yum:								# use 'yum' package manager (Unix OS - CentOS)
+        name: '{{ item.0 }}'						# set object and its sub prop - iterates the list only
+        state: present							# set target status - install
+      with_together:							# iterate true a collection 
+        - "{{ packages }}"						# specify the collection name
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R ansible_loop_playbooks/
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R ansible_loop_playbooks/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible_loop_playbooks/loops_example3.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: ansible_loop_playbooks/loops_example3.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible_loop_playbooks/loops_example3.yml --check
+
+➢ Execute Playbooks
+	terminal --> ansible_loop_playbooks/loops_example3.yml
+
+	# all taks should be executed
+	# we can check the installed packages on our aws insrtance
+
 
 
