@@ -82,8 +82,8 @@ Activate python virtual environment
 
 
 ➢ Install boto3 in Python Virtual Environment
-	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific apckage)
-	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific apckage)
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
 
 	Confirm boto3 and botocore installation
 		terminal --> pip3 list
