@@ -3,5 +3,218 @@ Content
 
 Section 27: Handlers in Ansible
 
+
+
 158. Handler in Ansible Playbook
 ================================
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ handler_imp.yml		# playbook 1
+	|	|--+ handler_req.yml		# playbook 2
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somehwere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+
+Create playbook handler_req.yml
+	terminal -> vi aws_playbooks_intro/handler_req.yml
+
+handler_req.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: Installing WebServer				# playbook name
+  hosts: all						# target all hosts
+  remote_user: ec2-user					# use ec2-user
+  become: 'yes'						# switch user option enabled
+  become_user: root					# switch to root user
+
+  tasks:						# tasks section
+    - name: Ensure Apache is at the Latest Version	# task 1 name
+      yum:						# use yum package manager (Unix - CentOS)
+        name: httpd					# target package - httpd (apache)
+        state: present					# target status - installed, if not, install it
+      register: httpd_installation_status		# save httpd status in playbook env variable
+
+
+    - name: Ensure Apache is Running			# task 2 name
+      service:						# target obkect
+        name: httpd					# target package httpd (apache)
+        state: started					# target status - started - if not ,strt it
+      when: httpd_installation_status.changed == True 	# execute the task when the playbook var has status changed (installed)
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+If httpd is installed the variable will not have status changed and the second task will not be executed!
+
+
+
+If we want to handle the service status in different manner we can use another playbook with different conditioning.
+
+Create playbook handler_imp.yml
+	terminal -> vi aws_playbooks_intro/handler_imp.yml
+
+handler_imp.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: Installing WebServer				# playbook name
+  hosts: all						# target all hosts
+  remote_user: ec2-user					# use ec2-user
+  become: 'yes'						# switch user option enabled
+  become_user: root					# switch to root user
+
+  tasks:						# tasks section
+    - name: Ensure Apache is at the Latest Version	# task 1 name
+      yum:						# use yum package manager (Unix pkg manager - CentOS)
+        name: httpd					# install package httpd (apache)
+        state: present					# target state - check if installed. If not, install it
+      notify:						# use notfy module to attach handler tasks
+        - Ensure Apache is Running			
+        - Ensure Apache restart 
+
+  handlers:						# handlers section
+    - name: Ensure Apache is Running			# handler task 1 name
+      service:						# target object
+        name: httpd					# name of the service - httpd (apache)
+        state: started					# target state - started, if not, start it
+
+    - name: Ensure Apache restart			# handler task 2 name
+      service:						# target object
+        name: httpd					# name of the service - httpd (apache)
+        state: restarted				# target state - check if restarted, if not, restart it
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give executable rights to the playbook files	
+	terminal --> chmod 0755 -R aws_playbooks_intro/
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> aws_playbooks_intro/handler_req.yml --syntax-check
+	terminal --> aws_playbooks_intro/handler_imp.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: aws_playbooks_intro/handler_req.yml
+		playbook: aws_playbooks_intro/handler_imp.yml
+
+
+➢ Execute Playbooks dry run before execution
+	terminal --> aws_playbooks_intro/handler_req.yml --check
+	terminal --> aws_playbooks_intro/handler_imp.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> aws_playbooks_intro/handler_req.yml
+	terminal --> aws_playbooks_intro/handler_imp.yml
+
+
+For the different playbooks the results will be different. 
+
+
