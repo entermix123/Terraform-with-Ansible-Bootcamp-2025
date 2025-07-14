@@ -9,18 +9,6 @@ Section 30: Tags in Ansible
 166. Tags in Ansible
 ====================
 
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
-➢ 
-
 DEMO:
 -----
 
