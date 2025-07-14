@@ -20,9 +20,30 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 ================================================
 
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
 
 168. Work with FIles : Ansible Blockinfile Module
 =================================================
+
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 
@@ -30,9 +51,31 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 ======================================
 
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+
 
 170. Checkout GIT Repo via Ansible
 ==================================
+
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 
@@ -40,9 +83,31 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 =====================================================
 
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+
+
 
 172. Copy Files from Remote Machines to Local Machine
 =====================================================
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 
@@ -50,9 +115,30 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 ======================================================
 
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
 
 174. Schedule a CRON Task on Remote Hosts
 =========================================
+
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
 
 
@@ -60,9 +146,29 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 ====================================================
 
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+
 
 176. Read file from Remote Host - Ansible Slurp
 ===============================================
 
 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
 
