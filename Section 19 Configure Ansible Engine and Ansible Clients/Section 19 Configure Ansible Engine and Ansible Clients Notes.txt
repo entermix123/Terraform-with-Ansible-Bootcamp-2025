@@ -659,7 +659,7 @@ Activate python virtual environment
 Create or login on DigitalOcean platform - https://cloud.digitalocean.com/
 	- You should have $200 creadit from Terraform section of this course
 
-Copy the created SHH key from the working Machine
+Copy the created SSH key from the working Machine
 	terminal --> cat ~/.ssh/id_ed25519.pub
 	# copy the SSH key
 
