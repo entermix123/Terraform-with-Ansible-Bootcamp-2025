@@ -19,31 +19,519 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 167. Work with FIles : Ansible lineinfile Module
 ================================================
 
+Used by ansible to work with files in the remote host.
 
-➢ 
+➢ lineinfile Module: This module is used to manage lines in text files.
+	○ It ensures a particular line is present in a file or replace an existing line matching a pattern.
+	○ This module is particularly useful for configuration management, where you often need to ensure specific settings are present in configuration files.
 
-➢ 
 
-➢ 
+Pazrameters		Explanation
+----------------------------------------------------------------------------------------------------------
+path			The path to the filewewant to edit.
 
-➢ 
+line			The line to be inserted or ensured in the file.
 
-➢ 
+regexp			A regular expression to search for in the file. If found, the line 
+			will be replaced. If not found, the line will be added.
+
+state			Whether the line should be present (present, default) or absent (absent).
+
+insertafter		Specified where to insert the line if the pattern specified in regexp
+			is not found. Possible values include BOF (beggining of file) or 
+			EOF (end of file).
+
+insertbefore		Specified where to insert the line if the pattern specified in regexp
+			is not found. Possible values include BOF or EOF.
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+DEMO:
+-----
+
+➢ Login to working machine where Ansible is intalled
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|	|--+ ansible_vault_password		# ansible vault password
+	|
+	|--- playbooks_labs/				# playbooks directory	
+	|	|--+ lineinfile_example.yml		# tags playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ Set ansible configuration file
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Create playbooks folder
+	terminal --> mkdir playbooks_labs
+
+
+➢ Create playbook file 
+	terminal --> vi playbooks_labs/lineinfile_example.yml
+
+
+lineinfile_example.yml
+--------------------------------------------------------
+- name: Manage lines in a text file				# playbook name
+  hosts: localhost						# host is localhost
+
+  tasks:							# tasks section
+    - name: Ensure the file exists				# task 1 name
+      file:							# use file module
+        path: sample.conf					# check if file is present - path and name of the file
+        state: touch						# targt state - exsist
+
+    - name: Add a line if it doesn't exist			# task 2 name
+      lineinfile:						# use lineinfile module
+        path: sample.conf					# check if file is present - path and name of the file
+        line: 'timeout 60'					# check if line exsist in file
+        insertafter: '^port'					# insert the line after this text
+        state: present						# target state - exsist
+
+    - name: Replace a line if it exists				# task 3 name
+      lineinfile:						# use lineinfile module
+        path: sample.conf					# check if file is present - path and name of the file
+        regexp: '^ssl_enabled.*'				# search for text
+        line: 'ssl_enabled false'				# if the searched text exist, replace ir - add false
+
+    - name: Add a line at the beginning of the file		# task 4 name
+      lineinfile:						# use lineinfile module
+        path: sample.conf					# check if file is present - path and name of the file
+        line: '# This is a comment'				# check if line exsist in file
+        insertbefore: BOF					# if do not exist insert in the beggining of the file (BOF)
+    
+    - name: Read file content using cat				# task 5 name
+      command: cat sample.conf					# use command module to execute command
+      register: file_content					# crate file with the sample.conf content
+
+    - name: Print file content					# task 6 name
+      debug:							# use debug module
+        msg: "{{ file_content.stdout }}"			# print the file content
+
+    - name: Remove a line if it exists				# task 7 name
+      lineinfile:						# use lineinfile module
+        path: sample.conf					# path and name of the target file
+        state: absent						# target state - delete
+        regexp: '^server_name.*'				# search for text - target text
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Create secrets file lineinfile_example.yml
+	terminal --> vi playbooks_labs/sample.conf
+
+sample.conf
+--------------------------------------------------------
+server_name example.com
+port 80
+ssl_enabled true
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R playbooks_labs/
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/lineinfile_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/lineinfile_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/lineinfile_example.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook playbooks_labs/lineinfile_example.yml
+	
+# result:
+
+LAY [Manage lines in a text file] ***********************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [localhost]
+
+TASK [Ensure the file exists] ****************************************************************************************
+changed: [localhost]
+
+TASK [Add a line if it doesn't exist] ********************************************************************************
+changed: [localhost]
+
+TASK [Replace a line if it exists] ***********************************************************************************
+changed: [localhost]
+
+TASK [Add a line at the beginning of the file] ***********************************************************************
+changed: [localhost]
+
+TASK [Read file content using cat] ***********************************************************************************
+changed: [localhost]
+
+TASK [Print file content] ********************************************************************************************
+ok: [localhost] => {
+    "msg": "# This is a comment\nserver_name example.com\nport 80\ntimeout 60\nssl_enabled false"
+}
+
+TASK [Remove a line if it exists] ************************************************************************************
+changed: [localhost]
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=8    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+➢ Verify sample.conf file content
+	terminal --> cat playbooks_labs/sample.conf
+
+
+result: all command are excuted successfuly
+
+sample.conf
+--------------------------------------------------------
+# This is a comment						# added command line as comment
+								# server_name line is removed
+port 80								# not affected
+timeout 60							# added timeout
+ssl_enabled false						# ssl_enabled is set to false
+--------------------------------------------------------
+
+
+
+
+
+
+
+
+
 
 
 168. Work with FIles : Ansible Blockinfile Module
 =================================================
 
 
-➢ 
+➢ blockinfile Module: This is used to insert or update a block of text in a file.
+	○ It's particulary useful for managing configuration files where you need to add or modify a section of text without altering the rest of the file.
 
-➢ 
 
-➢ 
+Pazrameters		Explanation
+----------------------------------------------------------------------------------------------------------
+path			The path to the filewewant to edit.
 
-➢ 
+block			The block of text that you want to insert or update in the file.
 
-➢ 
+marker			- Specify a unique marker that will be used to identify where to insert or update the block of text.
+			- If the marker doesn't exsist the module will append the block of text to the end of the file.
+
+backup			- If set to 'yes', creates a backup of the original file before making changes.
+			- Deafult value is 'no'.
+
+block_begin/block_end	- Allows you to specify the start and end patterns for the block text
+			- These parameters are manually exclusive with the marker parametter.
+
+state 			Possible values are: present, absent, after
+			Default is 'present'
+
+			- present: Ensure that the block of text is present in the file.
+			- absent: Ensure that the block of text is absent from the file.
+			- before: Insert the block of text before the arker.
+			- after: Insert the block of text after the marker.
+
+mode			Specifies the permissions of the file
+
+validate		Specifies a script or command to validate the file after making changes.
+----------------------------------------------------------------------------------------------------------
+
+
+DEMO:
+-----
+
+➢ Login to working machine where Ansible is intalled
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|	|--+ ansible_vault_password		# ansible vault password
+	|
+	|--- playbooks_labs/				# playbooks directory	
+	|	|--+ blockinfile_example.yml		# tags playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ Set ansible configuration file
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Create playbooks folder
+	terminal --> mkdir playbooks_labs
+
+
+➢ Create playbook file for modifying nginx configuration
+	terminal --> vi playbooks_labs/blockinfile_example.yml
+
+
+blockinfile_example.yml
+--------------------------------------------------------
+---
+- name: Manage Nginx Configuration File						# playbook name
+  hosts: localhost								# use localhost
+
+  tasks:									# tasks section
+    - name: Add a new block of text after a marker				# task 1 name
+      blockinfile:								# use blockinfile module
+        path: /etc/nginx/nginx.conf						# set path and name to target file
+        marker: "# START OF NEW BLOCK"						# marker start point
+        block: |								# set block content
+          # New block of text			# if start point is not found the block will be appended at the end of the file
+          location /api {							
+              proxy_pass http://backend_servers;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          }
+      register: block_result							# save the result in playbook variable
+
+    - name: Print the blockinfile result					# task 2 name
+      debug:									# use debug module
+        var: block_result							# print the saved variable
+
+    - name: Replace a block of text between markers				# task 2 name
+      blockinfile:								# use blockinfile module
+        path: /etc/nginx/nginx.conf						# set path and name to target file
+        marker: "# START OF NEW BLOCK"						# marker
+        block: |								# set block content
+          # Updated block of text
+          location /api {
+              proxy_pass http://new_backend_servers;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          }
+      when: block_result.changed					# condition - if text in variable - execute the task
+
+    - name: Remove a block of text between markers				# task 3 name
+      blockinfile:								# use blockinfile module
+        path: /etc/nginx/nginx.conf						# set path and name to target file
+        marker: "# START OF NEW BLOCK"						# marker
+        state: absent								# target state - remove the block
+      when: block_result.changed						# condition
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R playbooks_labs/
+
+➢ Create nginx folder and configuration file
+	terminal --> mkdir /etc/nginx/
+	terminal --> vi /etc/nginx/nginx.conf
+
+nginx.conf
+--------------------------------------------------------
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    include /etc/nginx/conf.d/*.conf;
+
+    server {
+        listen       80;
+        server_name  localhost;
+
+        # Sample location block for serving static files
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        # This is where the playbook will add or modify blocks
+        # START OF NEW BLOCK
+    }
+}
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/blockinfile_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/blockinfile_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/lineinfile_example.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute the playbook
+	terminal --> ansible-playbook playbooks_labs/blockinfile_example.yml
+	
+# result:
+PLAY [Manage Nginx Configuration File] *******************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [localhost]
+
+TASK [Add a new block of text after a marker] ************************************************************************
+changed: [localhost]
+
+TASK [Print the blockinfile result] **********************************************************************************
+ok: [localhost] => {
+    "block_result": {
+        "changed": true,
+        "diff": [
+            {
+                "after": "",
+                "after_header": "/etc/nginx/nginx.conf (content)",
+                "before": "",
+                "before_header": "/etc/nginx/nginx.conf (content)"
+            },
+            {
+                "after_header": "/etc/nginx/nginx.conf (file attributes)",
+                "before_header": "/etc/nginx/nginx.conf (file attributes)"
+            }
+        ],
+        "failed": false,
+        "msg": "Block inserted"
+    }
+}
+
+TASK [Replace a block of text between markers] ***********************************************************************
+changed: [localhost]
+
+TASK [Remove a block of text between markers] ************************************************************************
+changed: [localhost]
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=5    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+➢ Verify sample.conf file content
+	terminal --> cat /etc/nginx/nginx.conf
+
+result: all command are excuted successfuly
+
+nginx.conf
+--------------------------------------------------------
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    include /etc/nginx/conf.d/*.conf;
+
+    server {
+        listen       80;
+        server_name  localhost;
+
+        # Sample location block for serving static files
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        # This is where the playbook will add or modify blocks
+        # START OF NEW BLOCK
+    }
+}
+# START OF NEW BLOCK
+# New block of text
+location /api {
+    proxy_pass http://backend_servers;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+# START OF NEW BLOCK
+# Updated block of text
+location /api {
+    proxy_pass http://new_backend_servers;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+--------------------------------------------------------
+
+
+
+
+
+
 
 
 
@@ -51,47 +539,639 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 ======================================
 
 
-➢ 
+➢ reboot Module: This module is used to reboot target machines and wait them to come back online.
+	○ It ensures that the machine is back online and ready for fyrther operations before proceeding.
+	○ This module is particulary useful when we need to reboot servers as part of a deplyment or maintenance process.
 
-➢ 
+➢ Use Case:
+	○ Applying karnel updates that require a reboot.
+	○ Esuring that system configurations requiring a reboot are applied
+	○ Automating the process of rebooting multiple servers in a controlled manner.
 
-➢ 
 
-➢ 
 
-➢ 
+Pazrameters		Explanation
+----------------------------------------------------------------------------------------------------------
+msg			A message to dysplay before rebooting. Default is "Reboot initiated by Ansible"
+
+reboot_timeout		Maximum wait time for the system to reboot and respond to a test command. Defaut is 600s (10 min)
+
+test_command		Command to test the system after reboot. Default is 'whoami'.
+
+connect_timeout		Maximum wait time for a successful connection to the managed host before trying again. Default is 5s.
+
+pre_reboot_delay	- Delay in seconds before rebooting the system. Default is 0s.
+
+pre_reboot_delay	- Delay in seconds after rebooting before starting the connection attempts. Default is 0s.
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create 2 Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64 / CentOS Steam x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ansible-client1, ansible-client2
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- playbooks_labs/			# playbooks directory	
+	|	|--+ reboot_example.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+root@142.93.116.93		# DO instance 2 CentOS
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbook file
+	terminal --> vi playbooks_labs/reboot_example.yml
+
+
+reboot_example.yml
+--------------------------------------------------------
+---
+- name: Gather and display OS family					# playbook 1 name
+  hosts: all								# all hosts
+  gather_facts: yes							# gather facts enabled
+
+  tasks:								# tasks secton
+    - name: Display the OS family					# task 1 name
+      debug:								# use debug module
+        msg: "The OS family is {{ ansible_os_family }}"			# print hosts OS family
+
+
+- name: Reboot Servers Example						# playbook 2 name
+  hosts: all								# all hosts
+  become: yes  					# Ensure that the playbook runs with elevated privileges
+
+  tasks:								# tasks secton
+    - name: Apply updates and reboot					# task 1 name
+      block:								# use block module
+        - name: Update all packages					# set subtask 1 name
+          apt:								# use apt package manager (Linux/Unix OS)
+            update_cache: yes						# update cache
+            upgrade: dist						# upgrade distribution
+          when: ansible_os_family == 'Debian'				# condition if OS is type Debian
+
+        - name: Reboot the server					# subtask 2 name
+          reboot:							# use reboot module
+            msg: "Reboot initiated by Ansible for updates"		# print message
+            reboot_timeout: 300						# wait 300s for reboot 
+            post_reboot_delay: 30					# wait 30s before sending commands
+
+        - name: Ensure the server is up and running			# subtask 3 name
+          command: uptime						# use command module
+          register: uptime_result					# save result in variable
+
+        - name: Print uptime						# subtask 4 name
+          debug:							# use debug module to print message
+            var: uptime_result.stdout					# print variable
+
+      when: ansible_os_family == 'Debian'  				# Adjust this condition as needed for your environment
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R playbooks_labs/
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/reboot_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/reboot_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/reboot_example.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook playbooks_labs/reboot_example.yml
+
+
+# result:
+
+PLAY [Gather and display OS family] **********************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@142.93.116.93 is using the discovered Python interpreter at
+/usr/bin/python3.9, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@142.93.116.93]
+[WARNING]: Platform linux on host root@157.230.211.126 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.211.126]
+
+TASK [Display the OS family] *****************************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "The OS family is Debian"			# only this DO Instance will go true the tasks
+}
+ok: [root@142.93.116.93] => {
+    "msg": "The OS family is RedHat"
+}
+
+PLAY [Reboot Servers Example] ****************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [root@157.230.211.126]
+ok: [root@142.93.116.93]
+
+TASK [Update all packages] *******************************************************************************************
+skipping: [root@142.93.116.93]		# skipped RedHat
+ok: [root@157.230.211.126]
+
+TASK [Reboot the server] *********************************************************************************************
+skipping: [root@142.93.116.93]		# skipped RedHat
+changed: [root@157.230.211.126]
+
+TASK [Ensure the server is up and running] ***************************************************************************
+skipping: [root@142.93.116.93]		# skipped RedHat
+changed: [root@157.230.211.126]
+
+TASK [Print uptime] **************************************************************************************************
+ok: [root@157.230.211.126] => {
+    "uptime_result.stdout": " 16:34:18 up 0 min,  1 user,  load average: 1.16, 0.31, 0.10"
+}
+skipping: [root@142.93.116.93]		# skipped RedHat
+
+PLAY RECAP ***********************************************************************************************************
+root@142.93.116.93         : ok=3    changed=0    unreachable=0    failed=0    skipped=4    rescued=0    ignored=0   
+root@157.230.211.126       : ok=7    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+With this example we can see that either if we use dynamic or static inventory we still can filter servers by OS.
+
+
+
+
+
+
+
 
 
 
 170. Checkout GIT Repo via Ansible
 ==================================
 
+➢ git Module: This module is used to manage Git repositories.
+	○ This includes cloning repos, checking out specific branches or tags and pulling updates from remote repos.
+	○ It is useful for deploying code, configurations or any other files managed by Git repo to our servers.
 
-➢ 
+➢ Use Case:
+	○ A common use case for the git module is deploying application code from Git to a set of servers.
+	○ This could be part of a continuous deployment pipeline where we automatically deploy code changes to our servers.
 
-➢ 
 
-➢ 
 
-➢ 
+Pazrameters		Explanation
+----------------------------------------------------------------------------------------------------------
+repo (required)		The URL of the Git Repository to clone from.
 
-➢ 
+dest (required)		The path where the repository should be cloned on the remote host.
+
+version			The branch, tag or commit to check out. Default to the repository's default branch.
+
+force			If 'yes' any local modifications in the repository will be discarded. Default is 'no'.
+----------------------------------------------------------------------------------------------------------
+
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create 2 Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64 / CentOS Steam x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ansible-client1, ansible-client2
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- playbooks_labs/			# playbooks directory	
+	|	|--+ git_example.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+root@142.93.116.93		# DO instance 2 CentOS
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbook file
+	terminal --> vi playbooks_labs/git_example.yml
+
+
+git_example.yml
+--------------------------------------------------------
+---
+- name: Clone GitHub repository and perform tasks			# playbook name
+  hosts: all								# all hosts
+  become: yes								# swich to root user
+
+  tasks:								# tasks section
+    - name: Ensure Git is installed					# task 1 name
+      ansible.builtin.package:						# use ansible.builtin.package module to check for git
+        name: git							# check for installed git
+        state: present							# target state - exist/installed
+
+    - name: Clone the GitHub repository					# task 2 name
+      ansible.builtin.git:						# use ansible.builtin.package module
+        repo: https://github.com/ansible/ansible-examples.git		# set repo URL
+        dest: /tmp/ansible-examples					# set local path for repo clone
+        update: yes							# update enabled
+        version: master							# set repo branch
+
+    - name: Print the contents of a file from the repository		# task 3 name
+      ansible.builtin.shell: cat /tmp/ansible-examples/README.md	# print repo README file
+      register: readme_contents						# save result in variable
+
+    - name: Display the contents of the file				# taks 4 name
+      debug:								# use debug module
+        msg: "{{ readme_contents.stdout }}"				# print the variable with README content
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R playbooks_labs/
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/git_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/git_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/git_example.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook playbooks_labs/git_example.yml
+
+# result:
+
+PLAY [Clone GitHub repository and perform tasks] *********************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.211.126 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.211.126]
+[WARNING]: Platform linux on host root@142.93.116.93 is using the discovered Python interpreter at
+/usr/bin/python3.9, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@142.93.116.93]
+
+TASK [Ensure Git is installed] ***************************************************************************************
+ok: [root@157.230.211.126]
+ok: [root@142.93.116.93]
+
+TASK [Clone the GitHub repository] ***********************************************************************************
+changed: [root@157.230.211.126]
+changed: [root@142.93.116.93]
+
+TASK [Print the contents of a file from the repository] **************************************************************
+changed: [root@157.230.211.126]
+changed: [root@142.93.116.93]
+
+TASK [Display the contents of the file] ******************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "\nAnsible Examples\n----------------\n\nThis repository contains examples and best practices for building Ansible Playbooks."
+}
+ok: [root@142.93.116.93] => {
+    "msg": "\nAnsible Examples\n----------------\n\nThis repository contains examples and best practices for building Ansible Playbooks."
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@142.93.116.93         : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+root@157.230.211.126       : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+➢ Login to one of the hosts machines and check folder with the cloned repository
+	host terminal --> cat /tmp/ansible-examples/README.md
+
+# result:
+
+Ansible Examples
+----------------
+
+This repository contains examples and best practices for building Ansible Playbooks.
+
+
+
+
+
+
+
+
 
 
 
 171. Copy Files from Local Machine to Remote Machines
 =====================================================
 
+➢ We have two ways to move files from local machine to hosts
+	1. Upload files on Git and download them on the hosts with Git
+	2. Copy the files from local machine and directly to hosts machines with Ansible
 
-➢ 
+➢ copy Module: This module is used to copy files or directories from the local Ansible control machine to remote hosts.
+	○ It allows you to tranfer files and set permissions like ownership and other attributes as needed.
 
-➢ 
+➢ Use Case:
+	○ The copy module is commonly used in Ansible playbooks to deploy configuration files, scripts or other resources to remote hosts. For example we might use it to deploy a custom configuration file for an application, copy over SSL certificates or distribute scripts for automation tasks.
 
-➢ 
 
-➢ 
 
-➢ 
+Pazrameters		Explanation
+----------------------------------------------------------------------------------------------------------
+src (required)		The path of the file on the local host.
+
+dest (required)		The path where the file will be stored on the remote host.
+
+backup			If set to 'yes', create a bachup of the destination file before copying. Default is 'no'.
+
+force			If set to 'yes', force the copy operation even if the destination file already exists and is
+			not writable. Default is 'yes'
+
+woner, group, mode	Allows you to set the owner, group, mode and permissions of the copied file or directory.
+
+remote_src		If set to 'yes', specifies that the src file is located on the remote host. Default is 'no'.
+----------------------------------------------------------------------------------------------------------
+
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create 2 Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64 / CentOS Steam x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ansible-client1, ansible-client2
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- playbooks_labs/			# playbooks directory	
+	|	|--+ copy_example.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+root@142.93.116.93		# DO instance 2 CentOS
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbook file
+	terminal --> vi playbooks_labs/copy_example.yml
+
+copy_example.yml
+--------------------------------------------------------
+---
+- name: Copy nginx.conf to remote host					# playbook name		
+  hosts: all								# to all hosts
+
+  tasks:								# tasks section
+    - name: Copy nginx.conf						# task name
+      copy:								# use copy module
+        src: /etc/nginx/nginx.conf    					# Local path of the file
+        dest: /root/ansible/nginx.conf    				# Destination path on remote host: ensure the folder exist
+        owner: root							# set file owner
+        group: root							# set file group
+        mode: '0644'							# set permissions - read, write, read, read
+      become: yes							# switch to root user
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R playbooks_labs/
+
+➢ Check if the file nginx.conf exsist on our local machine. 
+	terminal --> ls /etc/nginx/				# If the file do not exist we need to create it
+
+➢ Create 'ansible' folder on each host and confirm folder creation
+	host terminal root/ --> mkdir ansible/
+	host terminal root/ --> ls
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/copy_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/copy_example.ymll
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/copy_example.yml --check
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook playbooks_labs/copy_example.yml
+
+# result:
+
+PLAY [Copy nginx.conf to remote host] ********************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+ok: [root@142.93.116.93]
+[WARNING]: ...
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.211.126]
+
+TASK [Copy nginx.conf] ***********************************************************************************************
+changed: [root@157.230.211.126]
+changed: [root@142.93.116.93]
+
+PLAY RECAP ***********************************************************************************************************
+root@142.93.116.93         : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+root@157.230.211.126       : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+➢ Login into the host and confirm the copied file and its permissions
+	host terminal --> ls -lrt /root/ansible/
+
+	# result: -rw-r--r-- 1 root root 1321 Jul 20 08:05 nginx.conf
+
+
+
+
 
 
 
@@ -99,15 +1179,212 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 172. Copy Files from Remote Machines to Local Machine
 =====================================================
 
-➢ 
+➢ fetch Module: This module is used to fetch files from remote hosts and store them on the control node (the machine running ANsible)
+	○ Its' particulary useful when you need to retrieve files from multiple remote hosts and cetrize them for further analysis or processing.
 
-➢ 
+➢ Use Case:
+	○ The fetch module is commonly used in scenarios where you need to collect log files, configuration files or other artifacts from multiple hosts for troubleshooting, auditing or backup purposes.
 
-➢ 
 
-➢ 
+Pazrameters		Explanation
+----------------------------------------------------------------------------------------------------------
+src (required)		The path of the file on the remote host.
 
-➢ 
+dest (required)		The path where the file will be stored on the controle host.
+
+flat			If set to 'yes', the file will be fetched and stored without the hostname appended to its
+			filename. Default is 'no'.
+
+validate_checksum	If set to 'yes', validates the checksum of the gfile after it has been transferred.
+			Default is 'no'. Check if any changes are made durring the transfer (hacking). 
+			If no changes are made, the ckecksum will be not changed as well.
+
+checksum_algorithm	Specify the checksum algorithm to use for validating the file. Default to 'sha1'.
+----------------------------------------------------------------------------------------------------------
+
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create 2 Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64 / CentOS Steam x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ansible-client1, ansible-client2
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- playbooks_labs/			# playbooks directory	
+	|	|--+ fetch_example.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts.yml
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+root@142.93.116.93		# DO instance 2 CentOS
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbook file
+	terminal --> vi playbooks_labs/fetch_example.yml
+
+fetch_example.yml
+--------------------------------------------------------
+- name: Generate example logs on remote hosts			# playbook 1 name
+  hosts: all							# all hosts
+
+  tasks:							# tasks section
+    - name: Create log directory if it doesn't exist		# task 1 name
+      file:							# use file module
+        path: /var/log/						# set path to target directory
+        state: directory					# set target state - create
+    
+    - name: Generate example log file					# task 2 name
+      ansible.builtin.shell: |						# use ansible.builtin.shell module
+        echo "This is a sample log file." > /var/log/example.log	# create file example.log with some content
+
+- name: Fetch example logs from remote hosts			# playbook 2 name
+  hosts: all							# all hosts
+
+  tasks:							# tasks section
+    - name: Fetch example log file from remote host		# task 1 name
+      fetch:							# use fetch module
+        src: /var/log/example.log				# set the path and name to target file
+        dest: /tmp/logs/					# set the destination path on ansible machine
+        flat: no						# append hostname to the file
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R playbooks_labs/
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/fetch_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/fetch_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/fetch_example.yml --check
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook playbooks_labs/fetch_example.yml
+
+# result:
+
+PLAY [Generate example logs on remote hosts] *************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+ok: [root@142.93.116.93]
+[WARNING]: ...
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.211.126]
+
+TASK [Create log directory if it doesn't exist] **********************************************************************
+ok: [root@157.230.211.126]
+ok: [root@142.93.116.93]
+
+TASK [Generate example log file] *************************************************************************************
+changed: [root@157.230.211.126]
+changed: [root@142.93.116.93]
+
+PLAY [Fetch example logs from remote hosts] **************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [root@142.93.116.93]
+ok: [root@157.230.211.126]
+
+TASK [Fetch example log file from remote host] ***********************************************************************
+changed: [root@157.230.211.126]
+changed: [root@142.93.116.93]
+
+PLAY RECAP ***********************************************************************************************************
+root@142.93.116.93         : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+root@157.230.211.126       : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+➢ Confirm the transfer of the created log files
+	terminal --> ls /tmp/logs/
+	# result: root@142.93.116.93  root@157.230.211.126		# created directories for each host
+
+	➢ list the last directory for every host
+	terminal --> ls /tmp/logs/root@142.93.116.93/var/log		# result: example.log
+	terminal --> ls /tmp/logs/root@157.230.211.126/var/log		# result: example.log
+
+
+	➢ Print the files:
+	terminal --> cat /tmp/logs/root@142.93.116.93/var/log/example.log
+	terminal --> cat /tmp/logs/root@157.230.211.126/var/log/example.log
+
+	# result: This is a sample log file.
+
+
+➢ If we set 'flat: yes' only one file will be tranfered to /tmp/logs/. It is recommended option for managing single remote machine.
+
+
+
+
+
+
 
 
 
@@ -115,30 +1392,543 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 ======================================================
 
 
-➢ 
+➢ service_facts Module: This module is used to gather information about the state of services on a target host.
+	○ This module collects facts related to services such as their names, states (running, stopped, etc.) and enabled status.
 
-➢ 
+➢ Use Case:
+	○ A common use case for the service_vacts module is to conditionally start, stop or restart services based on their current state. For exampole we might want to restart a service only if it is currently running or we might want to ensure that certain services are always running and start them if they are not.
+	○ Collect information about all services to generate reports.
 
-➢ 
 
-➢ 
 
-➢ 
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ansible-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- playbooks_labs/			# playbooks directory	
+	|	|--+ service_facts_example.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbook file
+	terminal --> vi playbooks_labs/service_facts_example.yml
+
+fetch_example.yml
+--------------------------------------------------------
+---
+- name: Install and manage Nginx and Apache services		# playbook 1 name
+  hosts: all							# all hosts
+  become: yes							# switch to root user
+
+  tasks:							# tasks section
+    - name: Update the apt package index			# task 1 name
+      apt:							# use linux package manager module
+        update_cache: yes					# update
+
+    - name: Install Nginx					# task 2 name
+      apt:							# use linux package manager module
+        name: nginx						# target package
+        state: present						# target state - installed
+
+    - name: Install Redis					# task 3 name
+      apt:							# use linux package manager module
+        name: redis-server					# target package
+        state: present						# target state - installed
+
+    - name: Start and enable both services			# task 4 name
+      service:							# use service module
+        name: "{{ item }}"					# iterate collection to ensure services are up
+        state: started						# services target state - running
+        enabled: yes						# enabled when boot
+      loop:							# services collection
+        - nginx
+        - redis-server
+
+
+- name: Gather and use service facts				# playbook 2
+  hosts: all							# all hosts
+
+  tasks:							# tasks secion
+    - name: Gather service facts				# task 1 name
+      service_facts:						# gather service information
+    
+    # - name: Print all service facts				# task 2 name
+    #   debug:							# use debug module
+    #     var: ansible_facts.services				# print services and their information
+
+    - name: Ensure Nginx service is running			# task 3 name
+      service:							# use service module
+        name: nginx						# target service 
+        state: started						# target state - start
+      when: ansible_facts.services['nginx'].state != 'running'	# execute if service is not running
+
+    - name: Ensure Redis service is stopped				# task 4 name
+      service:								# use service module
+        name: redis-server						# target package
+        state: stopped							# target state - stop
+      when: ansible_facts.services['redis-server'].state != 'stopped'	# execute when the service is running
+
+    - name: Print status of Nginx service				# task 5 name
+      debug:								# use debug module
+        msg: "Nginx is {{ ansible_facts.services['nginx'].state }}"	# print the state of the nginx service
+
+    - name: Print status of Redis service					# task 6 name
+      debug:									# use debug module
+        msg: "Redis is {{ ansible_facts.services['redis-server'].state }}"	# print apache2 service state
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+
+➢ Create playbook file 2
+	terminal --> vi playbooks_labs/service_facts_example_2.yml
+
+service_facts_example_2.yml
+--------------------------------------------------------
+---
+- name: Install and manage Nginx and Apache services
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update the apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Install Apache
+      apt:
+        name: apache2
+        state: present
+
+    - name: Start and enable Nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+
+- name: Gather and use service facts
+  hosts: all
+  tasks:
+    - name: Gather service facts
+      service_facts:
+    
+    # - name: Print all service facts
+    #   debug:
+    #     var: ansible_facts.services
+
+    - name: Ensure Nginx service is running
+      service:
+        name: nginx
+        state: started
+      when: ansible_facts.services['nginx'].state != 'running'
+
+    - name: Ensure Apache service is stopped
+      service:
+        name: apache2
+        state: stopped
+      when: ansible_facts.services['apache2'].state != 'stopped'
+
+    - name: Print status of Nginx service
+      debug:
+        msg: "Nginx is {{ ansible_facts.services['nginx'].state }}"
+
+    - name: Print status of Apache service
+      debug:
+        msg: "Apache2 is {{ ansible_facts.services['apache2'].state }}"
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+In the second job we start only nginx service because apache works on the same port 80 as nginx and this is a conflict.
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R playbooks_labs/
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/service_facts_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/service_facts_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/service_facts_example.yml --check
+
+➢ Execute Playbook 1
+	terminal --> ansible-playbook playbooks_labs/service_facts_example.yml
+
+# result:
+
+PLAY [Install and manage Nginx and Apache services] ******************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.211.126 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.211.126]
+
+TASK [Update the apt package index] **********************************************************************************
+changed: [root@157.230.211.126]
+
+TASK [Install Nginx] *************************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Install Redis] *************************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Start and enable both services] ********************************************************************************
+ok: [root@157.230.211.126] => (item=nginx)
+changed: [root@157.230.211.126] => (item=redis-server)
+
+PLAY [Gather and use service facts] **********************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Gather service facts] ******************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Ensure Nginx service is running] *******************************************************************************
+skipping: [root@157.230.211.126]
+
+TASK [Ensure redis-server service is stopped] ************************************************************************
+changed: [root@157.230.211.126]
+
+TASK [Print status of Nginx service] *********************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Nginx is running"
+}
+
+TASK [Print status of Redis service] *********************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Redis is running"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=10   changed=3    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
+
+
+
+➢ Execute Playbook 2
+	terminal --> ansible-playbook playbooks_labs/service_facts_example_2.yml
+
+# result:
+
+PLAY [Install and manage Nginx and Apache services] ******************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.211.126 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.211.126]
+
+TASK [Update the apt package index] **********************************************************************************
+changed: [root@157.230.211.126]
+
+TASK [Install Nginx] *************************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Install Apache] ************************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Start and enable Nginx service] ********************************************************************************
+ok: [root@157.230.211.126]
+
+PLAY [Gather and use service facts] **********************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Gather service facts] ******************************************************************************************
+ok: [root@157.230.211.126]
+
+TASK [Ensure Nginx service is running] *******************************************************************************
+skipping: [root@157.230.211.126]
+
+TASK [Ensure Apache service is stopped] ******************************************************************************
+skipping: [root@157.230.211.126]
+
+TASK [Print status of Nginx service] *********************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Nginx is running"
+}
+
+TASK [Print status of Apache service] ********************************************************************************
+ok: [root@157.230.211.126] => {
+    "msg": "Apache2 is stopped"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=9    changed=1    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+
+
+
+
+
+
+
 
 
 174. Schedule a CRON Task on Remote Hosts
 =========================================
 
 
-➢ 
+➢ CRON Module: This module is used to manage CRON jobs in Linux/Unix systems.
+	○ A cron job is a time-based job scheduler that allows us to automate the execution of scripts or commands at specified interval.
+	○ With cron module we can create, modify or remove cron jobs directly from our Ansible playbooks.
 
-➢ 
+➢ CRON Module Use Case:
+	○ System Maintenance: Running periodic maintenance tasks like cleaning up temporary files, updating system packages or performing backups.
+	○ Monitoring nad Alerts: Scheduling scripts to check system health,  monitor logs and send alerts if certain conditions are met.
+	○ Data processing: Automating data processing tasks like generating reports, syncing data between systems or processing logs. 
+	○ Application Management: Scheduling tasks related to application management such as restarting services, cleaning cache or rotating logs.
 
-➢ 
 
-➢ 
 
-➢ 
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ansible-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- playbooks_labs/			# playbooks directory	
+	|	|--+ cron_example.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[all]
+root@157.230.211.126		# DO instance 1 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create cleanup_log.sh file
+	terminal --> vi playbooks_labs/cleanup_logs.sh
+
+cleanup_logs.sh
+--------------------------------------------------------
+echo "simple code cleanup file"
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Create playbook file
+	terminal --> vi playbooks_labs/cron_example.yml
+
+cron_example.yml
+--------------------------------------------------------
+---
+- name: Schedule a weekly log cleanup				# playbook name
+  hosts: all							# all hosts
+  become: yes							# switch to root user
+
+  tasks:							# tasks section
+    - name: Ensure the log cleanup script exists		# task 1 name
+      copy:							# use copy module
+        src: cleanup_logs.sh					# set target file name
+        dest: /usr/local/bin/cleanup_logs.sh			# set destination folder
+        mode: '0755'						# set file permissions
+
+    # Every Monday at 3:30 AM
+    - name: Schedule a weekly log cleanup			# task 2 name
+      cron:							# use cron module
+        name: "Weekly Log Cleanup"				# set cron job name
+        minute: "30"						# set micute of execution
+        hour: "3"						# set hour of excution
+        day: "*"						# every days
+        month: "*"						# wvery months
+        weekday: "1"						# set weekday - 1st day of the week (monday)
+        job: "/usr/local/bin/cleanup_logs.sh"			# set file path as job
+        user: "root"						# execute as root user
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R playbooks_labs/
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/cron_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/cron_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/cron_example.yml --check -vvv
+
+➢ Execute Playbook
+	terminal --> ansible-playbook playbooks_labs/cron_example.yml
+
+# result:
+
+PLAY [Schedule a weekly log cleanup] *********************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.211.126 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.211.126]
+
+TASK [Ensure the log cleanup script exists] **************************************************************************
+changed: [root@157.230.211.126]
+
+TASK [Schedule a weekly log cleanup] *********************************************************************************
+changed: [root@157.230.211.126]
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.211.126       : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+➢ Connect to the remote host and check the cleanup file and its permissions and cronjobs
+	➢ Check the file existance and its permissions
+		remote host terminal --> ls -lrt /usr/local/bin/	
+	
+		# result: -rwxr-xr-x 1 root root 32 Jul 21 11:48 cleanup_logs.sh
+
+
+	➢ Check CRON jobs on the host
+		remote host terminal --> crontab -l
+
+		# result: 
+			#Ansible: Weekly Log Cleanup
+			30 3 * * 1 /usr/local/bin/cleanup_logs.sh
+
+
+
+
+
+
 
 
 
@@ -146,29 +1936,454 @@ Section 31: Ansible PlayBooks For Linux: Practical Labs
 ====================================================
 
 
-➢ 
+DEMO:
+-----
 
-➢ 
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
 
-➢ 
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
 
-➢ 
 
-➢ 
+➢ Create 2 Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client-1, ubuntu-client-2
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- playbooks_labs/			# playbooks directory	
+	|	|--+ loops_template_example.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@137.184.65.71		# DO instance 1 Ubuntu
+root@159.223.167.148		# DO instance 2 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbook file
+	terminal --> vi playbooks_labs/loops_template_example.yml
+
+loops_template_example.yml
+--------------------------------------------------------
+---
+- name: Install and configure Nginx with dynamic server_name		# playbook name
+  hosts: webservers							# host
+  become: yes  								# Ensure the tasks run with root privileges
+  vars:									# create variables
+    nginx_servers:							# create var with server collection
+      - { server_name: '{{ ansible_hostname }}', port: 80, proxy_pass: 'backend1' }
+      - { server_name: '{{ ansible_hostname }}', port: 80, proxy_pass: 'backend2' }
+      - { server_name: '{{ ansible_hostname }}', port: 80, proxy_pass: 'backend3' }
+      - { server_name: '{{ ansible_hostname }}', port: 80, proxy_pass: 'backend4' }
+
+  tasks:								# tasks section
+    - name: Ensure Nginx is installed					# task 1 name
+      apt:								# use Linux/Unix package manager
+        name: nginx							# target package
+        state: present							# target state - install
+      when: ansible_os_family == "Debian"				# execute the task if OS is Debian based
+
+    - name: Create Nginx configuration from template			# task 2 name
+      template:								# use template module
+        src: nginx.conf.j2						# use configuration template file
+        dest: /etc/nginx/nginx.conf					# destination on the host
+      notify:								# after execution command
+        - reload nginx							# execute handler 'reload nginx'
+
+    - name: Ensure Nginx is running and enabled				# task 3 name
+      service:								# use service module
+        name: nginx							# target service
+        state: started							# target state - running
+        enabled: yes							# start on boot
+      when: ansible_os_family == "Debian"				# execute the task if OS is Debian based
+
+  handlers:								# Nginx reload handler
+    - name: reload nginx						# handler name
+      service:								# use service module
+        name: nginx							# target module
+        state: reloaded							# target state - reload
+      when: ansible_os_family == "Debian"				# execute handler if OS is Debian based
+
+# Template content: nginx.conf.j2
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+➢ Create template configuration file
+	terminal --> vi playbooks_labs/nginx.conf.j2
+
+nginx.conf.j2
+--------------------------------------------------------
+worker_processes 1;
+events {				
+    worker_connections 1024;
+}
+http {
+    {% for server in nginx_servers %}						# start loop
+    server {									# server configuration
+        listen {{ server.port }};						# listen on port
+        server_name {{ server.server_name }};					# server name
+
+        location / {								# server props section
+            proxy_pass http://{{ server.proxy_pass }};				# proxy pass
+            proxy_set_header Host $host;					# server headers 
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+    {% endfor %}								# end loop
+}
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R playbooks_labs/
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/loops_template_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/loops_template_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/loops_template_example.yml --check
+
+➢ Execute Playbook
+	terminal --> ansible-playbook playbooks_labs/loops_template_example.yml
+
+# result:
+
+PLAY [Install and configure Nginx with dynamic server_name] **********************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@159.223.167.148 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@159.223.167.148]
+[WARNING]: Platform linux on host root@137.184.65.71 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@137.184.65.71]
+
+TASK [Ensure Nginx is installed] *************************************************************************************
+changed: [root@159.223.167.148]
+changed: [root@137.184.65.71]
+
+TASK [Create Nginx configuration from template] **********************************************************************
+changed: [root@137.184.65.71]
+changed: [root@159.223.167.148]
+
+TASK [Ensure Nginx is running and enabled] ***************************************************************************
+ok: [root@159.223.167.148]
+ok: [root@137.184.65.71]
+
+RUNNING HANDLER [reload nginx] ***************************************************************************************
+fatal: [root@159.223.167.148]: FAILED! => {"changed": false, "msg": "Unable to reload service nginx: Job for nginx.service failed.\nSee \"systemctl status nginx.service\" and \"journalctl -xeu nginx.service\" for details.\n"}
+fatal: [root@137.184.65.71]: FAILED! => {"changed": false, "msg": "Unable to reload service nginx: Job for nginx.service failed.\nSee \"systemctl status nginx.service\" and \"journalctl -xeu nginx.service\" for details.\n"}
+
+PLAY RECAP ***********************************************************************************************************
+root@137.184.65.71         : ok=4    changed=2    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+root@159.223.167.148       : ok=4    changed=2    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+
+
+➢ We receive error when we try to reload the nginx service. This issue is connected with the template configuration that we will go in the next lecture.
+
+➢ Connect to any of the remote host and print the configuration
+	host terminal --> cat /etc/nginx/nginx.conf
+
+
+# result we can see that 4 server configuration are created as required in the playbook nginx_servers collection
+--------------------------------------------------------
+worker_processes 1;
+events {
+    worker_connections 1024;
+}
+http {
+        server {					# server 1
+        listen 80;
+        server_name ubuntu-client-1;
+
+        location / {
+            proxy_pass http://backend1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+        server {					# server 2		
+        listen 80;
+        server_name ubuntu-client-1;
+
+        location / {
+            proxy_pass http://backend2;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+        server {					# server 3
+        listen 80;
+        server_name ubuntu-client-1;
+
+        location / {
+            proxy_pass http://backend3;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+        server {					# server 4
+        listen 80;
+        server_name ubuntu-client-1;
+
+        location / {
+            proxy_pass http://backend4;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+    }
+--------------------------------------------------------
+
+
+In the next lections we will correct the reload task in the playbook.
+
+
+
+
+
+
 
 
 
 176. Read file from Remote Host - Ansible Slurp
 ===============================================
 
+➢ Slurp Module: This module is used to recieve the content of a file on a remote system and store it as a base64-encoded stryng in Ansible.
+	○ This module is particulary useful when we need to fetch the content of a file on a target system and then potentially use thecontent in subsequent task or store it localy.
 
-➢ 
+➢ Module Use case:
+	○ Configuration Management: Fetching configuration files (like nginx.conf, my.cnf, etc.) from remote server for analysis, backup or comparison purposes.
+	○ File integrity Checks: Verifying the contents of critical files on remote servers to ensure they match expected values or patterns. IMPORTANT !!!
+	○ Dynamic Templating: Using fetched file content as ariables or templates in subsequent tasks or playbooks.
 
-➢ 
 
-➢ 
+DEMO:
+-----
 
-➢ 
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
 
-➢ 
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create 2 Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client-1, ubuntu-client-2
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- playbooks_labs/			# playbooks directory	
+	|	|--+ slurp_example.yml		# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@137.184.65.71		# DO instance 1 Ubuntu
+root@159.223.167.148		# DO instance 2 Ubuntu
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbook file
+	terminal --> vi playbooks_labs/slurp_example.yml
+
+slurp_example.yml
+--------------------------------------------------------
+- name: Fetch configuration file from remote server				# playbook name
+  hosts: webservers								# hosts from 'webservers' group
+
+  tasks:								# tasks section
+    - name: Fetch nginx configuration					# task 1 name
+      ansible.builtin.slurp:						# use ansible.builtin.slurp module
+        src: /etc/nginx/nginx.conf					# target file: exsist from the previous demo
+      register: nginx_conf						# create variable with file content
+
+    - name: Display fetched content					# task 2 name
+      debug:								# use debug module
+        msg: "Fetched content: {{ nginx_conf.content | b64decode }}"	# print message with decoded content
+
+    # You can further process the content as needed, for example:
+    - name: Save content to a local file				# task 3 name
+      copy:								# use copy module
+        content: "{{ nginx_conf.content | b64decode }}"			# decode the content of the encoded variable
+        dest: /tmp/nginx.conf						# save the result in target file
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+### /etc/nginx/nginx.conf file exsist on the remote servers from the previous demo.
+
+
+➢ Give permissions for execution of the playbook
+	terminal --> chmod 0755 -R playbooks_labs/
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/slurp_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/slurp_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/slurp_example.yml --check
+
+➢ Execute Playbook
+	terminal --> ansible-playbook playbooks_labs/slurp_example.yml
+
+# result:
+
+PLAY [Fetch configuration file from remote server] *******************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@159.223.167.148 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@159.223.167.148]
+[WARNING]: Platform linux on host root@137.184.65.71 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@137.184.65.71]
+
+TASK [Fetch nginx configuration] *************************************************************************************
+ok: [root@159.223.167.148]
+ok: [root@137.184.65.71]
+
+TASK [Display fetched content] ***************************************************************************************
+ok: [root@137.184.65.71] => {
+    "msg": "Fetched content: worker_processes 1;\nevents {\n    worker_connections 1024;\n}\nhttp {\n        server {\n        listen 80;\n        server_name ubuntu-client-1;\n\n        location / {\n            proxy_pass http://backend1;\n            proxy_set_header Host $host;\n            proxy_set_header X-Real-IP $remote_addr;\n            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header X-Forwarded-Proto $scheme;\n        }\n    }\n        server {\n        listen 80;\n        server_name ubuntu-client-1;\n\n        location / {\n            proxy_pass http://backend2;\n            proxy_set_header Host $host;\n            proxy_set_header X-Real-IP $remote_addr;\n            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header X-Forwarded-Proto $scheme;\n        }\n    }\n        server {\n        listen 80;\n        server_name ubuntu-client-1;\n\n        location / {\n            proxy_pass http://backend3;\n            proxy_set_header Host $host;\n            proxy_set_header X-Real-IP $remote_addr;\n            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header X-Forwarded-Proto $scheme;\n        }\n    }\n        server {\n        listen 80;\n        server_name ubuntu-client-1;\n\n        location / {\n            proxy_pass http://backend4;\n            proxy_set_header Host $host;\n            proxy_set_header X-Real-IP $remote_addr;\n            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header X-Forwarded-Proto $scheme;\n        }\n    }\n    }\n\n"
+}
+ok: [root@159.223.167.148] => {
+    "msg": "Fetched content: worker_processes 1;\nevents {\n    worker_connections 1024;\n}\nhttp {\n        server {\n        listen 80;\n        server_name ubuntu-client-2;\n\n        location / {\n            proxy_pass http://backend1;\n            proxy_set_header Host $host;\n            proxy_set_header X-Real-IP $remote_addr;\n            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header X-Forwarded-Proto $scheme;\n        }\n    }\n        server {\n        listen 80;\n        server_name ubuntu-client-2;\n\n        location / {\n            proxy_pass http://backend2;\n            proxy_set_header Host $host;\n            proxy_set_header X-Real-IP $remote_addr;\n            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header X-Forwarded-Proto $scheme;\n        }\n    }\n        server {\n        listen 80;\n        server_name ubuntu-client-2;\n\n        location / {\n            proxy_pass http://backend3;\n            proxy_set_header Host $host;\n            proxy_set_header X-Real-IP $remote_addr;\n            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header X-Forwarded-Proto $scheme;\n        }\n    }\n        server {\n        listen 80;\n        server_name ubuntu-client-2;\n\n        location / {\n            proxy_pass http://backend4;\n            proxy_set_header Host $host;\n            proxy_set_header X-Real-IP $remote_addr;\n            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header X-Forwarded-Proto $scheme;\n        }\n    }\n    }\n\n"
+}
+
+TASK [Save content to a local file] **********************************************************************************
+changed: [root@159.223.167.148]
+changed: [root@137.184.65.71]
+
+PLAY RECAP ***********************************************************************************************************
+root@137.184.65.71         : ok=4    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+root@159.223.167.148       : ok=4    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+➢ print the saved file on our working machine
+	terminal --> cat /tmp/nginx.conf
+
 

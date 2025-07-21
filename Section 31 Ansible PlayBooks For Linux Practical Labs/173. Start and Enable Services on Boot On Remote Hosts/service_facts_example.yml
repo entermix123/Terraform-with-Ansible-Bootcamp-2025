@@ -1,0 +1,58 @@
+---
+- name: Install and manage Nginx and Apache services
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update the apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Install Redis
+      apt:
+        name: redis-server
+        state: present
+
+    - name: Start and enable both services
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - nginx
+        - redis-server
+
+
+- name: Gather and use service facts
+  hosts: all
+  tasks:
+    - name: Gather service facts
+      service_facts:
+    
+    # - name: Print all service facts
+    #   debug:
+    #     var: ansible_facts.services
+
+    - name: Ensure Nginx service is running
+      service:
+        name: nginx
+        state: started
+      when: ansible_facts.services['nginx'].state != 'running'
+
+    - name: Ensure redis-server service is stopped
+      service:
+        name: redis-server
+        state: stopped
+      when: ansible_facts.services['redis-server'].state != 'stopped'
+
+    - name: Print status of Nginx service
+      debug:
+        msg: "Nginx is {{ ansible_facts.services['nginx'].state }}"
+
+    - name: Print status of Redis service
+      debug:
+        msg: "Redis is {{ ansible_facts.services['redis-server'].state }}"
