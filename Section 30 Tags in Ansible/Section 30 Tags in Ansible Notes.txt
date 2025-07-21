@@ -12,7 +12,7 @@ Section 30: Tags in Ansible
 DEMO:
 -----
 
-➢ Login to working machine where Ansible is intalled
+➢ Login to working machine where Ansible is installed
 	terminal --> ssh root@IP
 	terminal --> password
 
@@ -29,7 +29,7 @@ root/
 	|--+ ansible.cfg				# ansible configuration file
 	|--- inventory/
 
-➢ Navigate to nasible root directory
+➢ Navigate to ansible root directory
 	terminal --> cd ansible
 
 ➢ Activate python virtual environment
@@ -53,7 +53,7 @@ save changes - escape, :wq!, enter
 	terminal --> mkdir common_playbooks_intro
 
 
-➢ Create secrets file ags_ansible.yml
+➢ Create playbook file ags_ansible.yml
 	terminal --> vi common_playbooks_intro/tags_ansible.yml
 
 tags_ansible.yml
