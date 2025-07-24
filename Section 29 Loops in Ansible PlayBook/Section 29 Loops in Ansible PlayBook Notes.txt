@@ -94,7 +94,7 @@ Activate python virtual environment
 			- Use case: Other
 			- Tag: ansible-admin-key
 			- Create access key
-			- save keys somehwere safe
+			- save keys somewhere safe
 			- close
 		
 ➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
@@ -331,7 +331,7 @@ Activate python virtual environment
 			- Use case: Other
 			- Tag: ansible-admin-key
 			- Create access key
-			- save keys somehwere safe
+			- save keys somewhere safe
 			- close
 		
 ➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
@@ -527,7 +527,7 @@ Activate python virtual environment
 			- Use case: Other
 			- Tag: ansible-admin-key
 			- Create access key
-			- save keys somehwere safe
+			- save keys somewhere safe
 			- close
 		
 ➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine

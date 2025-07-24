@@ -103,7 +103,7 @@ Activate python virtual environment
 			- Use case: Other
 			- Tag: ansible-admin-key
 			- Create access key
-			- save keys somehwere safe
+			- save keys somewhere safe
 			- close
 		
 
@@ -291,7 +291,7 @@ Activate python virtual environment
 			- Use case: Other
 			- Tag: ansible-admin-key
 			- Create access key
-			- save keys somehwere safe
+			- save keys somewhere safe
 			- close
 		
 
@@ -475,7 +475,7 @@ Activate python virtual environment
 			- Use case: Other
 			- Tag: ansible-admin-key
 			- Create access key
-			- save keys somehwere safe
+			- save keys somewhere safe
 			- close
 		
 
@@ -674,7 +674,7 @@ Activate python virtual environment
 			- Use case: Other
 			- Tag: ansible-admin-key
 			- Create access key
-			- save keys somehwere safe
+			- save keys somewhere safe
 			- close
 		
 
