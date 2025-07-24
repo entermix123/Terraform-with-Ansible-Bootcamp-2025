@@ -6,10 +6,367 @@ Section 34: Ansible Machine Specific Execution
 182. Ansible Delegate_to Module
 
 
+
+
 181. Ansible local_action Module
 ================================
+
+➢ Ansible Playbooks and tasks are always tend to work on Ansible Remote Machines / Ansible Clients.
+
+➢ Sometimes user need to work on Ansible Controller Node to generate some data, to do some modification in between of Playbook etc.
+
+➢ Ansible local_action is used to process the module / task on local machine i.e Ansible Controller machine.
+	○ Mostly modules used with local_action are shell and command.
+
+
+
+➢ Login to working machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|	|--+ ansible_vault_password		# ansible vault password
+	|
+	|--- playbooks_labs/				# playbooks directory	
+	|	|--+ local_action.yml			# playbook 1
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somewhere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+
+➢ Create playbook
+	terminal -> vi playbooks_labs/local_action.yml
+
+local_action.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook						# interpreter
+- name: Local Action in Ansible								# playbook name
+  hosts: all										# all hosts
+  remote_user: ec2-user									# set default awws user
+  become: 'yes'										# switch user option enabled
+  become_user: root									# switch to root user
+
+  tasks:										# tasks section
+    - name: This will create a local file /tmp/local_file.ini				# task 1 name
+      local_action: command touch /tmp/"{{ ansible_hostname }}"_local_file.ini		# local machine file creation
+
+    - name: Here we copy the local file to remote 					# task 2 name
+      copy:										# use copy module
+        src: /tmp/{{ ansible_hostname }}_local_file.ini					# source file & prefix instance name 
+        dest: /var/tmp/									# set target directory - on remote host
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R playbooks_labs/
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/local_action.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/local_action.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/local_action.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook playbooks_labs/local_action.yml
+	
+
+➢ Login into the AWS instance and check for the file
+	aws instance terminal --> ls /var/tmp/
+
+	# result: we should have the created file with the instance name prefied.
+
+
+➢ In this case we generate the file on the local machine (with 'local_action') and then copy the file to the destination host.
+
+
+
+
+
+
 
 
 
 182. Ansible Delegate_to Module
 ===============================
+
+➢ Ansible 'delegate_to' module is used when user wants to execute specific tasks to specific module.
+
+➢ Ansible 'delegate_to' module is a directive and not an individual module. It integrates with other modules and it controls the task execution by deciding which host should run the task at runtime.
+
+
+➢ Login to working machine where Ansible is intalled
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|	|--+ ansible_vault_password		# ansible vault password
+	|
+	|--- playbooks_labs/				# playbooks directory	
+	|	|--+ delegate_to.yml			# playbook 1
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somewhere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+
+➢ Create playbook
+	terminal -> vi playbooks_labs/delegate_to.yml
+
+delegate_to.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook						# interpreter
+- name: Local Action in Ansible								# playbook name
+  hosts: all										# all hosts
+  remote_user: ec2-user									# set default awws user
+  become: 'yes'										# switch user option enabled
+  become_user: root									# switch to root user
+
+  vars:											# set variable
+    tmplog: /tmp/connection.log								# set variable location and name
+  
+  tasks:										# tasks section
+  - name: create tmplog									# task 1 name
+    shell: test ! -f {{ tmplog }} && touch {{ tmplog }}					# create tmp if not exists
+    failed_when: false									# if ant error in shell command, stop
+  
+  - name: delegate_to									# task 2 name
+    shell: echo "delegate_to . {{ inventory_hostname }} $(hostname) ." >> {{ tmplog }}	# use shell to execute one more command
+    delegate_to: localhost								# delegate execution to specific instance
+    # delegate_to: ec2-13-59-156-142.us-east-2.compute.amazonaws.com			# delegate execution to specific instance
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R playbooks_labs/
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook playbooks_labs/delegate_to.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: playbooks_labs/delegate_to.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook playbooks_labs/delegate_to.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook playbooks_labs/delegate_to.yml
+	
+	# result: all task must be executed	
+
+
+
+
+➢ We can Login into remote instance and check if the file is created
+	remote host terminal --> ls /tmp/
+
+	# we should see the created file - connection.log
+
+
+
+
+CONSCLUESION
+------------
+	➢ local_action is limited only to local machine
+	➢ delegate_to may act on other hosts 
