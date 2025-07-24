@@ -12,12 +12,690 @@ Section 32: Error Handling in Ansible
 177. Error Handling in Ansible I
 ================================
 
+For this DEMO we will use AWS instances.
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+➢ Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+
+➢ Working folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ error_handling_1.yml	# playbook 1
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somewhere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+
+➢ Create playbook handler_req.yml
+	terminal -> vi aws_playbooks_intro/error_handling_1.yml
+
+error_handling_1.yml
+----------------------------------------------------- 	
+#!/root/ansible/myansible/bin/ansible-playbook			# set interpreter
+- name: Error Handling Part I					# playbook name
+  hosts: all							# all hosts
+  remote_user: ec2-user						# set default aws user
+  become: 'yes'							# enable switch user option
+  become_user: root						# switch to root user
+
+  tasks:							# tasks section
+    - name: List all files/dirs in /etc location		# task 1 name
+      command: "ls /etcc/"					# use command module to execute command with mistake
+      register: home_out					# use register module to save command result in variable
+      ignore_errors: yes					# ignore errors prop will continue with next tasks
+    - debug: var=home_out					# use debug module to print the variable
+
+    - name: List all files/dirs in /tmp location		# task 2 name
+      command: "ls /tmp/"					# execute command
+      register: tmp_out						# save command result in variable
+    - debug: var=tmp_out					# use debug module to print the variable
+
+    - name: List all files/dirs in /etc location		# task 3 name
+      command: "ls /etcc/"					# execute command with wrong folder
+      register: home1_out					# save the result in variable
+      ignore_errors: yes					# ignore errors prop will continue with next tasks
+    - debug: var=home1_out					# use debug module to print the variable - no error in debug task
+      failed_when: home1_out.rc==2				# fail the task sequence if 'written status code' rc == 2 - error
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+➢ Give executable rights to the playbook files	
+	terminal --> chmod 0755 -R aws_playbooks_intro/
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook aws_playbooks_intro/error_handling_1.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: aws_playbooks_intro/error_handling_1.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook aws_playbooks_intro/error_handling_1.yml --check
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook aws_playbooks_intro/error_handling_1.yml
+
+
+# result: 
+	- Task 1 will return error but will be ignored.
+	- Task 2 will be executed with no errors.
+	- Task 3 also will return error but will be ignored as well. We set param 'failed_when: home1_out.rc==2' which mean that if in the result of the debug task we have 'written status code = 2' (error flag, 'written status code == 0' - ok), stop the tasks sequence.
+
+
+➢ If we want to stop our tasks in specific conditions we can use 'failed_when: ' parameter.
+
+
+
+
+
 
 
 178. Block and Rescue in Ansible Playbook
 =========================================
 
+➢ Block
+	○ Blocks in Ansible allow as to logically group a set of tasks together, primarily for one of two purposes.
+	○ User can apply conditional logic to an entire set of tasks.
+
+➢ Rescue
+	○ Rescue Block in used for cleanUp activity in Ansible.
+	○ User can use ansible 'block', 'rescue' and 'always' to perform different kinds of error handling, where the rescue block will be used to perform cleanup action.
+
+
+For this DEMO we will use AWS instances.
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+➢ Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+
+➢ Working folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ block_ansible.yml		# playbook 1
+ 	|	|--+ rescue_block.yml		# playbook 2
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somewhere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+
+➢ Create playbook block_ansible.yml
+	terminal -> vi aws_playbooks_intro/block_ansible.yml
+
+block_ansible.yml
+----------------------------------------------------- 	
+#!/root/ansible/myansible/bin/ansible-playbook			# set interpreter
+- name: Ansible Blocks						# playbook name
+  hosts: all							# all hosts
+  remote_user: ec2-user						# use default aws user
+
+  tasks:							# tasks section
+
+    - block:							# use block for multiple tasks in task 1 in the playbook
+
+      - name: List usr directory content			# block task 1
+        command: "ls -l /usr/"					# execute command - list user dir content
+        register: usr_out					# save command result in a variable
+    
+      - name: List root partition content			# block task 2
+        command: "ls -l /roott/"				# execute command with wrong directory name
+        register: root_out					# save command result in a variable
+
+      - name: List bin diretcory content			# block task 3
+        command: "ls -l /bin/"					# execute command - list content of /bin/ dir
+        register: bin_out					# save command result in a variable
+
+      become: 'yes'						# switch to root user for all tasks in the block
+      ignore_errors: yes					# ignore errors for block tasks and execute next playbook task
+
+    - name: List ansible user's home directory content		# task 2 in the playbook
+      command: "ls -l ~/"					# execute command - list content of the home dir
+      register: userhome_out					# save command result in a variable
+
+    - debug: var=usr_out					# playbook task 3 in the block - print variable
+    - debug: var=root_out					# playbook task 4 in the block - print variable
+    - debug: var=userhome_out					# playbook task 5 in the block - print variable
+    # - debug: var=bin_out					# playbook task 6 in the block - print variable - large data
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+➢ Playbook info
+	➢ All tasks in the block are executed as root user. In this case the Block and its subtasks are the first task of the playbook.
+	➢ All other playbook tasks are executed as user 'ec2-user' set on playbook level.
+
+
+➢ Create playbook rescue_block.yml
+	terminal -> vi aws_playbooks_intro/rescue_block.yml
+
+rescue_block.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook			# define interpreter
+- name: Ansible Blocks						# playbook name
+  hosts: all							# all hosts
+  remote_user: ec2-user						# set default user
+
+  tasks:							# tasks section
+    - block:							# block with tasks
+        - name: List home directory content			# block task 1 name
+          command: ls -l ~/					# execute command - list the content of home directory
+          
+        - name: Failing intentionally				# block task 2 name
+          command: ls -l /tmp/					# execute command - list the content of tmp directory
+
+      become: 'yes'						# switch to root user
+      #ignore_errors: yes					# ignore errors - continue with the next tasks
+
+      rescue:							# execute tasks in case of failure of tasks in the prev block
+        - name: Rescue block (perform recovery)			# rescue task name - recovery
+          debug:						# use debug module to print message
+            msg: 'Something went wrong, cleaning up..'		# print message
+
+      always:							# always block - always is executed
+        - name: This will execute always			# always task name
+          debug:						# use debug module to print message
+            msg: I will execute even in failure scenario	# print message
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+➢ Playbook info
+	➢ If the tasks in the Block are executed without errors, rescue task will not be executed.
+	➢ If any error occur in the block tasks, rescue task will be executed 
+	➢ Always task will be executed regardless of the errors in the block tasks.
+
+
+➢ Give executable rights to the playbook files	
+	terminal --> chmod 0755 -R aws_playbooks_intro/
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook aws_playbooks_intro/block_ansible.yml --syntax-check
+	terminal --> ansible-playbook aws_playbooks_intro/rescue_block.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: aws_playbooks_intro/block_ansible.yml
+		playbook: aws_playbooks_intro/rescue_block.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook aws_playbooks_intro/block_ansible.yml --check
+	terminal --> ansible-playbook aws_playbooks_intro/rescue_block.yml --check
+
+
+➢ Execute block_ansible.yml playbook
+	terminal --> ansible-playbook aws_playbooks_intro/block_ansible.yml
+
+# result:
+➢ Playbook info
+	➢ All tasks in the block are executed as root user. In this case the Block and its subtasks are the first task of the playbook.
+	➢ All other playbook tasks are executed as user 'ec2-user' set on playbook level.
+
+
+
+➢ Execute rescue_block.yml playbook
+	terminal --> ansible-playbook aws_playbooks_intro/rescue_block.yml
+
+# result:
+➢ Playbook info
+	➢ If the tasks in the Block are executed without errors, rescue task will not be executed.
+	➢ If any error occur in the block tasks, rescue task will be executed 
+	➢ Always task will be executed regardless of the errors in the block tasks.
+
+
+Rescue task is used when we make configuration changes and if something fail, we need to roll back the old configuration to avoid downtime.
+
+
+
+
+
+
+
+
 
 
 179. Demo: Block and Rescue in Ansible
 ======================================
+
+➢ We will create a Use Case of FTP Server installation and see how Block and rescue works together.
+
+➢ Scenario:
+	○ Install vsftpd package
+	○ Take a backup of '/etc/vsftpd/vsftpd.conf' on the same managed node
+	○ Copy vsftpd.j2 jinja template from controller node to the managed node and replace /etc/vsftpd/vsftpd.conf
+	○ Intentionally fail the block by trying to access incorrect location
+
+
+➢ Scenario: Next Rescue block for cleanup
+	○ Print a message on the console for the recovery
+	○ Restore vsftpd.conf using the backup file vsftpd.conf.bkp on the managed node
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+➢ Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+
+➢ Working folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ demo_block_rescue.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somewhere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+➢ Create playbook with rescue and always blocks
+	terminal -> vi aws_playbooks_intro/demo_block_rescue.yml
+
+demo_block_rescue.yml
+----------------------------------------------------- 	
+#!/root/ansible/myansible/bin/ansible-playbook			# set interpreter
+- name: Error Handling Part I					# playbook name
+  hosts: all							# all hosts
+  remote_user: ec2-user						# set default remote user
+  become: 'yes'							# switch to root user option enabled
+  become_user: root						# switch to root user
+
+  vars:								# define boolean veriables
+    anonymous_enable: yes
+    local_enable: yes
+    write_enable: yes
+    anon_upload_enable: yes
+
+  tasks:							# tasks section
+
+    - block:							# define block of tasks
+        - name: install vsftp					# block task 1
+          yum: 							# use 'yum' Linux package manager
+            name: vsftpd					# install target package
+
+        - name: take backup of existing config			# block task 2
+          copy:							# use copy module
+            src: /etc/vsftpd/vsftpd.conf			# source configuration for the backup
+            dest: /etc/vsftpd/vsftpd.conf.bkp			# destination file for the configuration backup
+            remote_src: yes					# the operation is performed on the remote host
+        
+        - name: use Jinja2 template to configure vsftpd		# block task 3
+          template:						# use template module
+            src: vsftpd.j2					# set used template file for vsftp configuration
+            dest: /etc/vsftpd/vsftpd.conf			# set destination configuration file
+
+        - name: View Custom Jinja Teamplate values		# block task 4
+          command: "cat /etc/vsftpd/vsftpd.conf"		# execute command
+          register: jinja_out					# save the result of the command in a variable
+        - debug: var=jinja_out					# use debug module to print the variable
+        
+        - name: This will fail					# block task 5 - fail intentionally
+          command: "ls -l /tmp/does-not-exist"			# execute command to print content of not existing dir
+
+        
+      rescue:								# define rescue block
+        - name: Recovery block						# rescue block - to cover previous failed task
+          debug:							# use debug module to print message
+            msg: "something failed, restoring vsftpd.conf from backup"	# define the message
+
+        - name: 							# rescue block task 2 - restoring the backup
+          copy:								# use copy module 
+            src: /etc/vsftpd/vsftpd.conf.bkp				# set source file
+            dest: /etc/vsftpd/vsftpd.conf				# set destination file
+            remote_src: yes 						# the operation is performed on the remote host
+
+        - name: View vsftd.conf values					# rescue block task 3
+          command: "cat /etc/vsftpd/vsftpd.conf"			# execute command to print defined file
+          register: conf_out						# save the result in a variable
+        - debug: var=conf_out        					# use debug module to print the variable
+
+
+      always:					# always block
+        - name: Restarting vsftpd		# always task 1
+          service:				# use service module
+            name: vsftpd			# taget package
+            state: restarted			# target state - restart
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+
+➢ Create vsftpd.j2 jinja2 configuration file
+	terminal -> vi vsftpd.j2
+
+vsftpd.j2
+----------------------------------------------------- 	
+anonymous_enable={{ anonymous_enable }}
+local_enable={{ local_enable }}
+write_enable={{ write_enable }}
+anon_upload_enable={{ anon_upload_enable }}
+dirmessage_enable=YES
+xferlog_enable=YES
+connect_from_port_20=YES
+pam_service_name=vsftpd
+userlist_enable=YES
+# MY IP Address={{ ansible_facts['default_ipv4']['address'] }}
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give executable rights to the playbook files	
+	terminal --> chmod 0755 -R aws_playbooks_intro/
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook aws_playbooks_intro/demo_block_rescue.yml --syntax-check
+
+
+	# if the syntax is correct we will receive this messages
+		playbook: aws_playbooks_intro/demo_block_rescue.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook aws_playbooks_intro/demo_block_rescue.yml --check
+
+
+➢ Execute demo_block_rescue.yml playbook
+	terminal --> ansible-playbook aws_playbooks_intro/demo_block_rescue.yml
+
+
+➢ Connect to the remote host and check if the vsftpd is running
+	host terminal --> systemctl status vsftpd
+
+	# result running
+
