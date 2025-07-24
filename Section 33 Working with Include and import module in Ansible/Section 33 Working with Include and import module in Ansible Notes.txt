@@ -3,7 +3,257 @@ Content
 
 Section 33: Working with Include and import module in Ansible
 
+
+
 180. Working with include and import module in Ansible
 ======================================================
+
+➢ Include Module: Using Include module, user can add only tasks from other file to another playbook.(Common Recommended Practice)
+	○ While including Task from one file to another Playbook, user can perform variable substitution.
+
+➢ Using include module we can also include complete Playbook into another Playbook. (Not Recommended Practice)
+	○ This can be useful to tie together a few independent playbooks into a larger one.
+	○ Playbook inclusion is a bit more primitive than task inclusion. 
+		- We cannot perform variable substitution when including a playbook
+		- We cannot apply conditionals
+		- We cannot apply tags either
+
+➢ include_tasks module: include_tasks also working similar to Include module but there are few fundamental deifferences:
+	○ Only Include Tasks, not used to include the complete playbook.
+	○ At runtime include_tasks will work as separate task and user get the entry in output. (prefered vs. include module)
+
+➢ import_tasks and import_playbook modules:
+	○ import_tasks and import_playbook work similar to include and include_task.
+
+➢ Include vs Import
+	○ All import* statements are pre-processed at the time playbooks are parsed.
+		- We CANNOT substitude variables, Static
+	○ All include* statements are processed as they are encountered during the execution of the playbook.
+		- We CAN substitude variables, Dynamic
+
+
+
+
+➢ Login to working machine where Ansible is intalled
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|	|--+ ansible_vault_password		# ansible vault password
+	|
+	|--- include_import/				# playbooks directory	
+	|	|--+ tasks-1.yml			# play 1 task 2
+	|	|--+ include_tasks.yml			# playbook with task 1 and 2
+	|	|--+ play-2.yml				# playbook 2
+	|	|--+ import_playbook.yml		# playbook 2 with task 1 and 2
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ Set ansible configuration file
+	terminal --> vi ansible.cfg
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+save changes - escape, :wq!, enter
+
+
+
+
+
+Scenario - Test include_tasks options - include only tasks
+----------------------------------------------------------
+
+➢ Create include_import directory
+	terminal --> mkdir include_import
+
+
+➢ Create tasks-1.yml (tasks only, not a playbook)
+	terminal -> vi include_import/tasks-1.yml
+
+tasks-1.yml
+----------------------------------------------------- 
+- name: Play 1 - Task 2
+  debug:
+    msg: Play 1 - Task 2
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+➢ This is task only. It is not playbook on its own. We CANNOT execute tasks-1.yml by itself.
+
+
+We will include tasks-1.yml to another playbook:
+
+➢ Create playbook include_tasks.yml
+	terminal -> vi include_import/include_tasks.yml
+
+include_tasks.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook			# interpreter
+- name: This will show the use of include task			# playbook name
+  hosts: localhost						# use localhost
+  gather_facts: false						# disable facts gathering
+
+  tasks:							# tasks section
+    - name: Play 1 - Task 1					# task 1 name
+      debug:							# use debug module to print
+        msg: "Play 1 - Task 1"					# set message
+
+    - include_tasks: tasks-1.yml				# include tasks-1.yml - must be in the same dir or set full path
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R include_import/
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook include_import/include_tasks.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: include_import/include_tasks.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook include_import/include_tasks.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook include_import/include_tasks.yml
+	
+# result:
+PLAY [This will show the use of include task] ************************************************************************
+
+TASK [Play 1 - Task 1] ***********************************************************************************************
+ok: [localhost] => {
+    "msg": "Play 1 - Task 1"			# play 1 task 1 executed
+}
+
+TASK [include_tasks] *************************************************************************************************
+included: /root/ansible/include_import/tasks-1.yml for localhost
+
+TASK [Play 1 - Task 2] ***********************************************************************************************
+ok: [localhost] => {
+    "msg": "Play 1 - Task 2"			# play 1 task 2 executed
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
+Scenario - Test import playbooks option
+---------------------------------------
+
+
+➢ Create playbook play-2.yml
+	terminal -> vi include_import/play-2.yml
+
+play-2.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook
+- name: Play 2 from Import
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Play 2 - Task 1
+      debug:
+        msg: "Play 2 - Task 1"
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Create playbook include_laybook.yml
+	terminal -> vi include_import/import_laybook.yml
+
+import_laybook.yml
+----------------------------------------------------- 
+#!/root/ansible/myansible/bin/ansible-playbook			# set interpreter
+- name: Including Include Playbook				# playbook name
+  hosts: localhost						# use localhost
+  gather_facts: false						# disblbe facts gathering
+
+  tasks:							# tasks section
+    - name: Play 1 - Task 1					# task 1
+      debug:
+        msg: "Play 1 - Task 1"
+
+- import_playbook: play-2.yml					# include playbook play-2.yml
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R include_import/
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook include_import/import_laybook.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: include_import/import_laybook.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook include_import/import_laybook.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook include_import/import_laybook.yml
+	
+# result:
+PLAY [Including Import Playbook] *************************************************************************************
+
+TASK [Play 1 - Task 1] ***********************************************************************************************
+ok: [localhost] => {
+    "msg": "Play 1 - Task 1"			# executed play 1 task 1 
+}
+
+PLAY [Play 2 from Import] ********************************************************************************************
+						# imported playbook
+TASK [Play 2 - Task 1] ***********************************************************************************************
+ok: [localhost] => {
+    "msg": "Play 2 - Task 1"			# executed play-2 playbook
+}
+
+PLAY RECAP ***********************************************************************************************************
+localhost                  : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+Conclusion of include and import
+--------------------------------
+
+- name: New playbook
+  hosts: localhost
+  tasks:
+    - include_tasks: tasks.yml      		# Dynamic tasks (can use loops/conditionals)
+    - import_tasks: static_tasks.yml 		# Static tasks (parsed upfront)
+- import_playbook: other_play.yml   		# Static playbook inclusion
+
+
+
 
 
