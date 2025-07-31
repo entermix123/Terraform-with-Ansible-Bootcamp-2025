@@ -12,20 +12,1069 @@ Section 39: Ansible with Docker Containers
 197. Install Docker Using Ansible
 =================================
 
+➢ Using Ansible we can ensure that Docker is installed and configured uniformly across all servers, regardless of their initial state or configuration.
+
+➢ Practical Benefits:
+	○ Automation: saves time and reduces human error by automating the installation and configuration of Docker.
+	○ Consistency: ensures that Docker is set up uniformly across all servers, promoting consistency in our infrastructure.
+	○ Scalability: Easily scales to manage Docker installations on nay number of servers, whether it's a handful or hundreds.
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Premium Intel: Disk Type: NVMe SSD/ $32/Month - 4 GB/2 Intel CPU/120 GB NVMe SSD 4 TB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client-1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- docker_demos/					# playbooks directory	
+	|	|--+ install_Docker_using_Ansible.yml	# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@157.230.222.22		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create demo directory
+	terminal --> mkdir docker_demos
+
+➢ Create playbook
+	terminal -> vi docker_demos/install_Docker_using_Ansible.yml
+
+install_Docker_using_Ansible.yml
+----------------------------------------------------- 
+---
+- name: Install Docker						# playbook name
+  hosts: webservers						# host group
+  become: yes							# switch to root user
+
+  tasks:										# tasks section
+    - name: Update apt cache								# task 1 name
+      apt:										# use apt package manager
+        update_cache: yes
+      # Update apt cache: Ensures that the local APT package cache is up to date.
+
+    - name: Install packages to allow apt to use a repository over HTTPS		# task 2 name
+      apt:										# use apt package manager
+        name: "{{ item }}"								# set loop object
+        state: present									# target state - installed
+        cache_valid_time: 3600								# set valid time period for cache
+      with_items:									# loop collection
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+        - lsb-release
+      # Install prerequisite packages: Installs packages required for APT to use repositories over HTTPS, 
+      #which is necessary for Docker's repository.
+
+    - name: Ensure /etc/apt/keyrings directory exists					# task 3 name
+      file:										# use file module to create directory
+        path: /etc/apt/keyrings								# set target dir location
+        state: directory								# type object
+        mode: '0755'									# set permissions
+
+    - name: Download Docker's official GPG key						# task 4 name
+      get_url:										# use get_url module to download gpg key
+        url: https://download.docker.com/linux/{{ ansible_distribution|lower }}/gpg	# target url created from OS version
+        dest: /etc/apt/keyrings/docker.asc						# set destination on the host
+        mode: '0644'									# set permissions
+      # Download GPG key: Downloads Docker’s GPG key to /etc/apt/keyrings/docker.asc.
+      
+	
+    - name: Add Docker APT repository							# task 5 name
+      apt_repository:									# use apt_repository module 
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} stable"	# target repo
+        state: present									 	# target state - present/download
+        filename: docker									# confirm filename
+      # Add Docker repository: Configures the Docker APT repository, referencing the GPG key.	
+
+    - name: Update apt cache after adding repository					# task 6 name
+      apt:										# use apt package manager
+        update_cache: yes								# update cache
+      # Update cache: Ensures the APT cache is updated after adding the new repository.				
+
+    - name: Install Docker and Docker Compose						# task 7 name
+      apt:										# use apt package manager
+        name: 										# set package collection
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present									# target state - installed
+      # Install Docker and Docker Compose: Installs Docker packages (docker-ce, docker-ce-cli, containerd.io) 
+      # and Docker Compose from the Docker APT repository.
+
+    - name: Ensure Docker service is started and enabled				# task 8 name
+      service:										# use service module
+        name: docker									# target service - Docker
+        state: started									# target state - started/running
+        enabled: yes									# start on boot
+
+    - name: Check Docker service status							# task 9 name
+      command: systemctl status docker --no-pager					# use command to check Docker status
+      register: docker_status								# save result in a variable
+      changed_when: false								# 
+
+    - name: Print Docker service status							# task 10 name
+      debug:										# use debug module to print msg
+        msg: "Docker service status: {{ docker_status.stdout }}"			# define msg
+      when: docker_status.rc == 0							# print when no errors on prev task
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R docker_demos/
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook docker_demos/install_Docker_using_Ansible.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: docker_demos/install_Docker_using_Ansible.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook docker_demos/install_Docker_using_Ansible.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook docker_demos/install_Docker_using_Ansible.yml
+	
+# result:
+PLAY [Install Docker] ************************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.222.22 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.222.22]
+
+TASK [Update apt cache] **********************************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Install packages to allow apt to use a repository over HTTPS] **************************************************
+ok: [root@157.230.222.22] => (item=apt-transport-https)
+ok: [root@157.230.222.22] => (item=ca-certificates)
+ok: [root@157.230.222.22] => (item=curl)
+ok: [root@157.230.222.22] => (item=gnupg)
+ok: [root@157.230.222.22] => (item=lsb-release)
+
+TASK [Ensure /etc/apt/keyrings directory exists] *********************************************************************
+ok: [root@157.230.222.22]
+
+TASK [Download Docker's official GPG key] ****************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Add Docker APT repository] *************************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Update apt cache after adding repository] **********************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Install Docker and Docker Compose] *****************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Ensure Docker service is started and enabled] ******************************************************************
+ok: [root@157.230.222.22]
+
+TASK [Check Docker service status] ***********************************************************************************
+ok: [root@157.230.222.22]
+
+TASK [Print Docker service status] ***********************************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "Docker service status: ● docker.service - Docker Application Container Engine\n     Loaded: loaded (/usr/lib/systemd/system/docker.service; enabled; preset: enabled)\n     Active: active (running) since Thu 2025-07-31 10:18:40 UTC; 8s ago\n Invocation: 1ae3b57f52f246fb866f5b9a85c227da\nTriggeredBy: ● docker.socket\n       Docs: https://docs.docker.com\n   Main PID: 2914 (dockerd)\n      Tasks: 10\n     Memory: 21.9M (peak: 22.2M)\n        CPU: 334ms\n     CGroup: /system.slice/docker.service\n             └─2914 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.222.22        : ok=11   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
+
 
 
 198. Managing Docker Containers with Ansible
 ============================================
+
+➢ Ansible playbooks can be used to automate the process of creating, starting, stopping and removing Docker containers.
+
+➢ Example:
+	○ We will manage two Docker containers:
+		- Nginx: A web server container.
+		- Redis: An in-memory data structure store container.
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Premium Intel: Disk Type: NVMe SSD/ $32/Month - 4 GB/2 Intel CPU/120 GB NVMe SSD 4 TB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client-1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- docker_demos/					# playbooks directory	
+	|	|--+ install_Docker_using_Ansible.yml			# playbook
+ 	|	|--+ managing_docker_containers_with_ansible.yml	# playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@157.230.222.22		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create demo directory
+	terminal --> mkdir docker_demos
+
+➢ Run the playbook from the last demo to install Docker
+	terminal --> ansible-playbook docker_demos/install_Docker_using_Ansible.yml
+
+➢ Create playbook
+	terminal -> vi docker_demos/managing_docker_containers_with_ansible.yml
+
+managing_docker_containers_with_ansible.yml
+----------------------------------------------------- 
+---
+- name: Manage Docker Containers				# playbook name
+  hosts: webservers						# hosts group
+  become: yes							# switch to root user
+
+  tasks:							# tasks section
+
+    - name: Start Docker service				# task 1 name
+      service:							# use service module 
+        name: docker						# taget service
+        state: started						# target state - running
+        enabled: yes						# start service at boot
+
+    - name: Pull Nginx image					# task 2 name
+      community.docker.docker_image:				# use community.docker.docker_image - official docker images
+        name: nginx						# target image
+        source: pull						# pull the imange
+
+    - name: Pull Redis image					# task 3 name
+      community.docker.docker_image:				# use community.docker.docker_image - official docker images
+        name: redis						# target image
+        source: pull						# pull the imange
+
+    - name: Create and start Nginx container			# task 4 name
+      community.docker.docker_container:			# use community.docker.docker_container module to start container
+        name: nginx_container					# define name of the container
+        image: nginx						# use pulled nginx image  
+        state: started						# target state - running
+        ports:							# define ports
+          - "80:80"
+
+    - name: Create and start Redis container			# task 5 name
+      community.docker.docker_container:			# use community.docker.docker_container module to start container
+        name: redis_container					# define name of the container
+        image: redis						# use pulled redis image
+        state: started						# target state - running
+        ports:							# define ports
+          - "6379:6379"
+
+    - name: Ensure Nginx container is running			# task 6 name
+      community.docker.docker_container_info:			# use community.docker.docker_image to get the container info
+        name: nginx_container					# target container name
+      register: nginx_info					# save logs in variable
+
+    - name: Debug Nginx container status					# task 7 name
+      debug:									# use debug module to print msg
+        msg: "Nginx container status: {{ nginx_info.container.State.Status }}"	# define msg with the variable props
+
+    - name: Ensure Redis container is running			# task 8 name
+      community.docker.docker_container_info:			# use community.docker.docker_image to get the container info 
+        name: redis_container					# target container name
+      register: redis_info					# save logs in variable
+
+    - name: Debug Redis container status						# task 9 name
+      debug:										# use debug module to print msg
+        msg: "Redis container status: {{ redis_info.container.State.Status }}"		# define msg with the variable props
+
+    - name: Show all running containers before termination	# task 10 name
+      command: docker ps --format "{{'{{'}}.Names{{'}}'}}"	# execute command to list containers names
+      register: all_containers_before				# save listed containers in a variable
+
+    - name: Debug all running containers before termination						# task 11 name
+      debug:												# use debug to print msg
+        msg: "All running containers before termination: {{ all_containers_before.stdout_lines }}"	# define msg
+
+    - name: Terminate Nginx container				# task 12 name
+      community.docker.docker_container:			# use community.docker.docker_container to manage containers
+        name: nginx_container					# target container name
+        state: absent						# target state - delete
+
+    - name: Terminate Redis container				# task 13 name
+      community.docker.docker_container:			# use community.docker.docker_container to manage containers
+        name: redis_container					# target container name
+        state: absent						# target state - delete
+
+    - name: Show all running containers after termination	# task 14 name
+      command: docker ps --format "{{'{{'}}.Names{{'}}'}}"	# use command to list all containers names
+      register: all_containers_after				# save listed containers in variable
+
+    - name: Debug all running containers after termination	# task 15 name
+      debug:							# use debug to print msg
+        msg: "All running containers after termination: {{ all_containers_after.stdout_lines }}"	# define msg
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R docker_demos/
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook docker_demos/managing_docker_containers_with_ansible.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: docker_demos/managing_docker_containers_with_ansible.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook docker_demos/managing_docker_containers_with_ansible.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook docker_demos/managing_docker_containers_with_ansible.yml
+	
+# result:
+
+PLAY [Manage Docker Containers] **************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.222.22 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.222.22]
+
+TASK [Start Docker service] ******************************************************************************************
+ok: [root@157.230.222.22]
+
+TASK [Pull Nginx image] **********************************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Pull Redis image] **********************************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Create and start Nginx container] ******************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Create and start Redis container] ******************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Ensure Nginx container is running] *****************************************************************************
+ok: [root@157.230.222.22]
+
+TASK [Debug Nginx container status] **********************************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "Nginx container status: running"
+}
+
+TASK [Ensure Redis container is running] *****************************************************************************
+ok: [root@157.230.222.22]
+
+TASK [Debug Redis container status] **********************************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "Redis container status: running"
+}
+
+TASK [Show all running containers before termination] ****************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Debug all running containers before termination] ***************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "All running containers before termination: ['redis_container', 'nginx_container']"
+}
+
+TASK [Terminate Nginx container] *************************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Terminate Redis container] *************************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Show all running containers after termination] *****************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Debug all running containers after termination] ****************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "All running containers after termination: []"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.222.22        : ok=16   changed=8    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
+
 
 
 
 199. Building Docker Images with Ansible
 ========================================
 
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Premium Intel: Disk Type: NVMe SSD/ $32/Month - 4 GB/2 Intel CPU/120 GB NVMe SSD 4 TB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client-1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|
+	|--- docker_demos/				# playbooks directory	
+	|	|--+ install_Docker_using_Ansible.yml	# playbook 1
+ 	|	|--+ build_docker_image.yml		# playbook 2
+	|	|--- myapp					# app folder
+	|		|--+ app.py				# simple app
+	|       	|--+ dockerfiile			# dockerfile
+	|		|--+ requirements.txt			# env packages requirements
+	|	
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@157.230.222.22		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create demo directory
+	terminal --> mkdir docker_demos
+
+➢ Run the playbook to install Docker
+	terminal --> ansible-playbook docker_demos/install_Docker_using_Ansible.yml
+
+➢ Create playbook
+	terminal -> vi docker_demos/build_docker_image.yml
+
+build_docker_image.yml
+----------------------------------------------------- 
+---
+- name: Build Docker image for Python web app and manage container		# playbook name
+  hosts: webservers								# hosts group
+  become: true									# switch to root user
+  
+  tasks:							# tasks section
+
+    - name: Copy application files to target machine		# task 1 name
+      copy:							# use copy module to move the app folder on the host
+        src: ./myapp/						# define source folder
+        dest: /tmp/myapp/					# define destination folder
+
+    - name: Build Docker image					# task 2 name
+      docker_image:						# use docker_image module to build docker image
+        name: my_python_app					# define docker image name
+        build:							# use build docker function
+          path: /tmp/myapp/							# define created image location
+        tag: latest								# define tag as latest version
+        # Add source parameter with path to your application directory
+        source: build							# as a source use build command as we defined above
+
+    - name: Remove application files from target machine (optional)		# task 3 name
+      file:									# use file module to delete app folder
+        path: /tmp/myapp/							# target folder location
+        state: absent								# target state - delete
+
+    - name: Create Docker container from the built image	# task 4 name
+      docker_container:						# use docker_container module to start docker container
+        name: my_python_container				# define container name
+        image: my_python_app:latest				# use target image 
+        state: started						# target state - running
+        command: sleep infinity					# use command to set container always running
+        ports:							# define container ports
+          - "8080:80"  # Example port mapping
+
+    - name: Ensure my_python_container container is running	# task 5 name
+      community.docker.docker_container_info:			# use docker_container_info module to get container info
+        name: my_python_container				# target container name
+      register: my_python_container_info			# save results in a variable
+
+    - name: Debug my_python_container container status		# task 6 name
+      debug:							# use debug module to print msg
+        msg: "my_python_container container status: {{ my_python_container_info.container.State.Status }}"	# define msg
+
+    - name: Stop the container			# task 7 name
+      docker_container:				# use docker_container module to stop the container
+        name: my_python_container		# target container name
+        state: stopped				# target state - stop
+
+    - name: Remove the container (optional)	# task 8 name
+      docker_container:				# use docker_container module to remove the container
+        name: my_python_container		# target container name
+        state: absent				# target state - delete
+
+    - name: Show all running containers after termination	# task 9 name
+      command: docker ps --format "{{'{{'}}.Names{{'}}'}}"	# execute command to list containers names
+      register: all_containers_after				# save the listed containers in a variable
+
+    - name: Debug all running containers after termination	# task 10 name
+      debug:							# use debug to print msg
+        msg: "All running containers after termination: {{ all_containers_after.stdout_lines }}"	# define msg
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Create app folder and its files
+	➢ Create app folder
+		terminal -> mkdir docker_demos/myapp
+	➢ Create app.py
+		terminal --> vi docker_demos/myapp/app.py
+
+myapp/app.py
+----------------------------------------------------- 
+# app.py
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return "Hello, World!"
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0')
+----------------------------------------------------- 
+save chabges: escape, :wq!, enter
+
+	➢ Create dockerfile
+		terminal --> vi docker_demos/myapp/dockerfile
+
+myapp/dockerfile
+----------------------------------------------------- 
+# Dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+COPY . .
+
+CMD ["python", "app.py"]
+----------------------------------------------------- 
+save chabges: escape, :wq!, enter
+
+	➢ Create requirements.txt
+		terminal --> vi docker_demos/myapp/requirements.txt
+
+myapp/requirements.txt
+----------------------------------------------------- 
+# requirements.txt
+Flask==2.0.2
+----------------------------------------------------- 
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R docker_demos/
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook docker_demos/build_docker_image.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: docker_demos/build_docker_image.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook docker_demos/build_docker_image.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook docker_demos/build_docker_image.yml 	# -vv for logs on the terminal
+	
+# result:
+
+PLAY [Build Docker image for Python web app and manage container] ****************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.222.22 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.222.22]
+
+TASK [Copy application files to target machine] **********************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Build Docker image] ********************************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Remove application files from target machine (optional)] *******************************************************
+changed: [root@157.230.222.22]
+
+TASK [Create Docker container from the built image] ******************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Ensure my_python_container container is running] ***************************************************************
+ok: [root@157.230.222.22]
+
+TASK [Debug my_python_container container status] ********************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "my_python_container container status: running"
+}
+
+TASK [Stop the container] ********************************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Remove the container (optional)] *******************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Show all running containers after termination] *****************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Debug all running containers after termination] ****************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "All running containers after termination: []"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.222.22        : ok=11   changed=7    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
+
+
+
 
 
 200. Networking and Storage for Docker Containers
 =================================================
 
+
+
+➢ 
+	○ 
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+➢ 
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Premium Intel: Disk Type: NVMe SSD/ $32/Month - 4 GB/2 Intel CPU/120 GB NVMe SSD 4 TB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client-1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/								# python virtual environment
+	|
+	|--- docker_demos/							# playbooks directory	
+	|	|--+ install_Docker_using_Ansible.yml				# playbook 1
+ 	|	|--+ networking_and_storage_for_docker_container.yml		# playbook 2
+	|	
+	|--+ ansible.cfg							# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@157.230.222.22		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create demo directory
+	terminal --> mkdir docker_demos
+
+➢ Run the playbook to install Docker
+	terminal --> ansible-playbook docker_demos/install_Docker_using_Ansible.yml
+
+➢ Create playbook
+	terminal -> vi docker_demos/networking_and_storage_for_docker_container.yml
+
+networking_and_storage_for_docker_container.yml
+----------------------------------------------------- 
+---
+- name: Configure Docker Network and Containers			# playbook name
+  hosts: webservers						# hosts group
+  become: yes							# switch to root user
+
+  tasks:							# tasks section
+
+    - name: Terminate all running containers			# task 1 name
+      shell: docker rm -f $(docker ps -aq)			# execute shell command to remove all containers
+      ignore_errors: yes					# skip errors, move to next task
+      changed_when: False					# do not report this task if changed
+      
+    - name: Delete Docker network if it exists			# task 2 name
+      command: docker network rm my_network			# execute command to remove network 'my_network'
+      ignore_errors: yes					# skip errors, move to next task
+      register: network_removal_result				# save result in a variable
+      changed_when: network_removal_result.rc == 0		# report if no errors (the network was existing and is removed)
+								# 'written status code' rc == 0 (no error)
+
+    - name: Create Docker network with specific subnet				# task 3 name
+      command: docker network create --subnet=172.18.0.0/16 my_network	 # execute command to craete 'my_network' and subnet
+      register: network_creation_result						# save result in a variable
+      changed_when: "'already exists' not in network_creation_result.stderr"	# move to next task if msg not in the result
+
+    - name: Run nginx container with specific IP		# task 4 name
+      docker_container:						# use docker_container module to start a container
+        name: web_server					# define container name
+        image: nginx						# used image
+        state: started						# target state - running
+        networks:						# set networks and IP
+          - name: my_network					# used network
+            ipv4_address: 172.18.0.2				# used IP
+        env:							# use env variable for credentials
+          MYSQL_ROOT_PASSWORD: example
+
+    - name: Run MySQL container with specific IP		# task 5 name
+      docker_container:						# use docker_container module to start sql db container
+        name: db_server						# define sql server container name
+        image: mysql						# used image
+        state: started						# target state - running
+        networks:						# define networks
+          - name: my_network					# used network
+            ipv4_address: 172.18.0.3				# used IP
+        env:							# use env variable for credentials
+          MYSQL_ROOT_PASSWORD: example
+
+    - name: Show all running containers before termination	# task 6 name
+      command: docker ps --format "{{'{{'}}.Names{{'}}'}}"	# execute command to list all containers names
+      register: all_containers_before				# save listed containers in a variable
+
+    - name: Debug all running containers before termination	# task 7 name
+      debug:							# use debug module to print msg
+        msg: "All running containers before termination: {{ all_containers_before.stdout_lines }}"	# define msg
+
+    - name: Terminate all running containers			# task 8 name
+      shell: docker rm -f $(docker ps -aq)			# execute shell command to remove all docker containers
+      ignore_errors: yes					# skip errors
+      changed_when: False					# do not report this task if changed
+
+    - name: Show all running containers after termination	# taks 9 name
+      command: docker ps --format "{{'{{'}}.Names{{'}}'}}"	# execute command to list all containers names
+      register: all_containers_after				# save result in a vatriable
+
+    - name: Debug all running containers after termination	# task 10 name
+      debug:							# use debug to print msg
+        msg: "All running containers after termination: {{ all_containers_after.stdout_lines }}"	# define msg
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R docker_demos/
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook docker_demos/networking_and_storage_for_docker_container.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: docker_demos/networking_and_storage_for_docker_container.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook docker_demos/networking_and_storage_for_docker_container.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook docker_demos/networking_and_storage_for_docker_container.yml  # -vv for logs on the terminal
+	
+# result:
+
+PLAY [Configure Docker Network and Containers] ***********************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@157.230.222.22 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@157.230.222.22]
+
+TASK [Terminate all running containers] ******************************************************************************
+fatal: [root@157.230.222.22]: FAILED! => {"changed": false, "cmd": "docker rm -f $(docker ps -aq)", "delta": "0:00:00.045096", "end": "2025-07-31 14:29:16.170426", "msg": "non-zero return code", "rc": 1, "start": "2025-07-31 14:29:16.125330", "stderr": "docker: 'docker rm' requires at least 1 argument\n\nUsage:  docker rm [OPTIONS] CONTAINER [CONTAINER...]\n\nSee 'docker rm --help' for more information", "stderr_lines": ["docker: 'docker rm' requires at least 1 argument", "", "Usage:  docker rm [OPTIONS] CONTAINER [CONTAINER...]", "", "See 'docker rm --help' for more information"], "stdout": "", "stdout_lines": []}
+...ignoring
+
+TASK [Delete Docker network if it exists] ****************************************************************************
+fatal: [root@157.230.222.22]: FAILED! => {"changed": false, "cmd": ["docker", "network", "rm", "my_network"], "delta": "0:00:00.024634", "end": "2025-07-31 14:29:18.125878", "msg": "non-zero return code", "rc": 1, "start": "2025-07-31 14:29:18.101244", "stderr": "Error response from daemon: network my_network not found\nexit status 1", "stderr_lines": ["Error response from daemon: network my_network not found", "exit status 1"], "stdout": "", "stdout_lines": []}
+...ignoring
+
+TASK [Create Docker network with specific subnet] ********************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Run nginx container with specific IP] **************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Run MySQL container with specific IP] **************************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Show all running containers before termination] ****************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Debug all running containers before termination] ***************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "All running containers before termination: ['db_server', 'web_server']"
+}
+
+TASK [Terminate all running containers] ******************************************************************************
+ok: [root@157.230.222.22]
+
+TASK [Show all running containers after termination] *****************************************************************
+changed: [root@157.230.222.22]
+
+TASK [Debug all running containers after termination] ****************************************************************
+ok: [root@157.230.222.22] => {
+    "msg": "All running containers after termination: []"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@157.230.222.22        : ok=11   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=2   
+
+
+
+➢ Stop and remove all instances to avoid additional costs!
 
 
