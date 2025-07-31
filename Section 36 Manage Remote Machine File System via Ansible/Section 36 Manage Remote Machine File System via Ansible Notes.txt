@@ -14,30 +14,1223 @@ Section 36: Manage Remote Machine File System via Ansible
 185. Work with Files and Directories using Ansible
 ==================================================
 
+➢ Ansible File Module: File module is used to manage files and file attributes on remote hosts.
+	○ It allows us to create, delete, modify permissions and set ownership of files or directories.
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - with UbuntuOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- dir_file_labs/				# playbooks directory	
+	|	|--+ managefile_example2.yml		# roles requirements
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@147.182.189.174		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbooks folder
+	terminal --> mkdir dir_file_labs
+
+➢ Create playbook
+	terminal --> vi dir_file_labs/managefile_example1.yml
+
+managefile_example1.yml
+--------------------------------------------------------
+---
+- name: File Management Playbook					# playbook name
+  hosts: webservers  # Replace with your target hosts or group		# hosts
+  
+  tasks:								# tasks section
+    - name: Create an Empty File					# task 1 name
+      ansible.builtin.file:						# use ansible.builtin.file module to manage files
+        path: /tmp/empty_file.txt					# target location
+        state: touch							# target state - create empty file
+      register: result_empty_file					# save result in a variable
+
+    - debug:								# use debug module to print msg
+        msg: "Empty file created successfully"				# define msg
+      when: result_empty_file.changed					# print msg if prev task is executed - if file is created
+    
+    - name: Create a Text File						# task 3 name
+      copy:								# use copy module
+        content: |							# define content
+          This is the content
+          of the file.
+          It can span multiple lines.
+        dest: /tmp/text_file.txt					# paste content to target file
+      register: result_text_file					# save result into variable
+    
+    - debug:								# use debug module to print msg
+        msg: "Text file created successfully"				# define msg
+      when: result_text_file.changed					# if prev task is executed
+
+    - name: Check if File Exists					# task 5 name
+      ansible.builtin.stat:						# use ansible.builtin.stat module to check if file exist 
+        path: /tmp/text_file.txt					# target file
+      register: file_stat						# save result in variable
+    
+    - debug:								# use debug module to print msg
+        msg: "Text file exists"						# define msg
+      when: file_stat.stat.exists					# if prev task is executed - if the file exist
+
+    - name: Change File Permissions					# task 7 name
+      ansible.builtin.file:						# use ansible.builtin.file module to manage files
+        path: /tmp/text_file.txt					# target file
+        mode: '0600'							# set permissions to file
+      register: result_change_permissions				# save result into variable
+    
+    - debug:								# use debug module to print msg
+        msg: "File permissions changed successfully"			# define msg
+      when: result_change_permissions.changed				# if permission are set
+
+    - name: Delete File if Exists					# task 9 name
+      ansible.builtin.file:						# use ansible.builtin.file module to manage files 
+        path: /tmp/text_file.txt					# target file
+        state: absent							# target state - delete
+      register: result_delete_file					# save result in a variable
+    
+    - debug:								# use debug module to print msg
+        msg: "File deleted successfully"				# define msg
+      when: result_delete_file.changed					# if file is deleted
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook dir_file_labs/managefile_example1.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: dir_file_labs/managefile_example1.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook dir_file_labs/managefile_example1.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook dir_file_labs/managefile_example1.yml
+
+
+# result:
+
+PLAY [File Management Playbook] **************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: ...
+ok: [root@161.35.108.163]
+
+TASK [Create an Empty File] ******************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Empty file created successfully"
+}
+
+TASK [Create a Text File] ********************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Text file created successfully"
+}
+
+TASK [Check if File Exists] ******************************************************************************************
+ok: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Text file exists"
+}
+
+TASK [Change File Permissions] ***************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "File permissions changed successfully"
+}
+
+TASK [Delete File if Exists] *****************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "File deleted successfully"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@161.35.108.163        : ok=11   changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
+
 
 
 186. Work with Files and Directories using Ansible II
 =====================================================
 
 
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - with UbuntuOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- dir_file_labs/				# playbooks directory	
+	|	|--+ managefile_example2.yml		# roles requirements
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@147.182.189.174		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbooks folder
+	terminal --> mkdir dir_file_labs
+
+➢ Create playbook
+	terminal --> vi dir_file_labs/managefile_example2.yml
+
+managefile_example2.yml
+--------------------------------------------------------
+---
+- name: Manage Directory Operations				# playbook name
+  hosts: webservers						# hosts
+  become: yes							# use root user
+
+  tasks:							# tasks section
+    - name: Create a Directory					# task 1 name
+      ansible.builtin.file:					# use ansible.builtin.file module to craete directory
+        path: /tmp/example_dir					# target location and directory name
+        state: directory					# create directory
+      register: dir_created					# save result in a variable
+
+    - debug:							# use debug module to print msg
+        msg: "Directory created successfully"			# define msg
+      when: dir_created.changed					# if the directory is created
+
+    - name: Check if Directory Exists				# task 3 name
+      ansible.builtin.stat:					# use ansible.builtin.stat module to check if dir exist
+        path: /tmp/example_dir					# target dir
+      register: dir_stat					# save result in a variable
+
+    - debug:							# use debug module to print msg
+        msg: "Directory exists"					# define msg
+      when: dir_stat.stat.exists				# if the directory exist
+
+    - name: Rename a Directory					# task 5 name
+      command: mv /tmp/example_dir /tmp/renamed_dir		# execute command - move directory
+      args:							# arguments
+        removes: /tmp/example_dir				# remove the old dir - /tmp/example_dir
+      register: dir_renamed					# save result in a variable
+
+    - debug:							# use debug module to print msg
+        msg: "Directory renamed successfully"			# define msg
+      when: dir_renamed.changed					# if dir is renamed
+
+    - name: Provide Recursive Permissions to Directory Content	# task 7 name
+      ansible.builtin.file:					# use ansible.builtin.file module to give dir permissions
+        path: /tmp/renamed_dir					# target dir
+        recurse: yes						# set the permissions to all content in the directory
+        mode: '0755'						# define permissions
+      register: dir_permissions					# save result in a variable
+
+    - debug:							# use debug module to print msg
+        msg: "Recursive permissions set successfully"		# define msg
+      when: dir_permissions.changed				# if the right of the dir are set
+
+    - name: Delete a Directory					# task 9 name
+      ansible.builtin.file:					# use ansible.builtin.file module to delete dir
+        path: /tmp/renamed_dir					# target directory
+        state: absent						# target state - delete
+      register: dir_deleted					# save result in a variable
+
+    - debug:							# use debug module to print msg
+        msg: "Directory deleted successfully"			# define msg
+      when: dir_deleted.changed					# if the dir is deleted
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook dir_file_labs/managefile_example2.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: dir_file_labs/managefile_example2.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook dir_file_labs/managefile_example2.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook dir_file_labs/managefile_example2.yml
+
+
+# result:
+
+PLAY [Manage Directory Operations] ***********************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@161.35.108.163 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@161.35.108.163]
+
+TASK [Create a Directory] ********************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Directory created successfully"
+}
+
+TASK [Check if Directory Exists] *************************************************************************************
+ok: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Directory exists"
+}
+
+TASK [Rename a Directory] ********************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Directory renamed successfully"
+}
+
+TASK [Provide Recursive Permissions to Directory Content] ************************************************************
+ok: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+skipping: [root@161.35.108.163]			# we are already with root user and the rights are correct
+
+TASK [Delete a Directory] ********************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Directory deleted successfully"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@161.35.108.163        : ok=10   changed=3    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
+
+
+
+
+
+
+
+
+
 
 187. Create a Symlink on Linux Remote Hosts
 ===========================================
+
+➢ symlink (symbolic link): This is a special type of file that points to another file or directory.
+	○ Symbolic link contains the path of the target file or directory.
+	○ Symlinks are typically used to create references to files or directories located elswhare in the filesystem.
+	○ If the original file or directory is deleted or moved the soft link will become vroken.
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - with UbuntuOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- dir_file_labs/				# playbooks directory	
+	|	|--+ symlink_example.yml		# roles requirements
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@147.182.189.174		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbooks folder
+	terminal --> mkdir dir_file_labs
+
+➢ Create playbook
+	terminal --> vi dir_file_labs/symlink_example.yml
+
+symlink_example.yml
+--------------------------------------------------------
+---
+- name: Create and Verify Soft Link for CPU/Memory Usage		# playbook name
+  hosts: webservers 							# hosts
+  
+  tasks:							# tasks section
+    - name: Create a symbolic link to /proc/cpuinfo		# task 1 name
+      ansible.builtin.file:					# use ansible.builtin.file to set link between files
+        src: /proc/cpuinfo					# path to source file
+        dest: /tmp/cpuinfo_link					# pointed file
+        state: link						# target state - linked
+        
+    - name: Verify symbolic link creation			# task 2 name
+      ansible.builtin.stat:					# use ansible.builtin.stat module to check link status
+        path: /tmp/cpuinfo_link					# target file
+      register: link_stats					# save result in a variable
+      
+    - name: Print symbolic link verification result			# task 3 name
+      ansible.builtin.debug:						# use ansible.builtin.debug module to print msg
+        msg: "Symbolic link exists: {{ link_stats.stat.islnk }}"	# define msg
+
+    - name: Read content of the symbolic link (CPU info)	# task 3 name
+      ansible.builtin.shell: cat /tmp/cpuinfo_link		# use shell to execute command - print target file
+      register: cpuinfo_content					# save result in a variable
+      
+    - name: Print CPU info					# task 4 name
+      ansible.builtin.debug:					# use ansible.builtin.debug module to print msg
+        msg: "{{ cpuinfo_content.stdout }}"			# define msg
+        
+    - name: Create a symbolic link to /proc/meminfo		# task 5 name
+      ansible.builtin.file:					# use ansible.builtin.file module to link files
+        src: /proc/meminfo					# path to source file
+        dest: /tmp/meminfo_link					# path to target file
+        state: link						# target state - link
+        
+    - name: Verify symbolic link creation for memory info	# task 6 name
+      ansible.builtin.stat:					# use ansible.builtin.stat module to check the link
+        path: /tmp/meminfo_link					# path to target file
+      register: meminfo_link_stats				# sae result in a variable
+      
+    - name: Print symbolic link verification result for memory info		# task 7 name
+      ansible.builtin.debug:							# use ansible.builtin.debug module to print msg
+        msg: "Symbolic link exists: {{ meminfo_link_stats.stat.islnk }}"	# define msg
+
+    - name: Read content of the symbolic link (Memory info)	# task 8 name
+      ansible.builtin.shell: cat /tmp/meminfo_link		# use shell to print taget file
+      register: meminfo_content					# save result in a variable
+      
+    - name: Print Memory info					# task 9 name
+      ansible.builtin.debug:					# use debug module to print msg
+        msg: "{{ meminfo_content.stdout }}"			# define msg
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook dir_file_labs/symlink_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: dir_file_labs/symlink_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook dir_file_labs/symlink_example.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook dir_file_labs/symlink_example.yml
+
+
+# result:
+
+PLAY [Create and Verify Soft Link for CPU/Memory Usage] **************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@161.35.108.163 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@161.35.108.163]
+
+TASK [Create a symbolic link to /proc/cpuinfo] ***********************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Verify symbolic link creation] *********************************************************************************
+ok: [root@161.35.108.163]
+
+TASK [Print symbolic link verification result] ***********************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Symbolic link exists: True"
+}
+
+TASK [Read content of the symbolic link (CPU info)] ******************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Print CPU info] ************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "processor\t: 0\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 79\nmodel name\t: DO-Regular\nstepping\t: 1\nmicrocode\t: 0x1\ncpu MHz\t\t: 2494.140\ncache size\t: 4096 KB\nphysical id\t: 0\nsiblings\t: 1\ncore id\t\t: 0\ncpu cores\t: 1\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss syscall nx rdtscp lm constant_tsc rep_good nopl xtopology cpuid tsc_known_freq pni pclmulqdq vmx ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault pti ssbd ibrs ibpb tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap xsaveopt arat vnmi md_clear\nvmx flags\t: vnmi preemption_timer invvpid ept_x_only ept_ad ept_1gb flexpriority tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid shadow_vmcs pml\nbugs\t\t: cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass l1tf mds swapgs itlb_multihit mmio_stale_data bhi\nbogomips\t: 4988.28\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 40 bits physical, 48 bits virtual\npower management:"
+}
+
+TASK [Create a symbolic link to /proc/meminfo] ***********************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Verify symbolic link creation for memory info] *****************************************************************
+ok: [root@161.35.108.163]
+
+TASK [Print symbolic link verification result for memory info] *******************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Symbolic link exists: True"
+}
+
+TASK [Read content of the symbolic link (Memory info)] ***************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Print Memory info] *********************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "MemTotal:         468676 kB\nMemFree:           91808 kB\nMemAvailable:     279252 kB\nBuffers:           10448 kB\nCached:           180912 kB\nSwapCached:            0 kB\nActive:           151568 kB\nInactive:          89508 kB\nActive(anon):      49348 kB\nInactive(anon):    12096 kB\nActive(file):     102220 kB\nInactive(file):    77412 kB\nUnevictable:       29212 kB\nMlocked:           26140 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:              1052 kB\nWriteback:             0 kB\nAnonPages:         78928 kB\nMapped:            41196 kB\nShmem:              4180 kB\nKReclaimable:      20240 kB\nSlab:              80668 kB\nSReclaimable:      20240 kB\nSUnreclaim:        60428 kB\nKernelStack:        2064 kB\nPageTables:         2816 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:      234336 kB\nCommitted_AS:     303524 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:       15444 kB\nVmallocChunk:          0 kB\nPercpu:              484 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      106348 kB\nDirectMap2M:      417792 kB"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@161.35.108.163        : ok=11   changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
+
+
+
 
 
 
 188. Create a Hard Link on Linux Remote Hosts
 =============================================
 
+➢ Hardlink: Unlike symbolic links (soft links) which point to a filename, a hard link points directly to the data block of the file.
+	○ This means that multiple hard links can refer to the same phisical data blocks on disk.
+	○ All hard links to a file are essentially equal; there is no concept of an original file and linked files.
+	○ Removing a hard link WILL NOT remove the actual file until all hard links to it are deleted.
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - with UbuntuOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- dir_file_labs/				# playbooks directory	
+	|	|--+ hardlink_example.yml		# roles requirements
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@147.182.189.174		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbooks folder
+	terminal --> mkdir dir_file_labs
+
+➢ Create playbook
+	terminal --> vi dir_file_labs/hardlink_example.yml
+
+hardlink_example.yml
+--------------------------------------------------------
+---
+- name: Demonstrate Hardlink with Ansible		# playbook name
+  hosts: webservers					# host group
+  become: yes						# switch root user
+  
+  tasks:						# tasks section
+    - name: Create a file				# task 1 name
+      ansible.builtin.file:				# use file module to create an empty file and set permissions
+        path: /tmp/source_file.txt			# path to target diretory and file name
+        state: touch					# target state - create
+        mode: '0644'					# define permissions
+        # Optionally, set initial content
+        # content: "This is the source file.\n"		
+
+    - name: Create a hard link to the file		# task 2 name
+      ansible.builtin.file:				# use file module to set a link between 2 files
+        src: /tmp/source_file.txt			# set spurce file - created in the prev task
+        dest: /tmp/hardlink_to_source			# set hard link file
+        state: link					# target state - link
+
+    - name: Verify existence of the hard link		# task 3 name
+      ansible.builtin.stat:				# use ansible.builtin.stat module to check ths state of the file
+        path: /tmp/hardlink_to_source			# target file
+      register: hardlink_info				# save result in a variable
+
+    - debug:								# use debug module to print msg
+        msg: "Hard link exists: {{ hardlink_info.stat.exists }}"	# define msg
+
+    - name: Remove the hard link			# task 5 name
+      ansible.builtin.file:				# use file module to remove the ghard link
+        path: /tmp/hardlink_to_source			# target file
+        state: absent					# target state - delete
+
+    - name: Verify removal of the hard link		# task 6 name
+      ansible.builtin.stat:				# use ansible.builtin.stat module to check if the hardlink is deleted
+        path: /tmp/hardlink_to_source			# target file
+      register: removed_link_info			# save result in a variable
+
+    - debug:									# use debug module to print msg
+        msg: "Hard link removed: {{ not removed_link_info.stat.exists }}"	# define msg
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook dir_file_labs/hardlink_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: dir_file_labs/hardlink_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook dir_file_labs/hardlink_example.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook dir_file_labs/hardlink_example.yml
+
+
+# result:
+
+PLAY [Demonstrate Hardlink with Ansible] *****************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************************
+[WARNING]: Platform linux on host root@161.35.108.163 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@161.35.108.163]
+
+TASK [Create a file] *************************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Create a hard link to the file] ********************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Verify existence of the hard link] *****************************************************************************
+ok: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Hard link exists: True"
+}
+
+TASK [Remove the hard link] ******************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Verify removal of the hard link] *******************************************************************************
+ok: [root@161.35.108.163]
+
+TASK [debug] *********************************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Hard link removed: True"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@161.35.108.163        : ok=8    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
+
+
 
 
 189. Download Files on Remote Hosts
 ===================================
+
+➢ get_url Module: This module is used to download files from web and store them on the remote machine where Ansible is running.
+	○ This module can handle various protocols like HTTP, HTTPS and FTP and it supports options for setting permissions, file checksums.
+
+➢ Use Cases:
+	○ Common use case for get_url module is to download software packages, configuration files or any other files reqired by our remote hosts directly from the internet.
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - with UbuntuOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- dir_file_labs/				# playbooks directory	
+	|	|--+ downloadfile_example.yml		# roles requirements
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@147.182.189.174		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbooks folder
+	terminal --> mkdir dir_file_labs
+
+➢ Create playbook
+	terminal --> vi dir_file_labs/downloadfile_example.yml
+
+downloadfile_example.yml
+--------------------------------------------------------
+---
+- name: Download a file using get_url							# playbook name
+  hosts: webservers									# host group
+
+  tasks:										# tasks section
+    - name: Download jq utility								# task 1 name
+      get_url:										# use get_rul module to download
+        url: https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64		# set target url
+        dest: /usr/local/bin/jq						# set download dir and file name on remote machine
+        mode: '0755'									# set permissions for remote host
+
+    - name: Download jq utility with checksum validation					# task 2 name
+      get_url:											# use get_rul module to download
+        url: https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux64			# set target url
+        dest: /usr/local/bin/jq-1.7								# set download folder
+        checksum: 'sha256:5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5'	# check checksum
+	# checksum is used to verify that the item is downloaded directly from the target url
+	# if the checksum is not same, the download will be canceled. It means that 3th party made changes to the target item.
+        mode: '0755'							# set permissions for remote host
+
+
+    - name: Download POM file									# task 3 name
+      get_url:											# use get_rul module to download
+        url: https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.13/slf4j-api-2.0.13.pom	# set target url
+        dest: "/etc/slf4j.pom"									# set download folder
+        mode: '0644'									# set permissions for remote host
+
+
+    - name: Download files				# task 4 name
+      get_url:						# use get_rul module to download
+        url: "{{ item.url }}"				# set loop over url collection
+        dest: "{{ item.dest }}"				# set download folder from collection params
+        mode: '0644'					# set permissions for remote host
+      loop:						# define collection
+        - { url: 'https://maven.google.com/androidx/appcompat/appcompat/1.6.1/appcompat-1.6.1.aar', dest: '/tmp/andriod.aar' }
+        - { url: 'https://repo1.maven.org/maven2/com/squareup/retrofit2/retrofit/2.8.2/retrofit-2.8.2.jar', dest: '/tmp/retrofit.jar' }
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook dir_file_labs/downloadfile_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: dir_file_labs/downloadfile_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook dir_file_labs/downloadfile_example.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook dir_file_labs/downloadfile_example.yml
+
+
+# result:
+
+PLAY [Download a file using get_url] ****************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************
+[WARNING]: Platform linux on host root@161.35.108.163 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that
+path. See https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more
+information.
+ok: [root@161.35.108.163]
+
+TASK [Download jq utility] **************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Download jq utility with checksum validation] *************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Download POM file] ****************************************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Download files] *******************************************************************************************
+changed: [root@161.35.108.163] => (item={'url': 'https://maven.google.com/androidx/appcompat/appcompat/1.6.1/appcompat-1.6.1.aar', 'dest': '/tmp/andriod.aar'})
+changed: [root@161.35.108.163] => (item={'url': 'https://repo1.maven.org/maven2/com/squareup/retrofit2/retrofit/2.8.2/retrofit-2.8.2.jar', 'dest': '/tmp/retrofit.jar'})
+
+PLAY RECAP ******************************************************************************************************
+root@161.35.108.163        : ok=5    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+➢ If we execute the playbook again we will receive only 'ok' statuses.
+
+
+
 
 
 
 190. Extract an Archive on Remote Machines
 ==========================================
 
+➢ unarchive Module: This module in Ansible is used to extract compressed archive files on the remote hosts.
+	○ It can handle various archive foramts such as .zip, .tar, .tar.gz, .tar.bz2 and more.
+➢ Use Cases:
+	○ This module is particularly useful for deploying software packages, configuration files or any other archived content to remote machines.
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - with UbuntuOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- dir_file_labs/				# playbooks directory	
+	|	|--+ archive_example.yml		# roles requirements
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@147.182.189.174		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create playbooks folder
+	terminal --> mkdir dir_file_labs
+
+➢ Create playbook
+	terminal --> vi dir_file_labs/archive_example.yml
+
+archive_example.yml
+--------------------------------------------------------
+---
+- name: Deploy web application					# playbook name
+  hosts: webservers						# host group
+  become: yes  							# To run tasks with sudo privileges (root user)	
+  
+  tasks:							# tasks section
+    - name: Ensure the destination directory exists		# task 1 name
+      file:							# use file module
+        path: /var/www/html					# set target path to create directory
+        state: directory					# target state - create diretory
+
+    - name: Download the web application archive		# task 2 name
+      get_url:							# use get_url module to download file
+        url: https://github.com/brettz9/webappfind-demos-samples/archive/refs/tags/v0.7.0.tar.gz	# set target url
+        dest: /tmp/v0.7.0.tar.gz				# set destination folder on the remote host
+
+    - name: Extract the web application archive			# task 3 name
+      unarchive:						# use unarchive module
+        src: /tmp/v0.7.0.tar.gz					# set target archive
+        dest: /var/www/html					# set destination folder
+        remote_src: yes  					# Indicates that the src path is on the remote machine
+
+    - name: Clean up the archive file from the remote server	# task 4 name
+      file:							# use file module
+        path: /tmp/webapp.tar.gz				# set target file
+        state: absent						# target state - delete the 
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook dir_file_labs/archive_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: dir_file_labs/archive_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook dir_file_labs/archive_example.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook dir_file_labs/archive_example.yml
+
+
+# result:
+
+PLAY [Deploy web application] ***********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************
+[WARNING]: Platform linux on host root@161.35.108.163 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that
+path. See https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more
+information.
+ok: [root@161.35.108.163]
+
+TASK [Ensure the destination directory exists] ******************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Download the web application archive] *********************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Extract the web application archive] **********************************************************************
+changed: [root@161.35.108.163]
+
+TASK [Clean up the archive file from the remote server] *********************************************************
+ok: [root@161.35.108.163]
+
+PLAY RECAP ******************************************************************************************************
+root@161.35.108.163        : ok=5    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+➢ Login into remote host and check if the app is unachived and the downloaded archive is deleted
+	➢ Check if the unarchived data
+		host terminal --> ls /var/www/html/
+
+	➢ Check if the downloaded archive is deleted
+		host terminal --> ls /tmp/
 
 
