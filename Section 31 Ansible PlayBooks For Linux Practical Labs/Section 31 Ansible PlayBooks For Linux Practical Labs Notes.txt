@@ -633,7 +633,7 @@ vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vau
 
 ➢ We have dev_hosts.yml with 1 DO instances with static IPs
 
-inventory/dev/dev_hosts.yml
+inventory/dev/dev_hosts
 -------------------------------
 [all]
 root@157.230.211.126		# DO instance 1 Ubuntu
@@ -866,7 +866,7 @@ vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vau
 
 ➢ We have dev_hosts.yml with 1 DO instances with static IPs
 
-inventory/dev/dev_hosts.yml
+inventory/dev/dev_hosts
 -------------------------------
 [all]
 root@157.230.211.126		# DO instance 1 Ubuntu
@@ -1088,7 +1088,7 @@ vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vau
 
 ➢ We have dev_hosts.yml with 1 DO instances with static IPs
 
-inventory/dev/dev_hosts.yml
+inventory/dev/dev_hosts
 -------------------------------
 [all]
 root@157.230.211.126		# DO instance 1 Ubuntu
@@ -1268,7 +1268,7 @@ vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vau
 
 ➢ We have dev_hosts.yml with 1 DO instances with static IPs
 
-inventory/dev/dev_hosts.yml
+inventory/dev/dev_hosts
 -------------------------------
 [all]
 root@157.230.211.126		# DO instance 1 Ubuntu
@@ -1413,7 +1413,7 @@ DEMO:
 	# copy the SSH key
 
 
-➢ Create Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+➢ Create Digital Ocean Droplet - with UbuntuOS
 	- Create/Droplets
 		- Choose location - New York (default option) or whatever we choose
 		- Choose OS Ubuntu with the latest version - 24.10 x64
@@ -1769,7 +1769,7 @@ DEMO:
 	# copy the SSH key
 
 
-➢ Create Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+➢ Create Digital Ocean Droplet - with Ubuntu
 	- Create/Droplets
 		- Choose location - New York (default option) or whatever we choose
 		- Choose OS Ubuntu with the latest version - 24.10 x64

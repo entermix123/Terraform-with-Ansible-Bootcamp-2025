@@ -215,16 +215,16 @@ PLAYBOOK EXECUTION REQUIREMENTS
 
 
 ➢ Verify Playbooks Syntax before execution
-	terminal --> ansible_loop_playbooks/loops_example.yml --syntax-check
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example.yml --syntax-check
 
 	# if the syntax is correct we will receive this messages
 		playbook: ansible_loop_playbooks/loops_example.yml
 
 ➢ Execute Playbooks dry run before execution
-	terminal --> ansible_loop_playbooks/loops_example.yml --check
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example.yml --check
 
 ➢ Execute Playbooks
-	terminal --> ansible_loop_playbooks/loops_example.yml
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example.yml
 
 	# all taks should be executed
 
@@ -433,16 +433,16 @@ PLAYBOOK EXECUTION REQUIREMENTS
 
 
 ➢ Verify Playbooks Syntax before execution
-	terminal --> ansible_loop_playbooks/loops_example2.yml --syntax-check
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example2.yml --syntax-check
 
 	# if the syntax is correct we will receive this messages
 		playbook: ansible_loop_playbooks/loops_example2.yml
 
 ➢ Execute Playbooks dry run before execution
-	terminal --> ansible_loop_playbooks/loops_example2.yml --check
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example2.yml --check
 
 ➢ Execute Playbooks
-	terminal --> ansible_loop_playbooks/loops_example2.yml
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example2.yml
 
 	# all taks should be executed
 	# depending if we have isntalled httpd on the aws instance, it will start, else we will receive an error for the task
@@ -629,16 +629,16 @@ PLAYBOOK EXECUTION REQUIREMENTS
 
 
 ➢ Verify Playbooks Syntax before execution
-	terminal --> ansible_loop_playbooks/loops_example3.yml --syntax-check
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example3.yml --syntax-check
 
 	# if the syntax is correct we will receive this messages
 		playbook: ansible_loop_playbooks/loops_example3.yml
 
 ➢ Execute Playbooks dry run before execution
-	terminal --> ansible_loop_playbooks/loops_example3.yml --check
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example3.yml --check
 
 ➢ Execute Playbooks
-	terminal --> ansible_loop_playbooks/loops_example3.yml
+	terminal --> ansible-playbook ansible_loop_playbooks/loops_example3.yml
 
 	# all taks should be executed
 	# we can check the installed packages on our aws insrtance

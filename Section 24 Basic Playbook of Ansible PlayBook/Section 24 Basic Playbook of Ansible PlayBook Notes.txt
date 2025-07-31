@@ -194,25 +194,25 @@ PLAYBOOK EXECUTION REQUIREMENTS
 	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
 
 ➢ Check for correct syntax of the playbook
-	terminal --> aws_playbooks_intro/ansible_debug.yml --syntax-check 
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_debug.yml --syntax-check 
 
 	# the playbook will not be applied
 	# result: playbook: aws_playbooks_intro/ansible_debug.yml		# the syntax of the playbook is correct
 
 ➢ Execute Playbook in Dry Run Mode
-	terminal --> aws_playbooks_intro/ansible_debug.yml --check
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_debug.yml --check
 
 	# the playbook will not be applied
 	# result: this will show what output we will get after executing the playbooks
 
 ➢ Execute Playbook with verbosity level 1
-	terminal --> aws_playbooks_intro/ansible_debug.yml -v
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_debug.yml -v
 
 	# the playbook will not be applied, because the verbosity level is not met
 	# we have configured verbosity level = 2
 
 ➢ Execute the playbook
-	terminal --> aws_playbooks_intro/ansible_debug.yml -vv			# or more: -vvv, -vvvv etc.
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_debug.yml -vv			# or more: -vvv, -vvvv etc.
 
 	# if we set verbosity level = 2 : -vv or more (-vvv - level 3) the playbook will be applied
 
@@ -376,17 +376,17 @@ PLAYBOOK EXECUTION REQUIREMENTS
 
 
 ➢ Verify Playbook Syntax before execution
-	terminal --> aws_playbooks_intro/ansible_var.yml --syntax-check
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_var.yml --syntax-check
 	# result: playbook: aws_playbooks_intro/ansible_var.yml
 
 ➢ Execute Playbook in Dry Run Mode
-	terminal --> aws_playbooks_intro/ansible_var.yml --check
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_var.yml --check
 
 	# the playbook will not be applied
 	# result: this will show what output we will get after executing the playbooks
 
 ➢ Execute Playbook
-	terminal --> aws_playbooks_intro/ansible_var.yml
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_var.yml
 
 	# result all messages and variables will be printed
 
@@ -571,17 +571,17 @@ PLAYBOOK EXECUTION REQUIREMENTS
 
 
 ➢ Verify Playbook Syntax before execution
-	terminal --> aws_playbooks_intro/ansible_datacollection.yml --syntax-check
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_datacollection.yml --syntax-check
 	# result: playbook: aws_playbooks_intro/ansible_datacollection.yml
 
 ➢ Execute Playbook in Dry Run Mode
-	terminal --> aws_playbooks_intro/ansible_datacollection.yml --check
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_datacollection.yml --check
 
 	# the playbook will not be applied
 	# result: this will show what output we will get after executing the playbooks
 
 ➢ Execute Playbook
-	terminal --> aws_playbooks_intro/ansible_datacollection.yml
+	terminal --> ansible-playbook aws_playbooks_intro/ansible_datacollection.yml
 
 	# result all variables and data structures will be printed as a task
 	# Lists will be printed in the same format regardless of the configuration type
@@ -754,17 +754,17 @@ PLAYBOOK EXECUTION REQUIREMENTS
 
 
 ➢ Verify Playbook Syntax before execution
-	terminal --> aws_playbooks_intro/register_ansible.yml --syntax-check
+	terminal --> ansible-playbook aws_playbooks_intro/register_ansible.yml --syntax-check
 	# result: playbook: aws_playbooks_intro/register_ansible.yml
 
 ➢ Execute Playbook in Dry Run Mode
-	terminal --> aws_playbooks_intro/register_ansible.yml --check
+	terminal --> ansible-playbook aws_playbooks_intro/register_ansible.yml --check
 
 	# the playbook will not be applied
 	# result: this will show what output we will get after executing the playbooks
 
 ➢ Execute Playbook
-	terminal --> aws_playbooks_intro/register_ansible.yml
+	terminal --> ansible-playbook aws_playbooks_intro/register_ansible.yml
 
 	# result the variable 'bash_version' will be printed on the console
 
@@ -883,16 +883,16 @@ PLAYBOOK EXECUTION REQUIREMENTS - for this example we use localhost and not AWS 
 
 
 ➢ Verify Playbook Syntax before execution
-	terminal --> aws_playbooks_intro/arithmetic_operations.yml --syntax-check
+	terminal --> ansible-playbook aws_playbooks_intro/arithmetic_operations.yml --syntax-check
 	# result: playbook: aws_playbooks_intro/arithmetic_operations.yml
 
 ➢ Execute Playbook in Dry Run Mode
-	terminal --> aws_playbooks_intro/arithmetic_operations.yml --check
+	terminal --> ansible-playbook aws_playbooks_intro/arithmetic_operations.yml --check
 
 	# result: this will show the result of the operations configured
 
 ➢ Execute Playbook
-	terminal --> aws_playbooks_intro/arithmetic_operations.yml
+	terminal --> ansible-playbook aws_playbooks_intro/arithmetic_operations.yml
 
 	# result:  this will show the result of the operations configured
 
@@ -1012,17 +1012,17 @@ PLAYBOOK EXECUTION REQUIREMENTS - for this example we use localhost and not AWS 
 
 
 ➢ Verify Playbook Syntax before execution
-	terminal --> aws_playbooks_intro/practice_arithmetic.yml --syntax-check
+	terminal --> ansible-playbook aws_playbooks_intro/practice_arithmetic.yml --syntax-check
 	# result: playbook: aws_playbooks_intro/practice_arithmetic.yml
 
 ➢ Execute Playbook in Dry Run Mode
-	terminal --> aws_playbooks_intro/practice_arithmetic.yml --check
+	terminal --> ansible-playbook aws_playbooks_intro/practice_arithmetic.yml --check
 
 	# we will be asked for x and y
 	# result: this will show the result of the operations configured
 
 ➢ Execute Playbook
-	terminal --> aws_playbooks_intro/practice_arithmetic.yml
+	terminal --> ansible-playbook aws_playbooks_intro/practice_arithmetic.yml
 
 	# we will be asked for x and y
 	# result:  this will show the result of the operations configured
@@ -1153,16 +1153,16 @@ PLAYBOOK EXECUTION REQUIREMENTS - for this example we use localhost and not AWS 
 
 
 ➢ Verify Playbook Syntax before execution
-	terminal --> aws_playbooks_intro/filter_methods_ansible.yml --syntax-check
+	terminal --> ansible-playbook aws_playbooks_intro/filter_methods_ansible.yml --syntax-check
 	# result: playbook: aws_playbooks_intro/filter_methods_ansible.yml
 
 ➢ Execute Playbook in Dry Run Mode
-	terminal --> aws_playbooks_intro/filter_methods_ansible.yml --check
+	terminal --> ansible-playbook aws_playbooks_intro/filter_methods_ansible.yml --check
 
 	# result: this will be as below
 
 ➢ Execute Playbook
-	terminal --> aws_playbooks_intro/filter_methods_ansible.yml
+	terminal --> ansible-playbook aws_playbooks_intro/filter_methods_ansible.yml
 
 Results:
 --------
