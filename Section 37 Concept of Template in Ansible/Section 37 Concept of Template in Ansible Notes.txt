@@ -10,23 +10,709 @@ Section 37: Concept of Template in Ansible
 
 
 
-191. Install Realtime Application I
-===================================
+191. Install Realtime Application I, 192. Install Realtime Application II and 193. Install Realtime Application III
+===================================================================================================================
+
+➢ Thi smodule is aboout using the Ansible template.
+
+➢ First we hand-on some REal Time Application and understand the need of Template.
+
+➢ We are going to install Tomcat on our machines.
+	➢ Steps to install and COnfigure Tomcat in Linux Machines:
+		○ Install Java on hte machine
+		○ Download the Tomcat Artifact
+		○ Extract the Downloaded Tomcat Artifact
+		○ Start Tomcat
+		○ Open the Tomcat URL
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ install_tomcat.yml		# playbook 
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somewhere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+➢ Download tomcat on our local machine - https://tomcat.apache.org/download-90.cgi (choose core .tar.gz file)
+	➢ Unachive and find apache/conf/server.xml - tomcat server configuration file
+
+	➢ We can see the port we can access the tomcat service
+	# result: we can see the connector port at line 69 '<Connector port="8080" ...'
+
+
+➢ Copy the content of the server.xml and create server configuration template on our ansible machine
+	terminal --> vi aws_playbooks_intro/server.xml.j2
+
+server.xml.j2
+--------------------------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!-- Note:  A "Server" is not itself a "Container", so you may not
+     define subcomponents such as "Valves" at this level.
+     Documentation at /docs/config/server.html
+ -->
+<Server port="8005" shutdown="SHUTDOWN">
+  <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
+  <!-- Security listener. Documentation at /docs/config/listeners.html
+  <Listener className="org.apache.catalina.security.SecurityListener" />
+  -->
+  <!-- APR library loader. Documentation at /docs/apr.html -->
+  <Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on" />
+  <!-- Prevent memory leaks due to use of particular java/javax APIs-->
+  <Listener className="org.apache.catalina.core.JreMemoryLeakPreventionListener" />
+  <Listener className="org.apache.catalina.mbeans.GlobalResourcesLifecycleListener" />
+  <Listener className="org.apache.catalina.core.ThreadLocalLeakPreventionListener" />
+
+  <!-- Global JNDI resources
+       Documentation at /docs/jndi-resources-howto.html
+  -->
+  <GlobalNamingResources>
+    <!-- Editable user database that can also be used by
+         UserDatabaseRealm to authenticate users
+    -->
+    <Resource name="UserDatabase" auth="Container"
+              type="org.apache.catalina.UserDatabase"
+              description="User database that can be updated and saved"
+              factory="org.apache.catalina.users.MemoryUserDatabaseFactory"
+              pathname="conf/tomcat-users.xml" />
+  </GlobalNamingResources>
+
+  <!-- A "Service" is a collection of one or more "Connectors" that share
+       a single "Container" Note:  A "Service" is not itself a "Container",
+       so you may not define subcomponents such as "Valves" at this level.
+       Documentation at /docs/config/service.html
+   -->
+  <Service name="Catalina">
+
+    <!--The connectors can use a shared executor, you can define one or more named thread pools-->
+    <!--
+    <Executor name="tomcatThreadPool" namePrefix="catalina-exec-"
+        maxThreads="150" minSpareThreads="4"/>
+    -->
+
+
+    <!-- A "Connector" represents an endpoint by which requests are received
+         and responses are returned. Documentation at :
+         Java HTTP Connector: /docs/config/http.html
+         Java AJP  Connector: /docs/config/ajp.html
+         APR (HTTP/AJP) Connector: /docs/apr.html
+         Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
+    -->
+    <Connector port="{{tomcat_port}}" protocol="HTTP/1.1"
+               connectionTimeout="20000"
+               redirectPort="8443" />
+    <!-- A "Connector" using the shared thread pool-->
+    <!--
+    <Connector executor="tomcatThreadPool"
+               port="8080" protocol="HTTP/1.1"
+               connectionTimeout="20000"
+               redirectPort="8443" />
+    -->
+    <!-- Define an SSL/TLS HTTP/1.1 Connector on port 8443
+         This connector uses the NIO implementation. The default
+         SSLImplementation will depend on the presence of the APR/native
+         library and the useOpenSSL attribute of the AprLifecycleListener.
+         Either JSSE or OpenSSL style configuration may be used regardless of
+         the SSLImplementation selected. JSSE style configuration is used below.
+    -->
+    <!--
+    <Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
+               maxThreads="150" SSLEnabled="true">
+        <SSLHostConfig>
+            <Certificate certificateKeystoreFile="conf/localhost-rsa.jks"
+                         type="RSA" />
+        </SSLHostConfig>
+    </Connector>
+    -->
+    <!-- Define an SSL/TLS HTTP/1.1 Connector on port 8443 with HTTP/2
+         This connector uses the APR/native implementation which always uses
+         OpenSSL for TLS.
+         Either JSSE or OpenSSL style configuration may be used. OpenSSL style
+         configuration is used below.
+    -->
+    <!--
+    <Connector port="8443" protocol="org.apache.coyote.http11.Http11AprProtocol"
+               maxThreads="150" SSLEnabled="true" >
+        <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
+        <SSLHostConfig>
+            <Certificate certificateKeyFile="conf/localhost-rsa-key.pem"
+                         certificateFile="conf/localhost-rsa-cert.pem"
+                         certificateChainFile="conf/localhost-rsa-chain.pem"
+                         type="RSA" />
+        </SSLHostConfig>
+    </Connector>
+    -->
+
+    <!-- Define an AJP 1.3 Connector on port 8009 -->
+    <!--
+    <Connector protocol="AJP/1.3"
+               address="::1"
+               port="8009"
+               redirectPort="8443" />
+    -->
+
+    <!-- An Engine represents the entry point (within Catalina) that processes
+         every request.  The Engine implementation for Tomcat stand alone
+         analyzes the HTTP headers included with the request, and passes them
+         on to the appropriate Host (virtual host).
+         Documentation at /docs/config/engine.html -->
+
+    <!-- You should set jvmRoute to support load-balancing via AJP ie :
+    <Engine name="Catalina" defaultHost="localhost" jvmRoute="jvm1">
+    -->
+    <Engine name="Catalina" defaultHost="localhost">
+
+      <!--For clustering, please take a look at documentation at:
+          /docs/cluster-howto.html  (simple how to)
+          /docs/config/cluster.html (reference documentation) -->
+      <!--
+      <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster"/>
+      -->
+
+      <!-- Use the LockOutRealm to prevent attempts to guess user passwords
+           via a brute-force attack -->
+      <Realm className="org.apache.catalina.realm.LockOutRealm">
+        <!-- This Realm uses the UserDatabase configured in the global JNDI
+             resources under the key "UserDatabase".  Any edits
+             that are performed against this UserDatabase are immediately
+             available for use by the Realm.  -->
+        <Realm className="org.apache.catalina.realm.UserDatabaseRealm"
+               resourceName="UserDatabase"/>
+      </Realm>
+
+      <Host name="localhost"  appBase="webapps"
+            unpackWARs="true" autoDeploy="true">
+
+        <!-- SingleSignOn valve, share authentication between web applications
+             Documentation at: /docs/config/valve.html -->
+        <!--
+        <Valve className="org.apache.catalina.authenticator.SingleSignOn" />
+        -->
+
+        <!-- Access log processes all example.
+             Documentation at: /docs/config/valve.html
+             Note: The pattern used is equivalent to using pattern="common" -->
+        <Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+               prefix="localhost_access_log" suffix=".txt"
+               pattern="%h %l %u %t &quot;%r&quot; %s %b" />
+
+      </Host>
+    </Engine>
+  </Service>
+</Server>
+
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+➢ We can change the port we can access the tomcat service by setting jinja2 syntax on line 69 and set the port in variable in the playbook (already set in the code above and in the playbook below).
+
+
+➢ Create playbook handler_req.yml
+	terminal -> vi aws_playbooks_intro/install_tomcat.yml
+
+install_tomcat.yml
+--------------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playboo				# set interpreter
+
+- name: Install and Configure Tomcat using Ansible			# playbook name
+  hosts: all								# host group
+  remote_user: ec2-user							# set default user
+  become: 'yes'								# switch to root user option enabled
+  become_user: root 							# switch to root user
+
+  vars:										# set variables
+    java_version: java-1.8.0-openjdk						# java
+    alternative_path: java-1.8.0-openjdk-1.8.0.302.b08-0.amzn2.0.1.x86_64 	# set java installation path
+    tomcat_version: 9.0.56 							# tomcat
+    tomcat_port: 8090								# set tomcat port
+
+  tasks:							# tasks section
+  - name: Update All Packages on Machine			# task 1 name
+    yum:							# use yum package manager
+      name: "*"							# target package name - '*' - all
+      state: latest						# target state - update
+
+  - name: Install Java on Machine				# task 2 name
+    yum:							# use yum package manager 
+      name: "{{ java_version }}"				# target package - from variables (check if java is installed)
+      state: present						# target state - exist
+  
+  - name: Set Java 8 Alternative on Machine			# task 3 name
+    alternatives:						# use alternatives module: take care if java is already installed
+      name: java						# target package - java
+      link: /bin/java						# link folder
+      path: /usr/lib/jvm/{{alternative_path}}/jre/bin/java 	# target path for the link: downloaded java is set to be used
+
+  - name: Download Tomcat Tar file				# task 4 name
+    get_url:							# use get_url to download tomcat
+      url: https://dlcdn.apache.org/tomcat/tomcat-9/v{{tomcat_version}}/bin/apache-tomcat-{{tomcat_version}}.tar.gz
+      dest: /usr/local						# set download folder
+
+  - name: Extract Tomcat file					# task 5 name
+    unarchive:							# use unarchive module to unachive tomcat 
+      src: /usr/local/apache-tomcat-{{tomcat_version}}.tar.gz	# set target file (downloaded)
+      dest: /usr/local						# set unachive target folder
+      remote_src: yes						# state that the action is on the remote host
+  
+  - name: Rename Tomcat dir							# task 6 name
+    command: mv /usr/local/apache-tomcat-{{tomcat_version}} /usr/local/tomcat 	# move the unachived foles to new directory
+
+  - name: Replacing default port with required port		# task 6 name
+    template:							# use template
+      src: server.xml.j2					# source template
+      dest: /usr/local/tomcat/conf/server.xml 			# set template target content file
+
+  - name: Starting Tomcat process				# task 7 name
+    shell: nohup /usr/local/tomcat/bin/startup.sh &		# start tomcat as background service
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Give executable rights to the playbook files	
+	terminal --> chmod 0755 -R aws_playbooks_intro/
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook aws_playbooks_intro/install_tomcat.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: aws_playbooks_intro/install_tomcat.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook aws_playbooks_intro/install_tomcat.yml --check
+
+➢ Execute Playbooks in verbose mode lvl2
+	terminal --> ansible-playbook aws_playbooks_intro/install_tomcat.yml -vv
+
+	# After the playbook's tasks are successfuly finished we should have working tomcat on the aws instance
 
 
 
-192. Install Realtime Application II
-====================================
+
+
+➢ We can list the linked java installation on the remote host
+	host terminal --> ls -l /bin | grep java
+	or
+	host terminal --> ls -l /etc/alternatives | grep java
+
+
+➢ We can find tomcat proces on the host machine
+	➢ login to the aws instance
+		terminal --> ec2-user@aws_instance_IP
+
+	➢ Switch to root user
+		host terminal --> sudo su
+
+	➢ list tomcat processes
+		host terminal --> ps -ef | grep tomcat
+
+		# result: we can see that tomcat services are running
+
+	➢ print tomcat logs
+		host terminal --> cat /usr/local/tomcat/logs/catalina.out
+
+		# we can see that logs for starting of tomcat service
+
+
+➢ We can try to open our aws instance from our local machine
+	➢ go to AWS/EC2/Instances/Instance Details and copy the private DNS of the aws instance and open it into the browser and add the port 'DNS...:8080'
+
+	# result: If we cannot connect to our aws instance yet, try to troubleshoot
+
+➢ Troubleshoot 
+	➢ go to AWS/EC2/Instances/Instance Details/Security Group and check if security group allow all connection
+	
+
+➢ Find the port on the aws intance
+	➢ login to the aws instance
+		terminal --> ec2-user@aws_instance_IP
+
+	➢ Switch to root user
+		host terminal --> sudo su
+
+	➢ List the tomcat configuration port settings
+		host terminal --> cat /usr/local/tomcat/conf/server.xml | grep Connection
+	
+		# result: we should be able to see the connector port
+
+	➢ list tomcat processes
+		host terminal --> ps -ef | grep tomcat
+
+	➢ print tomcat logs
+		host terminal --> cat /usr/local/tomcat/logs/catalina.out
+
+		# we can see that logs for starting of tomcat service
+
+
+➢ Now we should be able to connect to tomcat tserver on our aws instance from our local machine.
 
 
 
-193. Install Realtime Application III
-=====================================
+
+
+
 
 
 
 194. Template Module with Variables
 ===================================
+
+
+DEMO:
+-----
+
+Prerequisite configuration:
+---------------------------
+
+Login to DigitalOcean Droplet working PC
+	terminal --> ssh root@IP
+	terminal --> password
+
+Working folder structure
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- aws_playbooks_intro/		# playbooks directory	
+	|	|--+ install_httpd.yml		# playbook 
+	|
+	|--+ index.html.j2			# varibales  
+	|--+ ansible.cfg			# ansible configuration file
+	|--+ demo.aws_ec2.yml			# aws dynamic inventory file
+
+
+Navigate to nasible root directory
+	terminal --> cd ansible
+
+Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+➢ Install boto3 in Python Virtual Environment
+	terminal --> pip3 install boto3		# used to connect to our AWS instances (AWS specific package)
+	terminal --> pip3 install botocore	# used to connect to our AWS instances (AWS specific package)
+
+	Confirm boto3 and botocore installation
+		terminal --> pip3 list
+
+➢ Create 2 AWS instance
+	- go to AWS/EC2/Launch Instance
+		- Name and tags: ansible-client1, ansible-client2
+		- on the right side section - "Summary" set more than one instances
+		- AMI (amazon Machine Image) - choose the default (free tier eligible) - Amazon Linux 2023 ...
+		- Architecture: x64
+		- Instance type: t2.micro - free tier eligible
+		- Key pair (login): ansible-engine
+		- Network settings/Firewall (security groups): Select existing security group
+			- Common security groups: choose the default we have configured
+		- Storage (volumes): Keep the default settings - Size: 8 GiB, Volume type: gp3 ...
+		- Launch Instance
+
+➢ Create AWS User and Export Creds on Ansible Engine.
+	- Create AWS IAM User - go to AWS/IAM/Users/Create User
+		Specify user details
+			- name: ansible-admin
+			- Next
+		Set permissions
+			- Permissions options: Add user to group
+			- select group with administrative rights - admingroup
+			(if you don't have group with AdministratorAccess, create one)
+			- Next
+		Review and create
+			- Create user
+	- Create access key to the user - - go to AWS/IAM/Users/ansible-admin/Create access key
+		Access key best practices & alternatives
+			- Use case: Other
+			- Tag: ansible-admin-key
+			- Create access key
+			- save keys somewhere safe
+			- close
+		
+
+➢ Set AWS IAM ansible-admin user access key and secret access key as environment variables on ansible-engine
+	terminal --> export AWS_ACCESS_KEY_ID='AccessKey'
+	terminal --> export AWS_SECRET_ACCESS_KEY='SecreatAccessKey'
+
+	Verify created env vars
+		terminal --> printenv AWS_ACCESS_KEY_ID
+		terminal --> printenv AWS_SECRET_ACCESS_KEY
+
+
+➢ We have ansible configurations for AWS:
+
+ansible.cfg
+-------------------------------
+[defaults]
+inventory =  /root/ansible/demo.aws_ec2.yml			# set dynamic inventory path, aws/gsp/azure/do etc.
+host_key_checking = False					# skip connection confirmation when connect to instance
+
+[inventory]							# added dynamic inventory plugins
+enable_plugins = host_list, script, auto, yaml, ini, toml		
+-------------------------------
+
+
+➢ We have dynamic AWS inventory demo.aws_ec2.yml:
+
+demo.aws_ec2.yml
+-------------------------------
+plugin: amazon.aws.aws_ec2		# use aws plugin
+filters:
+    instance-state-name: running	# set fileter for running instances only
+-------------------------------
+
+
+➢ Create playbook
+	terminal -> vi aws_playbooks_intro/install_httpd.yml
+
+install_httpd.yml
+--------------------------------------------------------
+#!/root/ansible/myansible/bin/ansible-playbook			# interpreter
+- name: Installing WebServer					# playbook name
+  hosts: all							# all hosts
+  remote_user: ec2-user						# default user for AWS Instance connection
+  become: 'yes'							# enable switch user option
+  become_user: root						# switch to root user
+
+  vars:								# set variables
+    custom_var : 123abc
+
+  tasks:							# tasks section
+    - name: Ensure Apache is at the Latest Version		# task 1 name
+      yum:							# use yum package manager
+        name: httpd						# target package
+        state: present						# target state - installed
+      notify:							# defie notification
+        - Ensure Apache is Running				# define notification text
+       
+    - name: Updating Index HTML file				# task 2 name
+      template:							# use template module
+        src: index.html.j2					# use template file
+        dest: /usr/share/httpd/noindex/index.html		# set template location and name
+      notify:							# define notification
+        - Ensure Apache restart 				# define notification text
+		
+  handlers:							# handler for service managing
+    - name: Ensure Apache is Running				# handler task 1 name
+      service:							# use service module
+        name: httpd						# target service
+        state: started						# target state - started/ running
+
+    - name: Ensure Apache restart				# handler task 2 name
+      service:							# use service module
+        name: httpd						# target module
+        state: restarted					# target state - restarted (restart the service)
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Create template varibales file
+	terminal -> vi index.html.j2	# if playbook can't find the template, create it in the same dir - aws_playbooks_intro/
+
+index.html.j2
+--------------------------------------------------------
+Hi, This is Custom Index File. 
+
+Executing on Machine IP : {{ ansible_all_ipv4_addresses }}
+
+This is OS Family : {{ ansible_os_family }}
+
+This Machine FQDN is : {{ ansible_fqdn }}
+
+This is Distro : {{ ansible_distribution }} and BIOS : {{ ansible_bios_version }}
+
+Hard Coded Varaiable : {{ custom_var }}
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+All these variables are available from gather facts process and playbook content.
+ 
+
+➢ Give executable rights to the playbook files	
+	terminal --> chmod 0755 -R aws_playbooks_intro/
+
+
+
+PLAYBOOK EXECUTION REQUIREMENTS
+-------------------------------
+1. Set full path for AWS dynamic inventory in ansible.cfg file - inventory =  /root/ansible/demo.aws_ec2.yaml
+2. Set binary ansible-playbook directory as first line in the playbook - #!/root/ansible/myansible/bin/ansible-playbook
+3. Set remote_user in the playbook - remote_user: ec2-user, use 'become' and 'become_user' options to switch to root user
+4. Make sure that the playbooks have executable permissions - terminal --> chmod 0755 -R aws_playbooks_intro/
+5. Make sure that IAM AWS Account creadentials are set as environment variables for the session or use locally generated ssh key
+	- we can generate ssh key in /root/.shh with terminal --> ssh-keygen, then we can set the public key on the aws instance
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook aws_playbooks_intro/install_httpd.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: aws_playbooks_intro/install_httpd.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook aws_playbooks_intro/install_httpd.yml --check
+
+➢ Execute Playbooks in verbose mode lvl2
+	terminal --> ansible-playbook aws_playbooks_intro/install_httpd.yml -vv
+
+# result: We used template to modify the apache default page. When we connect we will see the information in the template.
+
+
+➢ Access the instances from our local machine
+	➢ Go to AWS/EC2/Instances/Instance Details/ Copy the 'Public IPv4 DNS' 
+	➢ Paste the DNS in our broser and add ':80' to connect on port 80. We must connect with HTTP and not HTTPS.
+	➢ We should be able to connect and see the custom apache server page we defined ith the template
+
+
+
+
+WE CAN CONNECT AND MANAGE MANUALLY THE APACHE SERVER DEFAULT PAGE:
+------------------------------------------------------------------
+
+➢ Connect on one of the AWS instances and copy the Apache configuration
+	➢ switch to root user
+		host terminal --> sudo su
+	➢ print apache configuration
+		host directory --> cat etc/httpd/conf/httpd.conf
+
+	➢ We can find the default apcache html page destinalion:
+		host terminal --> find / -name index.html		# result: /usr/share/httpd/noindex/index.html
+
+	➢ Edit the file, delete all content and set simple text
+		host terminal --> vi /usr/share/httpd/noindex/index.html
+
+		➢ Delete all content: 300dd
+		➢ Add the text below
+
+/usr/share/httpd/noindex/index.html
+--------------------------------------------------------
+This is from machine 1.2.3.4
+--------------------------------------------------------
+save chabges: escape, :wq!, enter
+
+
+➢ Access the instances from our local machine and check the custom text
+	➢ Go to AWS/EC2/Instances/Instance Details/ Copy the 'Public IPv4 DNS' 
+	➢ Paste the DNS in our broser and add ':80' to connect on port 80. We must connect with HTTP and not HTTPS.
+	➢ We should be able to connect and see the text we set above.
 
 
 
