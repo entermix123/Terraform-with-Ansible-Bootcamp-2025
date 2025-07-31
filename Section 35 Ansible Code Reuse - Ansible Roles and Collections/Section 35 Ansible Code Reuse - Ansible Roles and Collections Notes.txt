@@ -10,10 +10,549 @@ Section 35: Ansible Code Reuse - Ansible Roles and Collections
 183. Understanding of Ansible Galaxy, Roles, Collections
 ========================================================
 
+➢ Ansible Galaxy: Ansible Galaxy is a hub for finding, sharing and downloading community-created roles and collections for use with Ansible.
+	○ It is free repository where Ansible users share roles and collections that can be used to automate various IT tasks and configurations.
+
+➢ Key Concepts of Ansible Galaxy:
+	○ Roles
+	○ Collections
+
+	➢ Roles:
+		○ A role is a way of organizing Ansible playbooks, tasks, variables and other files in a structured manner.
+		○ Roles can include tasks, handlers, variables, templates and files and making them modular and reusable.
+		○ Ansible Galaxy allows us to download these roles from the community or share our own roles with others.
+
+	➢ Collections:
+		○ Collections are a distribution format for ansible content that can include roles, playbooks, modules and plugins
+		○ They help tp package and distribute multiple pieces of Ansible content together.
+
+➢ Use Cases:
+	○ Reusing Community Roles and Collections
+	○ Sharing Our Own Roles and Collections
+	○ Standardizing Automation Across Teams
+		- By using roles and collections we can ensure that our team uses standardized, tested and versioned automation content.
+		- This reduce the errors and increases consistency across environments
+	○ Simplifying Playbook Management
+		- Organizing our playbooks into roles and collections helps to manage and scale our automation projects more effectively.
+		
+
+
+
+ANSIBLE GALAXY
+--------------
+
+➢ We can find Ansible Galaxy by searching it in Google
+	- https://galaxy.ansible.com/ui/
+
+➢ We can find the search for the collection and the roles
+
+➢ We can find Ansible Galaxy Documentation - https://ansible.readthedocs.io/projects/galaxy-ng/en/latest/community/userguide.html
+
+➢ We can find specific roles in /Roles/Search. For example search for 'mysql' and set the filter to 'Downloaded count'
+	➢ we can consider the downloads and the rating of the role when we are choosing which one to use.
+
+➢ We can search similary for collection - Collections/Collections/search. For the example we search 'Docker'. We can enter in one of the results and got to 'Contents' where we can search for our role.
+
+
+➢ How we can use or create our own role
+	➢ Search for 'Ansible Role' in google - https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html
+		○ We can find predefined role structure and we must provide the required parameters to create one
+		○ We can see how to use the roles in different scenarios
+
+➢ How we can use or create our own collection
+	➢ Search for 'Ansible Collections' in google - https://docs.ansible.com/ansible/latest/collections_guide/index.html
+		○ Installing - https://docs.ansible.com/ansible/latest/collections_guide/collections_installing.html#
+
+
+
+
+
 
 
 184. Download and Use Ansible Galaxy Roles
 ==========================================
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - Ubuntu
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- CPU options: Premium Intel: Disk Type: SSD/ $32/Month - 4GB/2 Intel CPU/120 GB NVMe SSD/ 4 T tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client1
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- collections_roles/				# playbooks directory	
+	|	|--+ roles_requirements.yml		# roles requirements
+	|	|--+ Roles_example.yml			# role playbook
+	|	|--+ collections_requirements.yml	# collections requirements
+	|	|--+ collections_example.yml		# collections playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@147.182.189.174		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+
+ROLES:
+------
+
+➢ Create directory for the demo
+	terminal --> mkdir collections_roles
+
+
+➢ Create role requirements file
+	terminal --> vi collections_roles/roles_requirements.yml
+
+roles_requirements.yml
+----------------------------------------------------- 
+---
+- src: geerlingguy.nginx					# define the role
+  version: 3.2.0   						# define the version
+
+- src: geerlingguy.mysql					# define the role
+  version: 5.0.2						# define the version
+
+# ansible-galaxy install -r collections_roles/requirements.yml
+
+# Check that the roles have been installed in the appropriate 
+# directory (typically ~/.ansible/roles or /etc/ansible/roles).
+----------------------------------------------------- 
+save chabges: escape, :wq!, enter
+
+
+➢ We will use ansible galaxy module to install the roles.
+
+➢ Show ansible galaxy help commands
+	terminal --> ansible-galaxy -h
+
+# result:
+----------------------------------------------------------------------------
+usage: ansible-galaxy [-h] [--version] [-v] TYPE ...
+
+Perform various Role and Collection related operations.
+
+positional arguments:
+  TYPE
+    collection   Manage an Ansible Galaxy collection.
+    role         Manage an Ansible Galaxy role.
+
+options:
+  --version      show program's version number, config file location, configured module search path, module
+                 location, executable location and exit
+  -h, --help     show this help message and exit
+  -v, --verbose  Causes Ansible to print more debug messages. Adding multiple -v will increase the verbosity, the
+                 builtin plugins currently evaluate up to -vvvvvv. A reasonable level to start is -vvv, connection
+                 debugging might require -vvvv. This argument may be specified multiple times.
+----------------------------------------------------------------------------
+
+
+➢ Install the roles requirements
+	terminal --> ansible-galaxy install -r collections_roles/roles_requirements.yml
+
+# result:
+
+Starting galaxy role install process
+- downloading role 'nginx', owned by geerlingguy
+- downloading role from https://github.com/geerlingguy/ansible-role-nginx/archive/3.2.0.tar.gz
+- extracting geerlingguy.nginx to /root/.ansible/roles/geerlingguy.nginx
+- geerlingguy.nginx (3.2.0) was installed successfully
+- downloading role 'mysql', owned by geerlingguy
+- downloading role from https://github.com/geerlingguy/ansible-role-mysql/archive/5.0.2.tar.gz
+- extracting geerlingguy.mysql to /root/.ansible/roles/geerlingguy.mysql
+- geerlingguy.mysql (5.0.2) was installed successfully
+
+
+
+
+➢ Create role playbook
+	terminal --> vi collections_roles/roles_example.yml
+
+roles_example.yml
+----------------------------------------------------- 
+---
+- name: Install, configure, and verify Nginx and MySQL			# playbook name
+  hosts: webservers							# host group
+  become: yes								# switch to root user
+  roles:								# roles
+    - geerlingguy.nginx			# https://galaxy.ansible.com/ui/standalone/roles/geerlingguy/nginx/install/
+    - geerlingguy.mysql			# https://galaxy.ansible.com/ui/standalone/roles/geerlingguy/mysql/
+  # Roles installed via Requirement.txt
+
+  tasks:								# tasks section
+    - name: Verify Nginx is installed					# task 1 name
+      command: nginx -v							# execute command
+      register: nginx_version						# save command result in variable
+      ignore_errors: yes						# skip errors
+
+    - name: Check Nginx installation					# task 2 name
+      debug:								# use debug module to print message
+        msg: "Nginx version: {{ nginx_version.stderr }}"		# define message
+      when: nginx_version.rc == 0		# print msg if in var 'written status code' rc == 0 (no error), rc == 2 - error 
+      # displays the Nginx version if the previous command succeeds 
+
+    - name: Verify Nginx service is running				# task 3 name
+      systemd:								# use OS package manager
+        name: nginx							# taget package
+        state: started							# target state - running
+      register: nginx_service						# save result in var
+      ignore_errors: yes						# skip errors
+
+    - name: Check Nginx service status					# task 4 name
+      debug:								# use debug module to print msg
+        msg: "Nginx service is running"					# define msg
+      when: nginx_service.state == 'started'				# print msg if var is specific result (nginx is running)
+      # confirms the service status if it is in the 'started' state.
+
+    - name: Verify MySQL is installed					# task 5 name
+      command: mysql --version						# execute command - show mysql version
+      register: mysql_version						# save result in variable
+      ignore_errors: yes						# skip errors
+
+    - name: Check MySQL installation					# task 6 name
+      debug:								# use debug module to print msg
+        msg: "MySQL version: {{ mysql_version.stdout }}"		# define msg
+      when: mysql_version.rc == 0			# print msg if 'written status code' rc == 0 (no error), rc == 2 - error
+      # displays the MySQL version if the previous command succeeds 
+
+    - name: Verify MySQL service is running				# task 7 name
+      systemd:								# use OS package manager
+        name: mysql							# target package
+        state: started							# target state - running
+      register: mysql_service						# save result in variable
+      ignore_errors: yes						# skip error
+
+    - name: Check MySQL service status					# task 8 name
+      debug:								# use debug module to prrint msg
+        msg: "MySQL service is running"					# define msg
+      when: mysql_service.state == 'started'				# print msg if service of MySQL is running
+      # task confirms the service status if it is in the 'started' state.
+----------------------------------------------------- 
+save chabges: escape, :wq!, enter
+
+
+➢ The first 7 lines are enough to install and configure nginx and MySQL. All tasks configured after are custom tasks from the user.
+
+➢ All custom tasks are to check if the nginx and mysql are istalled and running. No configuration is made. All installations and configurations are made by the configured roles.
+
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook collections_roles/roles_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: collections_roles/roles_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook collections_roles/roles_example.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook collections_roles/roles_example.yml
+
+
+# result: All logs are for our custom tasks. Tasks executed from the roles are not shown.
+
+TASK [Verify Nginx is installed] *************************************************************************************
+changed: [root@147.182.189.174]
+
+TASK [Check Nginx installation] **************************************************************************************
+ok: [root@147.182.189.174] => {
+    "msg": "Nginx version: nginx version: nginx/1.26.3 (Ubuntu)"
+}
+
+TASK [Verify Nginx service is running] *******************************************************************************
+ok: [root@147.182.189.174]
+
+TASK [Check Nginx service status] ************************************************************************************
+ok: [root@147.182.189.174] => {
+    "msg": "Nginx service is running"
+}
+
+TASK [Verify MySQL is installed] *************************************************************************************
+changed: [root@147.182.189.174]
+
+TASK [Check MySQL installation] **************************************************************************************
+ok: [root@147.182.189.174] => {
+    "msg": "MySQL version: mysql  Ver 8.4.5-0ubuntu0.2 for Linux on x86_64 ((Ubuntu))"
+}
+
+TASK [Verify MySQL service is running] *******************************************************************************
+ok: [root@147.182.189.174]
+
+TASK [Check MySQL service status] ************************************************************************************
+ok: [root@147.182.189.174] => {
+    "msg": "MySQL service is running"
+}
+
+RUNNING HANDLER [geerlingguy.nginx : reload nginx] *******************************************************************
+changed: [root@147.182.189.174]
+
+RUNNING HANDLER [geerlingguy.mysql : restart mysql] ******************************************************************
+[WARNING]: Ignoring "sleep" as it is not used in "systemd"
+changed: [root@147.182.189.174]
+
+PLAY RECAP ***********************************************************************************************************
+root@147.182.189.174       : ok=57   changed=13   unreachable=0    failed=0    skipped=31   rescued=0    ignored=0   
+
+
+Total tasks: 101 
+
+If we receive some errors we can connect to the host and list the logs
+
+
+
+
+
+
+COLLECTIONS:
+------------
+
+For this example we must use fresh Ubuntu without installed nginx
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create Digital Ocean Droplet - Ubuntu
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- CPU options: Premium Intel: Disk Type: SSD/ $32/Month - 4GB/2 Intel CPU/120 GB NVMe SSD/ 4 T tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client1
+		- Create Droplet
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/					# python virtual environment
+	|--- collections_roles/				# playbooks directory	
+	|	|--+ roles_requirements.yml		# roles requirements
+	|	|--+ Roles_example.yml			# role playbook
+	|	|--+ collections_requirements.yml	# collections requirements
+	|	|--+ collections_example.yml		# collections playbook
+	|
+	|--+ ansible.cfg				# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@159.89.232.65		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+➢ Create role playbook
+	terminal --> vi collections_roles/collections_requirements.yml
+
+collections_requirements.yml
+----------------------------------------------------- 
+---
+collections:
+  - name: community.general
+  - name: ansible.posix
+  - name: community.docker
+----------------------------------------------------- 
+save chabges: escape, :wq!, enter
+
+➢ Install collections requirements
+	terminal --> ansible-galaxy collection install -r collections_roles/collections_requirements.yml
+
+➢ Create role playbook
+	terminal --> vi collections_roles/collections_example.yml
+
+collections_example.yml
+----------------------------------------------------- 
+---
+- name: Use community.general collection on Ubuntu
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: Get OS release info
+      ansible.builtin.slurp:
+        src: /etc/os-release
+      register: os_release
+
+    - name: Print OS info
+      debug:
+        msg: "OS Info: {{ os_release.content | b64decode }}"
+
+    - name: Download content from URL
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/ansible/ansible/stable-2.16/README.md"  # Using stable branch
+        dest: /tmp/ansible_readme.md  # Changed destination filename
+        mode: 0644
+      register: download_result
+      until: download_result is succeeded  # Retry if fails
+      retries: 3
+      delay: 2
+
+- name: Install Docker and run Nginx container
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker service is started
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Run Nginx container
+      community.docker.docker_container:
+        name: nginx-1.1
+        image: nginx
+        ports:
+          - "80:80"
+        state: started
+
+    - name: Verify Nginx container status
+      community.docker.docker_container_info:
+        name: nginx-1.1
+      register: nginx_container_info
+
+    - name: Check if Nginx container is running
+      ansible.builtin.assert:
+        that:
+          - nginx_container_info.container.State.Status == 'running'
+        success_msg: "Nginx container is running"
+        fail_msg: "Nginx container is not running"
+
+    - name: Verify connection to Nginx
+      ansible.builtin.uri:
+        url: "http://localhost:80"
+        status_code: 200
+      register: nginx_response
+
+    - name: Print Nginx response
+      debug:
+        var: nginx_response
+----------------------------------------------------- 
+save chabges: escape, :wq!, enter
+
+
+➢ Verify Playbooks Syntax before execution
+	terminal --> ansible-playbook collections_roles/collections_example.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: collections_roles/collections_example.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook collections_roles/collections_example.yml --check
+
+
+➢ Execute Playbooks
+	terminal --> ansible-playbook collections_roles/collections_example.yml
+
+
+# result: All tasks should pass.
+
+
+
 
 
 
