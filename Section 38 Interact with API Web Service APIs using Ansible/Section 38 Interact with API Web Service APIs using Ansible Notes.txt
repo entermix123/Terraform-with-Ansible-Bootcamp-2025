@@ -11,8 +11,359 @@ Section 38: Interact with API Web Service APIs using Ansible
 ================================================
 
 
+➢ Ansible URI ModuleL Ansible URI module is used to interact with web services and APIs. It allows us to perform HTTP and HTTPS requests such as GET, POST, PUT, DELETE and more.
+
+➢ Key Features:
+	○ This module is useful for scenarions where we need to autoamte interactions with RESTful APIs, retrieve data from web services or send data to a web server.
+	○ Automating API Interactions: Automatically managing cloud resources such as creating or deleting instances, updating configurations etc.
+	○ Monitoring and Reporting: Retrieving data from monitoring systems or external services to generate reports or trigger alerts.
+	○ Configuration Management: Sending configuration data to services or retrieving configuration details to ensure systems are correctly configured.
+	○ CI/CD Pipelines: Integrating with various services to trigger builds, deployments or notify stakeholders.
+
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create 2 Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client-1, ubuntu-client-2
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- rest_apis/			# playbooks directory	
+	|	|--+ get_to_rest_api.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@161.35.108.163		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create include_import directory
+	terminal --> mkdir rest_apis
+
+➢ Create tasks-1.yml (tasks only, not a playbook)
+	terminal -> vi rest_apis/get_to_rest_api.yml
+
+get_to_rest_api.yml
+----------------------------------------------------- 
+---
+- name: Submit GET request to a REST API endpoint			# playbook name
+  hosts: webservers							# hosts group
+  gather_facts: no							# skip gather facts step
+  
+  tasks:								# tasks section
+    - name: Send GET request to JSONPlaceholder API			# task 1 name
+      uri:								# use uri module
+        url: https://jsonplaceholder.typicode.com/posts			# target url - test API - we can test it in our brawser
+        method: GET							# define method - GET
+        return_content: yes						# define expecting return data
+      register: response						# save the response into variable
+
+    - name: Display response content					# task 2 name
+      debug:								# use debug module to print msg
+        var: response.json						# print the varibale content
+
+    - name: Process response						# task 3 name
+      debug:								# use debug module to print msg
+        msg: "Total posts received: {{ response.json | length }}"	# define msg as the lenght of the response
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R rest_apis/
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook rest_apis/get_to_rest_api.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: rest_apis/get_to_rest_api.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook rest_apis/get_to_rest_api.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook rest_apis/get_to_rest_api.yml
+	
+# result:
+
+PLAY [Submit GET request to a REST API endpoint] *********************************************************************
+
+TASK [Send GET request to JSONPlaceholder API] ***********************************************************************
+[WARNING]: Platform linux on host root@161.35.108.163 is using the discovered Python interpreter at
+/usr/bin/python3.13, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [root@161.35.108.163]
+
+TASK [Display response content] **************************************************************************************
+ok: [root@161.35.108.163] => {
+    "response.json": [
+        {
+            "body": "quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto",
+            "id": 1,
+            "title": "sunt aut facere repellat provident occaecati excepturi optio reprehenderit",
+            "userId": 1
+        },
+.............
+.............
+        {
+            "body": "cupiditate quo est a modi nesciunt soluta\nipsa voluptas error itaque dicta in\nautem qui minus magnam et distinctio eum\naccusamus ratione error aut",
+            "id": 100,
+            "title": "at nam consequatur ea labore ea harum",
+            "userId": 10
+        }
+    ]
+}
+
+TASK [Process response] **********************************************************************************************
+ok: [root@161.35.108.163] => {
+    "msg": "Total posts received: 100"
+}
+
+PLAY RECAP ***********************************************************************************************************
+root@161.35.108.163        : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+
+
+
+
+
 
 
 196. Token Based Authentication in REST API
 ===========================================
+
+
+
+DEMO:
+-----
+
+➢ Login to ansible-engine machine
+	terminal --> ssh root@IP
+	terminal --> password
+
+➢ Create and copy the created SSH key from the working Machine
+	terminal --> cat ~/.ssh/id_ed25519.pub
+	# copy the SSH key
+
+
+➢ Create 2 Digital Ocean Droplet - one with UbuntuOS and the second with CentOS
+	- Create/Droplets
+		- Choose location - New York (default option) or whatever we choose
+		- Choose OS Ubuntu with the latest version - 24.10 x64
+		- Droplet Type: Basic
+		- CPU options: Regular: Disk Type: SSD/ $6/Month - 512MB/1CPU/10GB SSD Disk/ 500 MB tranfer
+		- Choose Authentication Method: SSH Key
+			- Add SSH key
+				- paste the key in the key field
+				- name: ansible-ssh
+				- Add SSH Key
+
+		- Finalize Details
+			- Hostname: ubuntu-client-1, ubuntu-client-2
+		- Create Droplet
+
+
+➢ On ansible-engine machine we have folder structure:
+
+root/
+|
+|--- ansible/
+	|--- myansible/				# python virtual environment
+	|--- rest_apis/				# playbooks directory	
+	|	|--+ post_to_rest_api.yml	# playbook
+	|
+	|--+ ansible.cfg			# ansible configuration file
+	|--- inventory/
+		|--- dev/
+		      |--+ dev_hosts.yml
+
+
+➢ Navigate to nasible root directory
+	terminal --> cd ansible
+
+➢ Activate python virtual environment
+	terminal --> source myansible/bin/activate
+
+
+➢ We have ansible configurations for static inventory:
+
+ansible.cfg
+--------------------------------------------------------
+[defaults]
+inventory = /root/ansible/inventory/				# inventory folder
+host_key_checking = False					# skip key confirmation
+vault_password_file = /root/ansible/ansible_vault_password	# path to ansible vault password
+--------------------------------------------------------
+
+
+➢ We have dev_hosts.yml with 1 DO instances with static IPs
+
+inventory/dev/dev_hosts
+-------------------------------
+[webservers]
+root@161.35.108.163		# DO Ubuntu instance
+-------------------------------
+
+➢ Test the connection with the DO instances
+	terminal --> ansible all -m ping
+
+	# result: the connection must be successful
+
+
+➢ Create include_import directory
+	terminal --> mkdir rest_apis
+
+➢ Create tasks-1.yml (tasks only, not a playbook)
+	terminal -> vi rest_apis/post_to_rest_api.yml
+
+post_to_rest_api.yml
+----------------------------------------------------- 
+---
+- name: Interact with Reqres API using token-based authentication		# playbook name
+  hosts: webservers								# hosts group
+  gather_facts: no								# skip gather facts step
+  
+  vars:								# define variables
+    login_url: "https://reqres.in/api/login"
+    post_url: "https://reqres.in/api/users"
+    username: "eve.holt@reqres.in"
+    password: "cityslicka"
+    new_user:
+      name: "morpheus"
+      job: "leader"
+
+  tasks:							# tasks section
+    - name: Login to Reqres API to obtain token			# task 1 name
+      uri:							# use uri module to send post request to api
+        url: "{{ login_url }}"					# target url from variable to login
+        method: POST						# define method - POST
+        body:							# define body
+          email: "{{ username }}"				
+          password: "{{ password }}"
+        body_format: json					# body format
+        headers:						# define headers
+          Content-Type: "application/json"
+        return_content: yes					# specify we expect response
+        status_code: 200					# require response status 200, if not the task will fail
+      register: auth_response					# register variable with response content (include auth token)
+
+    - name: Display Login response content			# task 2 name
+      debug:							# use debug module to print msg
+        var: auth_response.json					# print created variable with the response data in json format
+
+    - name: Extract token from login response			# task 3 name
+      set_fact:							# use set_fact module to set token
+        auth_token: "{{ auth_response.json.token }}"		# define token variable
+
+    - name: Ensure token was obtained				# task 4 name
+      debug:							# use debug module to orint msg
+        var: auth_token						# print the token
+
+    - name: Use token to create a new user			# task 5 name - create user using auth token
+      uri:							# use uri module to send request to REST API
+        url: "{{ post_url }}"					# target url from variables
+        method: POST						# define method
+        body: "{{ new_user }}"					# define body with the user credentials from variables
+        body_format: json					# set body format
+        headers:						# define headers
+          Content-Type: "application/json"
+          Authorization: "Bearer {{ auth_token }}"		# set auth token
+        return_content: yes					# expect response
+        status_code: 201					# expect response code 201 - created
+      register: create_user_response				# create variable with the response
+
+    - name: Display create user response content		# task 6 name
+      debug:							# use debug module to print msg
+        var: create_user_response.content			# print the response content
+----------------------------------------------------- 	
+save chabges: escape, :wq!, enter
+
+
+➢ Give permissions for execution of the playbook folder
+	terminal --> chmod 0755 -R rest_apis/
+
+
+➢ Verify Playbook Syntax before execution
+	terminal --> ansible-playbook rest_apis/post_to_rest_api.yml --syntax-check
+
+	# if the syntax is correct we will receive this messages
+		playbook: rest_apis/post_to_rest_api.yml
+
+➢ Execute Playbooks dry run before execution
+	terminal --> ansible-playbook rest_apis/post_to_rest_api.yml --check
+
+	# result: we will dry result of the playbook execution
+
+➢ Execute Playbooks 
+	terminal --> ansible-playbook rest_apis/post_to_rest_api.yml
+	
+# result: The API is secured and we need a API secret to access it. If we have the API secret all tasks should be successfuly executed and new user should be created.
+
+
 
